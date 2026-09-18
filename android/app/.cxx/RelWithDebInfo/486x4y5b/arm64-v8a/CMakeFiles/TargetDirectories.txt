@@ -1,0 +1,12 @@
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/CMakeFiles/appmodules.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/CMakeFiles/rebuild_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/safeareacontext_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/safeareacontext_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/rnscreens_autolinked_build/CMakeFiles/react_codegen_rnscreens.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/rnscreens_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/rnscreens_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/rnsvg_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/RelWithDebInfo/486x4y5b/arm64-v8a/rnsvg_autolinked_build/CMakeFiles/rebuild_cache.dir

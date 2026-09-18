@@ -1,0 +1,16 @@
+{
+  "name": "Amori",
+  "displayName": "Amori",
+  "plugins": [
+    "expo-asset",
+    [
+      "expo-image-picker",
+      {
+        "photosPermission": "Amori uses your photos so you can hide a picture for your partner to find in the Distraction Centre."
+      }
+    ]
+  ],
+  "ios": {
+    "bundleIdentifier": "com.candice.amori"
+  }
+}

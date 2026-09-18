@@ -1,0 +1,12 @@
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/CMakeFiles/appmodules.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/CMakeFiles/rebuild_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/safeareacontext_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/safeareacontext_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/rnscreens_autolinked_build/CMakeFiles/react_codegen_rnscreens.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/rnscreens_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/rnscreens_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/rnsvg_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/candiceyeatman/Documents/PrivateGit/Amori/android/app/.cxx/Debug/5rz6l5g1/armeabi-v7a/rnsvg_autolinked_build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,84 @@
+using System.Text.Json.Serialization;
+using Amori.Api.Common.Extensions;
+using Amori.Api.Common.Middleware;
+using Amori.Api.Configuration;
+using Amori.Api.Data.Context;
+using Amori.Api.Data.Seed;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ── Configuration ─────────────────────────────────────────────────────────────
+builder.Services.Configure<AwsSettings>(
+    builder.Configuration.GetSection(AwsSettings.SectionName));
+builder.Services.Configure<NotificationSettings>(
+    builder.Configuration.GetSection(NotificationSettings.SectionName));
+
+// ── Core services ─────────────────────────────────────────────────────────────
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Serialize enums as their string names (e.g. "Open", "Communication")
+        // so the mobile client receives stable string values instead of integers.
+        // JsonStringEnumConverter still accepts integer input on deserialization,
+        // so clients may send either the numeric or string form.
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
+// ── Database ──────────────────────────────────────────────────────────────────
+builder.Services.AddDatabase(builder.Configuration);
+
+// ── Authentication / JWT ──────────────────────────────────────────────────────
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// ── Application services ──────────────────────────────────────────────────────
+builder.Services.AddApplicationServices();
+
+// ── File storage (S3 in prod, local disk fallback in dev) ─────────────────────
+builder.Services.AddFileStorage(builder.Configuration);
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
+builder.Services.AddAmoriCors(builder.Configuration);
+
+// ── Swagger ───────────────────────────────────────────────────────────────────
+builder.Services.AddSwagger();
+
+// ── Health Checks ─────────────────────────────────────────────────────────────
+builder.Services.AddHealthChecks();
+
+// ─────────────────────────────────────────────────────────────────────────────
+var app = builder.Build();
+
+// ── Middleware pipeline ───────────────────────────────────────────────────────
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwaggerWithUi();
+}
+
+app.UseHttpsRedirection();
+
+// Serve locally-stored uploads (used by LocalFileStorageService in dev).
+app.UseStaticFiles();
+
+app.UseCors(Amori.Api.Configuration.CorsSettings.PolicyName);
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHealthChecks("/api/healthz");
+
+// ── Auto-migrate and seed ─────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AmoriDbContext>();
+    await db.Database.MigrateAsync();
+    await AmoriDbSeeder.SeedAsync(db);
+}
+
+app.Run();
+
+// Needed for integration test WebApplicationFactory
+public partial class Program { }
