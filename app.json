@@ -12,5 +12,8 @@
   ],
   "ios": {
     "bundleIdentifier": "com.candice.amori"
+  },
+  "android": {
+    "package": "com.candice.amori"
   }
 }
