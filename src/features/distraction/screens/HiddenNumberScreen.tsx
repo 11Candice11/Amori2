@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import {launchImageLibrary, ImagePickerResponse, MediaType} from 'react-native-image-picker';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { ScreenHeader, Button } from '../components/DistractionUI';
@@ -383,31 +383,40 @@ function PuzzleCreator({
 
   const pickImage = async () => {
     setError(null);
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError('Photo access is needed to choose an image.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    
+    const options = {
+      mediaType: 'photo' as MediaType,
       quality: 0.8,
-      allowsEditing: true,
-    });
-    if (result.canceled || result.assets.length === 0) return;
+      includeBase64: false,
+    };
 
-    const asset = result.assets[0];
-    setUploading(true);
-    setTarget(null); // reset target for the new image
-    try {
-      const uploaded = await mediaService.uploadImage({
+    launchImageLibrary(options, (response: ImagePickerResponse) => {
+      if (response.didCancel || response.errorMessage) {
+        if (response.errorMessage) {
+          setError('Could not access photos: ' + response.errorMessage);
+        }
+        return;
+      }
+
+      const asset = response.assets?.[0];
+      if (!asset?.uri) return;
+
+      setUploading(true);
+      setTarget(null); // reset target for the new image
+      
+      mediaService.uploadImage({
         uri: asset.uri,
-        type: asset.mimeType ?? 'image/jpeg',
+        type: asset.type ?? 'image/jpeg',
         name: asset.fileName ?? `puzzle-${Date.now()}.jpg`,
+      }).then(uploaded => {
+        setImage({ url: uploaded.url, fileKey: uploaded.fileKey });
+      }).catch(e => {
+        setError(e instanceof Error ? e.message : 'Could not upload the image.');
+      }).finally(() => {
+        setUploading(false);
       });
-      setImage({ url: uploaded.url, fileKey: uploaded.fileKey });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not upload the image.');
+    });
+  };
     } finally {
       setUploading(false);
     }
