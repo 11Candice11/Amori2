@@ -12,7 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import { AppHeader } from '../../../shared/components/header';
 import { EmptyState } from '../components/EmptyState';
 import { useIncidentHistory } from '../hooks/useIncidentHistory';
 import { formatDateTime } from '../utils/errorMessages';
@@ -57,7 +57,7 @@ export function IncidentHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader
+      <AppHeader
         title="Timeline"
         subtitle={entries.length > 0 ? `${entries.length} events` : undefined}
         onBack={() => navigation.goBack()}

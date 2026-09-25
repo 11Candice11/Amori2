@@ -70,7 +70,15 @@ public sealed class WishlistService(
     public async Task<WishlistItemResponse> UpdateAsync(Guid userId, Guid itemId, UpdateWishlistItemRequest request, CancellationToken ct = default)
     {
         var (_, item) = await LoadAsync(userId, itemId, ct);
-        if (item.AddedByUserId != userId) throw new UnauthorizedException("Only the owner can update this item.");
+
+        // Content edits are owner-only, but purchased/favorite are shared toggles
+        // either partner may flip (mirrors the /complete and /favorite endpoints).
+        var editsContent = request.Name != null || request.Description != null ||
+            request.ImageKey != null || request.Price.HasValue || request.Url != null ||
+            request.Priority.HasValue || request.Notes != null;
+        if (editsContent && item.AddedByUserId != userId)
+            throw new UnauthorizedException("Only the owner can update this item.");
+
         if (request.Name != null) item.Name = request.Name.Trim();
         if (request.Description != null) item.Description = request.Description;
         if (request.ImageKey != null) item.ImageKey = request.ImageKey;
@@ -78,6 +86,12 @@ public sealed class WishlistService(
         if (request.Url != null) item.Url = request.Url;
         if (request.Priority.HasValue) item.Priority = request.Priority.Value;
         if (request.Notes != null) item.Notes = request.Notes;
+        if (request.IsFavorite.HasValue) item.IsFavorite = request.IsFavorite.Value;
+        if (request.IsPurchased.HasValue)
+        {
+            item.IsPurchased = request.IsPurchased.Value;
+            item.PurchasedAt = request.IsPurchased.Value ? (item.PurchasedAt ?? DateTime.UtcNow) : null;
+        }
         await db.SaveChangesAsync(ct);
         return Map(item);
     }

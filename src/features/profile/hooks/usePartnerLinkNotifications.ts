@@ -20,6 +20,7 @@ const PARTNER_LINK_TYPES = new Set([
   'PartnerLinkRequest',
   'PartnerLinkAccepted',
   'PartnerLinkDeclined',
+  'PartnerUnlinked',
 ]);
 
 export interface PartnerLinkNotificationsState {

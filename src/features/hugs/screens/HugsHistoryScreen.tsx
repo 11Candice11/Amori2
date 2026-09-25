@@ -19,11 +19,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
 import type { HugStackParamList } from '../../../navigation/HugStackParamList';
 import { authService } from '../../../services/auth/authService';
 import { hugService } from '../services/hugService';
 import type { HugResponse } from '../../../services/api/types';
-import { BackIcon, HeartIcon, WhisperIcon } from '../components/HugIcons';
+import { HeartIcon, LeafIcon, WhisperIcon } from '../components/HugIcons';
 
 type Nav = NativeStackNavigationProp<HugStackParamList, 'HugsHistory'>;
 
@@ -92,20 +93,7 @@ export function HugsHistoryScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      <View style={styles.topBar}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <BackIcon color={colors.neutral} />
-        </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>Our Hugs</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader title="Our Hugs" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={colors.gold} size="large" /></View>
@@ -147,22 +135,42 @@ export function HugsHistoryScreen() {
                   ) : null}
 
                   <View style={styles.hugFoot}>
-                    {hug.isAcknowledged ? (
-                      <Text style={styles.ackDone}>♥ Held</Text>
-                    ) : canAck ? (
-                      <Pressable
-                        style={styles.ackBtn}
-                        onPress={() => acknowledge(hug.id)}
-                        disabled={acking === hug.id}
-                        android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
-                      >
-                        {acking === hug.id
-                          ? <ActivityIndicator color={colors.gold} size="small" />
-                          : <Text style={styles.ackBtnText}>Hold this hug</Text>}
-                      </Pressable>
-                    ) : (
-                      <Text style={styles.ackPending}>Waiting to be held</Text>
-                    )}
+                    <View style={styles.hugFootStart}>
+                      {hug.isAcknowledged ? (
+                        <Text style={styles.ackDone}>♥ Held</Text>
+                      ) : canAck ? (
+                        <Pressable
+                          style={styles.ackBtn}
+                          onPress={() => acknowledge(hug.id)}
+                          disabled={acking === hug.id}
+                          android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                        >
+                          {acking === hug.id
+                            ? <ActivityIndicator color={colors.gold} size="small" />
+                            : <Text style={styles.ackBtnText}>Hold this hug</Text>}
+                        </Pressable>
+                      ) : (
+                        <Text style={styles.ackPending}>Waiting to be held</Text>
+                      )}
+                    </View>
+
+                    {/* Lets the other partner join the same wall-clock rhythm. */}
+                    <Pressable
+                      style={styles.breatheLink}
+                      onPress={() => navigation.navigate('BreatheTogether', {
+                        hugId: hug.id,
+                        anchorIso: hug.createdAt,
+                        partnerName: sent ? hug.recipientName : hug.senderName,
+                        isAcknowledged: hug.isAcknowledged,
+                      })}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel="Breathe together on this hug"
+                      android_ripple={{ color: 'rgba(167,210,182,0.15)' }}
+                    >
+                      <LeafIcon color={colors.primaryLight} size={14} />
+                      <Text style={styles.breatheLinkText}>Breathe together</Text>
+                    </Pressable>
                   </View>
                 </View>
               );
@@ -215,7 +223,16 @@ const styles = StyleSheet.create({
   whisperRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: spacing.sm },
   whisperText: { ...typography.body, color: colors.neutralMuted, fontStyle: 'italic', flex: 1, lineHeight: 22 },
 
-  hugFoot: { marginTop: spacing.sm, alignItems: 'flex-start' },
+  hugFoot: {
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  hugFootStart: { flexShrink: 1 },
+  breatheLink: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  breatheLinkText: { ...typography.bodySm, color: colors.primaryLight, fontSize: 12 },
   ackDone: { ...typography.label, color: colors.gold, fontSize: 11 },
   ackPending: { ...typography.bodySm, color: colors.neutralSubtle },
   ackBtn: {

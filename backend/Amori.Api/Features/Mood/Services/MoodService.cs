@@ -11,12 +11,28 @@ public sealed class MoodService(
     AmoriDbContext db,
     IRelationshipAccessService relAccess) : IMoodService
 {
-    private static CheckInResponse Map(MoodCheckIn c) => new()
+    /// <summary>Maps a check-in in full, for its owner.</summary>
+    /// <remarks>
+    /// A separate overload rather than an optional parameter, because optional
+    /// arguments are illegal inside the EF expression trees in the queries below.
+    /// </remarks>
+    private static CheckInResponse Map(MoodCheckIn c) => Map(c, true);
+
+    /// <summary>
+    /// Maps a check-in, optionally withholding the free-text detail.
+    /// </summary>
+    /// <param name="includeNotes">
+    /// Backs the "Share check-ins" privacy setting. When false the free-text
+    /// fields are withheld, while the mood itself (mood, intensity, feelings)
+    /// still comes through — that is governed by "Share mood" instead.
+    /// </param>
+    private static CheckInResponse Map(MoodCheckIn c, bool includeNotes) => new()
     {
         Id = c.Id, UserId = c.UserId, RelationshipId = c.RelationshipId,
         CheckInType = c.CheckInType, Mood = c.Mood, Intensity = c.Intensity,
-        WhatHappened = c.WhatHappened, Feelings = c.Feelings,
-        PerceivedCause = c.PerceivedCause, WhatINeed = c.WhatINeed,
+        WhatHappened = includeNotes ? c.WhatHappened : null, Feelings = c.Feelings,
+        PerceivedCause = includeNotes ? c.PerceivedCause : null,
+        WhatINeed = includeNotes ? c.WhatINeed : null,
         IsSharedWithPartner = c.IsSharedWithPartner, CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
     };
 
@@ -153,7 +169,12 @@ public sealed class MoodService(
             .Where(x => x.UserId == partner.Id && x.IsSharedWithPartner)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync(ct);
-        return c == null ? null : Map(c);
+        if (c == null) return null;
+
+        // "Share check-ins" governs the free-text detail only — the mood itself
+        // is already covered by "Share mood" above.
+        var sharesCheckIns = partnerSettings?.ShareCheckIns ?? true;
+        return Map(c, includeNotes: sharesCheckIns);
     }
 
     public async Task<IReadOnlyList<CheckInResponse>> GetHistoryAsync(Guid userId, CancellationToken ct = default)

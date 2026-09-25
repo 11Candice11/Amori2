@@ -16,6 +16,8 @@ public sealed class MemoryMediaConfiguration : IEntityTypeConfiguration<MemoryMe
         builder.Property(m => m.FileKey).HasColumnName("file_key").HasMaxLength(500).IsRequired();
         builder.Property(m => m.MediaType).HasColumnName("media_type").IsRequired();
         builder.Property(m => m.DurationSeconds).HasColumnName("duration_seconds");
+        builder.Property(m => m.Title).HasColumnName("title").HasMaxLength(200);
+        builder.Property(m => m.ThumbnailUrl).HasColumnName("thumbnail_url").HasMaxLength(1000);
         builder.Property(m => m.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(m => m.UpdatedAt).HasColumnName("updated_at");
 

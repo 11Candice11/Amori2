@@ -30,6 +30,9 @@ services:
       - Database__ConnectionString=Host=amori-postgres;Port=5432;Database=amori_dev;Username=postgres;Password=testpass123
     ports:
       - "5001:5001"
+    volumes:
+      # Keep local image uploads across container rebuilds.
+      - api_uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +41,7 @@ services:
 
 volumes:
   postgres_data:
+  api_uploads:
 
 networks:
   amori-network:

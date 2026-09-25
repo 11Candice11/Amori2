@@ -5,8 +5,9 @@
  *   - the current user + relationship (for the couple label)
  *   - the visible month's calendar events
  *   - important dates (for the anniversary beacon + countdown notice)
- *   - the shared bucket list
+ *   - the shared bucket list + to-do list
  *   - the shared wishlist (count + repository preview)
+ *   - the couple's date ideas (Date Planner /api/dates)
  *
  * Month navigation refetches only the calendar; everything else is loaded once
  * per refresh. Mirrors the Home dashboard's Promise.allSettled convention.
@@ -17,11 +18,13 @@ import { api } from '../../../services/api/client';
 import { authService } from '../../../services/auth/authService';
 import type { RelationshipResponse } from '../../../services/api/types';
 import { togetherService } from '../services/togetherService';
-import type {
-  BucketListItemResponse,
-  CalendarEventResponse,
-  ImportantDateResponse,
-  WishlistItemResponse,
+import {
+  type BucketListCategory,
+  type BucketListItemResponse,
+  type CalendarEventResponse,
+  type DateIdeaResponse,
+  type ImportantDateResponse,
+  type WishlistItemResponse,
 } from '../types/together.types';
 
 export interface TogetherData {
@@ -40,6 +43,8 @@ export interface TogetherData {
   importantDates: ImportantDateResponse[];
   bucketList: BucketListItemResponse[];
   wishlist: WishlistItemResponse[];
+  todoList: BucketListItemResponse[];
+  dateIdeas: DateIdeaResponse[];
 
   loading: boolean;
   error: string | null;
@@ -65,6 +70,8 @@ export function useTogether(): TogetherData & {
   const [importantDates, setImportantDates] = useState<ImportantDateResponse[]>([]);
   const [bucketList, setBucketList] = useState<BucketListItemResponse[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItemResponse[]>([]);
+  const [todoList, setTodoList] = useState<BucketListItemResponse[]>([]);
+  const [dateIdeas, setDateIdeas] = useState<DateIdeaResponse[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [calendarLoading, setCalendarLoading] = useState(true);
@@ -88,13 +95,14 @@ export function useTogether(): TogetherData & {
     setLoading(true);
     setError(null);
 
-    const [meResult, relResult, datesResult, bucketResult, wishResult] =
+    const [meResult, relResult, datesResult, bucketResult, wishResult, dateIdeasResult] =
       await Promise.allSettled([
         authService.getMe(),
         api.get<RelationshipResponse>('/api/relationships/me'),
         togetherService.getImportantDates(),
         togetherService.getBucketList(),
         togetherService.getWishlist(),
+        togetherService.getDateIdeas(),
       ]);
 
     const me = meResult.status === 'fulfilled' ? meResult.value : null;
@@ -111,15 +119,27 @@ export function useTogether(): TogetherData & {
     setImportantDates(
       datesResult.status === 'fulfilled' ? datesResult.value : [],
     );
-    setBucketList(bucketResult.status === 'fulfilled' ? bucketResult.value : []);
+    
+    const allBucketItems = bucketResult.status === 'fulfilled' ? bucketResult.value : [];
+
+    // The bucket list and to-do list share the /api/bucket-list surface; split
+    // by category. The API serializes the category as its string name, so
+    // compare against 'ToDoList'. Date ideas come from their own /api/dates.
+    const todoCategory: BucketListCategory = 'ToDoList';
+
+    setBucketList(allBucketItems.filter(item => item.category !== todoCategory));
+    setTodoList(allBucketItems.filter(item => item.category === todoCategory));
+
     setWishlist(wishResult.status === 'fulfilled' ? wishResult.value : []);
+    setDateIdeas(dateIdeasResult.status === 'fulfilled' ? dateIdeasResult.value : []);
 
     // Only surface an error if every content call failed — a partner still
     // linking up shouldn't hide the whole screen.
     const allFailed =
       datesResult.status === 'rejected' &&
       bucketResult.status === 'rejected' &&
-      wishResult.status === 'rejected';
+      wishResult.status === 'rejected' &&
+      dateIdeasResult.status === 'rejected';
     setError(allFailed ? 'Some shared data could not be loaded.' : null);
 
     setLoading(false);
@@ -156,6 +176,8 @@ export function useTogether(): TogetherData & {
     importantDates,
     bucketList,
     wishlist,
+    todoList,
+    dateIdeas,
     loading,
     error,
     refresh,

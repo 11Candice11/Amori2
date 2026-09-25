@@ -21,6 +21,7 @@ import {
 } from '../components';
 import { DISTRACTION_ESCAPES, PARTNER_NAME } from '../utils/splittingData';
 import { EMPTY_FLOW_STATE } from '../types/splitting.types';
+import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'DistractionCentre'>;
 type Rt = RouteProp<SplittingStackParamList, 'DistractionCentre'>;
@@ -30,9 +31,12 @@ export function DistractionCentreScreen() {
   const route = useRoute<Rt>();
   const flow = route.params?.flow ?? EMPTY_FLOW_STATE;
 
+  // Leaving this screen after the Inward Check saves the grounding as history.
+  useSaveGroundingOnLeave(flow, { actions: ['Distraction'] });
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="Sanctuary Home" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Distraction Centre" subtitle="Sanctuary Home" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <StatusPill label="Grounding rest" />

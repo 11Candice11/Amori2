@@ -5,7 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import { AppHeader } from '../../../shared/components/header';
 import { EmptyState } from '../components/EmptyState';
 import { SlaCard } from '../components/SlaCard';
 import { useIncidentSla } from '../hooks/useIncidentSla';
@@ -29,7 +29,7 @@ export function IncidentSlaScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader title="SLA & Timeline" onBack={() => navigation.goBack()} />
+      <AppHeader title="SLA & Timeline" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={colors.gold} size="large" /></View>

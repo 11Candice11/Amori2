@@ -7,21 +7,22 @@
  *   3. Stats row      — days together | days till anniversary
  *   4. Partner state  — partner avatar, "…'S STATE", updated time, mood label
  *   5. Check-in row   — "Check In →" prompt with calendar glyph
- *   6. Attunement 2×2 — Send hug · Distraction · Log Incident · Not okay
+ *   6. Attunement 2×2 — Send hug · Distraction · Log Incident · Shared
  *   7. Daily Artifact — sealed "Mystery Booster Pack" card
  *
  * All colors come from theme tokens so the card set repaints correctly across
  * the light/dark modes and the botanical/gold variants.
  */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { useCountdown } from '../../splitting/hooks/useCountdown';
-import { EmergencyBanner } from './EmergencyBanner';
-
-const artifactImage = require('../../../../images/card.png');
+import { getCardImage } from '../../../utils/cardSelector';
+import { ActionImageIcon } from '../../../shared/components/icons/AppIcons';
+import { BellIcon } from '../../../shared/components/icons';
+import { useNotificationCount } from '../../../shared/state/notificationStore';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,33 @@ function HeartIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+/** Notification bell + unread badge for the dashboard top bar. */
+function DashboardBell({ onPress }: { onPress?: () => void }) {
+  const count = useNotificationCount();
+  const hasUnread = count > 0;
+  const label = count > 99 ? '99+' : String(count);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.iconCircle}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={hasUnread ? `Notifications, ${count} unread` : 'Notifications'}
+      android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+    >
+      <BellIcon color={colors.gold} size={20} />
+      {hasUnread ? (
+        <View style={styles.bellBadge}>
+          <Text style={styles.bellBadgeText} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 function CalendarIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
@@ -47,54 +75,18 @@ function CalendarIcon() {
   );
 }
 
-function HugIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 20C12 20 4 15 4 9.2A3.7 3.7 0 0112 6.6 3.7 3.7 0 0120 9.2C20 15 12 20 12 20z"
-        stroke={colors.gold}
-        strokeWidth={1.6}
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function DistractionIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 3l2 5 5 .5-3.8 3.3 1.2 4.9L12 14.9 7.6 16.7l1.2-4.9L5 8.5 10 8z"
-        stroke={colors.gold}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function LogIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M6 3.5h9l3 3v14H6z" stroke={colors.gold} strokeWidth={1.5} strokeLinejoin="round" />
-      <Path d="M9 9h6M9 13h6M9 17h4" stroke={colors.gold} strokeWidth={1.5} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-function NotOkayIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={9} stroke={colors.emergency} strokeWidth={1.6} />
-      <Path d="M12 7.5v5.5M12 16.2h.01" stroke={colors.emergency} strokeWidth={1.8} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
 function ArrowIcon() {
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
       <Path d="M5 12h14M13 6l6 6-6 6" stroke={colors.gold} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function CloseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 6l12 12M18 6L6 18" stroke={colors.gold} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -164,7 +156,6 @@ export type SanctuaryDashboardProps = {
   /** The current user's display name (falls back to a gentle placeholder). */
   userName?: string | null;
   partnerName: string;
-  isPartnerOnline: boolean;
   relationshipDays: number;
   daysTillAnniversary: number;
   /** Time-of-day word used in the greeting, e.g. "Evening". */
@@ -185,24 +176,51 @@ export type SanctuaryDashboardProps = {
    * active window. Drives a shared live countdown shown on BOTH dashboards.
    */
   spaceWindowEndsAt: string | null;
+  /**
+   * Whether the current user can control the space window (i.e. it's their own
+   * session). When true, the card shows an "×" to end it early and, once it
+   * elapses, an "Extend" button. The partner's window is view-only.
+   */
+  canControlSpaceWindow?: boolean;
+  /** End the user's own space window early (the "×" on the card). */
+  onEndSpace?: () => void;
+  /** Extend the user's own space window by a fixed amount. */
+  onExtendSpace?: () => void;
   /** Whether the current user has checked in today. */
   hasMoodToday: boolean;
   onCheckIn: () => void;
   onHug: () => void;
   onDistraction: () => void;
   onLogIncident: () => void;
-  onNotOkay: () => void;
+  onSOS: () => void;
   onOpenArtifact: () => void;
   /** Whether today's Daily Artifact has already been opened. */
   artifactOpened: boolean;
   /** Navigate to the Hearth Vault (shown after the artifact is opened). */
   onViewVault: () => void;
+  /** Open the notifications inbox from the bell in the top bar. */
+  onOpenNotifications?: () => void;
+  /** The card number (1-10) to display for today's daily gift. null = still loading. */
+  cardNumber?: number | null;
 };
+
+/** Epoch-ms of the next local midnight — when a fresh daily gift unlocks. */
+function nextLocalMidnight(): number {
+  const now = new Date();
+  return new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0,
+    0,
+    0,
+    0,
+  ).getTime();
+}
 
 export function SanctuaryDashboard({
   userName,
   partnerName,
-  isPartnerOnline,
   relationshipDays,
   daysTillAnniversary,
   timeOfDay,
@@ -211,20 +229,33 @@ export function SanctuaryDashboard({
   userMoodLabel,
   spaceWindowOwner,
   spaceWindowEndsAt,
+  canControlSpaceWindow = false,
+  onEndSpace,
+  onExtendSpace,
   hasMoodToday,
   onCheckIn,
   onHug,
   onDistraction,
   onLogIncident,
-  onNotOkay,
+  onSOS,
   onOpenArtifact,
   artifactOpened,
   onViewVault,
+  onOpenNotifications,
+  cardNumber,
 }: SanctuaryDashboardProps) {
   const partner = partnerName || 'your love';
   const you = userName || 'You';
-  const connectedLabel = `${partner.toUpperCase()} · ${isPartnerOnline ? 'CONNECTED' : 'AWAY'}`;
 
+  // Get the card image for today's gift. Use card 1 as placeholder while loading.
+  const resolvedCardNumber = cardNumber ?? 1;
+  const cardImage = getCardImage(resolvedCardNumber);
+
+  // Once opened, the artifact stays sealed until the next local midnight — show
+  // a live countdown so the wait for the next gift feels tangible. Recomputed
+  // each render is fine; the epoch target only actually changes at midnight.
+  const nextGiftAt = useMemo(() => nextLocalMidnight(), [artifactOpened]);
+  const nextGift = useCountdown(nextGiftAt);
   // Shared self-regulation window: whoever started the space, both people see
   // the same live countdown on their dashboard.
   const spaceWindowMs = useMemo(() => {
@@ -234,6 +265,43 @@ export function SanctuaryDashboard({
   }, [spaceWindowEndsAt]);
   const spaceWindow = useCountdown(spaceWindowMs);
 
+  // Once a space window finishes, keep the card on the dashboard for a short
+  // grace period (5 minutes) so the person can choose to extend — or dismiss it
+  // with the "×". `dismissed` is keyed to the current window end-time, so a new
+  // or extended window automatically un-dismisses.
+  const SPACE_FINISHED_GRACE_MS = 5 * 60_000;
+  const [dismissedFor, setDismissedFor] = useState<number | null>(null);
+  const [graceExpired, setGraceExpired] = useState(false);
+
+  // Reset the dismissed/grace flags whenever the window's end-time changes
+  // (e.g. the user extended it, or a fresh window started).
+  useEffect(() => {
+    setDismissedFor(null);
+    setGraceExpired(false);
+  }, [spaceWindowMs]);
+
+  // When the window finishes, start the grace-period timer; after it elapses
+  // the card falls away on its own.
+  useEffect(() => {
+    if (!spaceWindow.finished) return;
+    setGraceExpired(false);
+    const id = setTimeout(() => setGraceExpired(true), SPACE_FINISHED_GRACE_MS);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spaceWindow.finished, spaceWindowMs]);
+
+  const dismissed = dismissedFor === spaceWindowMs;
+
+  // The card is visible while the window is live, or for the grace period after
+  // it finishes (until dismissed or the grace period lapses).
+  const showSpaceCard =
+    spaceWindow.active && !dismissed && (!spaceWindow.finished || !graceExpired);
+
+  const handleDismissSpace = () => {
+    setDismissedFor(spaceWindowMs ?? null);
+    onEndSpace?.();
+  };
+
   return (
     <View>
       {/* 1 ── Top bar */}
@@ -242,13 +310,11 @@ export function SanctuaryDashboard({
           <HeartIcon size={18} />
         </View>
 
-        <View style={styles.connectedPill}>
-          <View style={[styles.connectedDot, !isPartnerOnline && styles.connectedDotAway]} />
-          <Text style={styles.connectedText}>{connectedLabel}</Text>
-        </View>
-
-        <View style={styles.avatarRing}>
-          <View style={styles.avatarInner} />
+        <View style={styles.topBarRight}>
+          <DashboardBell onPress={onOpenNotifications} />
+          <View style={styles.avatarRing}>
+            <View style={styles.avatarInner} />
+          </View>
         </View>
       </View>
 
@@ -290,22 +356,62 @@ export function SanctuaryDashboard({
       </View>
 
       {/* 4b ── Self-regulation window (shared countdown, shown on both dashboards) */}
-      {spaceWindow.active && !spaceWindow.finished ? (
+      {showSpaceCard ? (
         <View style={styles.windowCard}>
           <View style={styles.windowTextWrap}>
             <Text style={styles.windowLabel}>
-              {spaceWindowOwner === 'self' ? "YOU'RE TAKING SPACE" : `${partner.toUpperCase()} IS TAKING SPACE`}
+              {spaceWindow.finished
+                ? spaceWindowOwner === 'self'
+                  ? 'YOUR SPACE HAS ENDED'
+                  : `${partner.toUpperCase()}'S SPACE HAS ENDED`
+                : spaceWindowOwner === 'self'
+                  ? "YOU'RE TAKING SPACE"
+                  : `${partner.toUpperCase()} IS TAKING SPACE`}
             </Text>
             <Text style={styles.windowSub}>
-              {spaceWindowOwner === 'self'
-                ? 'Your quiet moment. There\u2019s no rush to come back.'
-                : 'Holding a quiet moment. You are their safe harbor.'}
+              {spaceWindow.finished
+                ? spaceWindowOwner === 'self'
+                  ? 'Take all the time you need. Extend if you\u2019re not ready.'
+                  : 'Their quiet moment has wrapped up.'
+                : spaceWindowOwner === 'self'
+                  ? 'Your quiet moment. There\u2019s no rush to come back.'
+                  : 'Holding a quiet moment. You are their safe harbor.'}
             </Text>
+
+            {/* Once finished, the owner can extend the window in place. */}
+            {spaceWindow.finished && canControlSpaceWindow ? (
+              <Pressable
+                style={({ pressed }) => [styles.windowExtendBtn, pressed && styles.pressed]}
+                onPress={onExtendSpace}
+                android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                accessibilityRole="button"
+                accessibilityLabel="Extend your space"
+              >
+                <Text style={styles.windowExtendText}>EXTEND</Text>
+              </Pressable>
+            ) : null}
           </View>
-          <View style={styles.windowTimePill}>
-            <Text style={styles.windowTime}>{spaceWindow.label}</Text>
-            <Text style={styles.windowTimeCaption}>left</Text>
-          </View>
+
+          {!spaceWindow.finished ? (
+            <View style={styles.windowTimePill}>
+              <Text style={styles.windowTime}>{spaceWindow.label}</Text>
+              <Text style={styles.windowTimeCaption}>left</Text>
+            </View>
+          ) : null}
+
+          {/* The owner can end/dismiss their own window with the "×". */}
+          {canControlSpaceWindow ? (
+            <Pressable
+              style={({ pressed }) => [styles.windowClose, pressed && styles.pressed]}
+              onPress={handleDismissSpace}
+              hitSlop={10}
+              android_ripple={{ color: 'rgba(197,163,101,0.15)', radius: 20, borderless: true }}
+              accessibilityRole="button"
+              accessibilityLabel={spaceWindow.finished ? 'Dismiss' : 'End your space'}
+            >
+              <CloseIcon />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -338,9 +444,6 @@ export function SanctuaryDashboard({
         </View>
       </Pressable>
 
-      {/* Emergency banner — launches the I'm Splitting grounding flow */}
-      <EmergencyBanner onPress={onNotOkay} />
-
       {/* 6 ── Attunement grid */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>ATTUNEMENT</Text>
@@ -348,19 +451,25 @@ export function SanctuaryDashboard({
       </View>
       <View style={styles.attGrid}>
         <View style={styles.attRow}>
-          <AttunementItem icon={<HugIcon />} title="Send hug" onPress={onHug} />
-          <AttunementItem icon={<DistractionIcon />} title="Distraction" onPress={onDistraction} />
+          <AttunementItem icon={<ActionImageIcon name="hug" />} title="Send hug" onPress={onHug} />
+          <AttunementItem icon={<ActionImageIcon name="distraction" />} title="Distraction" onPress={onDistraction} />
         </View>
         <View style={styles.attRow}>
-          <AttunementItem icon={<LogIcon />} title="Log Incident" onPress={onLogIncident} />
-          <AttunementItem icon={<NotOkayIcon />} title="Not okay" onPress={onNotOkay} danger />
+          <AttunementItem icon={<ActionImageIcon name="incident" />} title="Log Incident" onPress={onLogIncident} />
+          <AttunementItem icon={<ActionImageIcon name="sos" />} title="S.O.S" onPress={onSOS} danger />
         </View>
       </View>
 
       {/* 7 ── Daily artifact */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>DAILY ARTIFACT</Text>
-        <Text style={styles.sectionAction}>{artifactOpened ? 'Opened' : '1 Available'}</Text>
+        <Text style={styles.sectionAction}>
+          {artifactOpened
+            ? nextGift.label
+              ? `Next in ${nextGift.label}`
+              : 'Opened'
+            : '1 Available'}
+        </Text>
       </View>
       <View style={styles.artifactCard}>
         <View style={styles.artifactBadge}>
@@ -370,7 +479,11 @@ export function SanctuaryDashboard({
         </View>
 
         <View style={styles.artifactArtWrap}>
-          <Image source={artifactImage} style={styles.artifactArt} resizeMode="contain" />
+          <Image 
+            source={cardImage} 
+            style={styles.artifactArt} 
+            resizeMode="cover"
+          />
           {!artifactOpened ? (
             <>
               <View style={styles.artifactArtDim} />
@@ -384,26 +497,33 @@ export function SanctuaryDashboard({
         <Text style={styles.artifactTitle}>Mystery Booster Pack</Text>
 
         {artifactOpened ? (
-          <Pressable
-            style={({ pressed }) => [styles.artifactBtn, pressed && styles.pressed]}
-            onPress={onViewVault}
-            android_ripple={{ color: 'rgba(10,20,15,0.15)' }}
-            accessibilityRole="button"
-            accessibilityLabel="View vault"
-          >
-            <VaultIcon />
-            <Text style={styles.artifactBtnText}>VIEW VAULT</Text>
-          </Pressable>
+          <>
+            {nextGift.label ? (
+              <Text style={styles.artifactCountdown}>
+                {nextGift.label} till your next gift
+              </Text>
+            ) : null}
+            <Pressable
+              style={({ pressed }) => [styles.artifactBtn, pressed && styles.pressed]}
+              onPress={onViewVault}
+              android_ripple={{ color: 'rgba(10,20,15,0.15)' }}
+              accessibilityRole="button"
+              accessibilityLabel="View vault"
+            >
+              <VaultIcon />
+              <Text style={styles.artifactBtnText}>VIEW VAULT</Text>
+            </Pressable>
+          </>
         ) : (
           <Pressable
             style={({ pressed }) => [styles.artifactBtn, pressed && styles.pressed]}
             onPress={onOpenArtifact}
             android_ripple={{ color: 'rgba(10,20,15,0.15)' }}
             accessibilityRole="button"
-            accessibilityLabel="Tear open pack"
+            accessibilityLabel="Tear open"
           >
             <LockIcon />
-            <Text style={styles.artifactBtnText}>TEAR OPEN PACK</Text>
+            <Text style={styles.artifactBtnText}>TEAR OPEN</Text>
           </Pressable>
         )}
       </View>
@@ -436,31 +556,30 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surfaceCard,
   },
-  connectedPill: {
+  topBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceCard,
+    gap: spacing.sm,
   },
-  connectedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.gold,
+  bellBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.emergency,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.background,
   },
-  connectedDotAway: {
-    backgroundColor: colors.neutralSubtle,
-  },
-  connectedText: {
+  bellBadgeText: {
     ...typography.label,
-    color: colors.neutralMuted,
+    color: colors.neutral,
     fontSize: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   avatarRing: {
     width: 40,
@@ -588,6 +707,7 @@ const styles = StyleSheet.create({
 
   // Partner self-regulation window (shared countdown)
   windowCard: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -596,9 +716,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(197,163,101,0.3)',
     padding: spacing.md,
+    // Extra right padding so content never sits under the "×" close button.
+    paddingRight: spacing.lg + spacing.md,
     marginBottom: spacing.md,
   },
   windowTextWrap: { flex: 1, gap: 3 },
+  windowClose: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  windowExtendBtn: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(197,163,101,0.14)',
+  },
+  windowExtendText: {
+    ...typography.label,
+    color: colors.gold,
+    fontSize: 12,
+    letterSpacing: 0.8,
+  },
   windowLabel: {
     ...typography.label,
     color: colors.gold,
@@ -754,8 +902,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   artifactArtWrap: {
-    width: 128,
-    height: 168,
+    width: 160,
+    height: 224,
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
@@ -763,9 +911,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.background,
   },
   artifactArt: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   artifactArtDim: {
     ...StyleSheet.absoluteFillObject,
@@ -788,6 +938,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: spacing.lg,
     textAlign: 'center',
+  },
+  artifactCountdown: {
+    ...typography.bodySm,
+    color: colors.gold,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    letterSpacing: 0.3,
   },
   artifactBtn: {
     flexDirection: 'row',

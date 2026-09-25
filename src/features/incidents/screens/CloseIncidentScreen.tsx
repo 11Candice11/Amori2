@@ -14,7 +14,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
 import { friendlyError } from '../utils/errorMessages';
 
@@ -35,7 +39,9 @@ export function CloseIncidentScreen() {
     setError(null);
     try {
       await incidentService.closeIncident(incidentId, notes.trim() || undefined);
-      navigation.goBack();
+      // Once closed, the incident is archived — send the user back to the full
+      // incident list rather than the now-stale detail screen they came from.
+      navigation.navigate('IncidentList', { filter: 'all' });
     } catch (err) {
       setError(friendlyError(err));
     } finally {
@@ -45,7 +51,7 @@ export function CloseIncidentScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader title="Close Incident" onBack={() => navigation.goBack()} />
+      <AppHeader title="Close Incident" onBack={() => navigation.goBack()} showNotificationBell={false} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
           <View style={styles.infoBox}>
@@ -65,6 +71,7 @@ export function CloseIncidentScreen() {
             numberOfLines={5}
             textAlignVertical="top"
             maxLength={2000}
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -82,6 +89,8 @@ export function CloseIncidentScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

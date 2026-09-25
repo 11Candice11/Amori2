@@ -68,14 +68,10 @@ export function ThemeProvider({
   );
 
   const setMode = useCallback(
-    (mode: ThemeMode) =>
-      setState((current) => {
-        if (current.mode === mode) return current;
-        const next = { ...current, mode };
-        applyTheme(next.mode, next.variant);
-        void themeStore.save(next);
-        return next;
-      }),
+    (mode: ThemeMode) => {
+      // LOCKED TO DARK MODE - ignore mode changes
+      console.log('Theme locked to dark mode');
+    },
     [],
   );
 
@@ -92,15 +88,8 @@ export function ThemeProvider({
   );
 
   const toggle = useCallback(() => {
-    setState((current) => {
-      const next = {
-        ...current,
-        mode: current.mode === 'dark' ? ('light' as const) : ('dark' as const),
-      };
-      applyTheme(next.mode, next.variant);
-      void themeStore.save(next);
-      return next;
-    });
+    // LOCKED TO DARK MODE - ignore toggle
+    console.log('Theme locked to dark mode');
   }, []);
 
   const value = useMemo<ThemeContextValue>(

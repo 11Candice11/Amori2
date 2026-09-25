@@ -6,8 +6,21 @@ public sealed class MemoryMediaResponse
 {
     public Guid Id { get; init; }
     public string FileKey { get; init; } = string.Empty;
+
+    /// <summary>
+    /// A loadable URL for the media. For Photo/VoiceNote this is resolved from the
+    /// storage key (may be presigned / time-limited); for Link it is the link URL.
+    /// </summary>
+    public string Url { get; init; } = string.Empty;
     public MemoryMediaType MediaType { get; init; }
     public int? DurationSeconds { get; init; }
+
+    /// <summary>Optional display label — the link title, or a caption for a voice note.</summary>
+    public string? Title { get; init; }
+
+    /// <summary>Optional preview image URL for links (e.g. a YouTube thumbnail).</summary>
+    public string? ThumbnailUrl { get; init; }
+
     public DateTime CreatedAt { get; init; }
 }
 

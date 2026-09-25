@@ -2,6 +2,7 @@ using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Infrastructure.Relationships;
+using Amori.Api.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.Memories.DTOs;
 
@@ -9,9 +10,10 @@ namespace Amori.Api.Features.Memories.Services;
 
 public sealed class MemoryService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IMemoryService
+    IRelationshipAccessService relAccess,
+    IFileStorageService storage) : IMemoryService
 {
-    private static MemoryResponse Map(Memory m) => new()
+    private MemoryResponse Map(Memory m) => new()
     {
         Id = m.Id, RelationshipId = m.RelationshipId,
         CreatedByUserId = m.CreatedByUserId, CreatedByName = m.CreatedBy?.DisplayName ?? string.Empty,
@@ -20,8 +22,16 @@ public sealed class MemoryService(
         Tags = m.Tags, IsFavorite = m.IsFavorite,
         Media = m.Media.Select(mm => new MemoryMediaResponse
         {
-            Id = mm.Id, FileKey = mm.FileKey, MediaType = mm.MediaType,
-            DurationSeconds = mm.DurationSeconds, CreatedAt = mm.CreatedAt
+            Id = mm.Id, FileKey = mm.FileKey,
+            // For a Link the FileKey already *is* the URL, so it's returned as-is
+            // (GetPublicUrl passes absolute URLs through). Photo/VoiceNote keys are
+            // resolved to a loadable URL.
+            Url = storage.GetPublicUrl(mm.FileKey),
+            MediaType = mm.MediaType,
+            DurationSeconds = mm.DurationSeconds,
+            Title = mm.Title,
+            ThumbnailUrl = mm.ThumbnailUrl,
+            CreatedAt = mm.CreatedAt
         }).ToList(),
         CreatedAt = m.CreatedAt, UpdatedAt = m.UpdatedAt
     };
@@ -42,11 +52,12 @@ public sealed class MemoryService(
     {
         var rel = await relAccess.GetUserRelationshipAsync(userId)
             ?? throw new NotFoundException("You are not a member of any relationship.");
-        return await db.Memories
+        var memories = await db.Memories
             .Include(m => m.CreatedBy).Include(m => m.Media)
             .Where(m => m.RelationshipId == rel.Id && !m.IsDeleted)
             .OrderByDescending(m => m.MemoryDateTime)
-            .Select(m => Map(m)).ToListAsync(ct);
+            .ToListAsync(ct);
+        return memories.Select(Map).ToList();
     }
 
     public async Task<MemoryResponse> GetByIdAsync(Guid userId, Guid memoryId, CancellationToken ct = default)
@@ -123,10 +134,18 @@ public sealed class MemoryService(
         var media = new MemoryMedia
         {
             MemoryId = memory.Id, FileKey = request.FileKey,
-            MediaType = request.MediaType, DurationSeconds = request.DurationSeconds
+            MediaType = request.MediaType, DurationSeconds = request.DurationSeconds,
+            Title = string.IsNullOrWhiteSpace(request.Title) ? null : request.Title.Trim(),
+            ThumbnailUrl = string.IsNullOrWhiteSpace(request.ThumbnailUrl) ? null : request.ThumbnailUrl.Trim()
         };
         db.MemoryMedia.Add(media);
         await db.SaveChangesAsync(ct);
+
+        // Re-load so the returned memory reflects the media just added. The
+        // `memory` loaded above has a stale Media collection (EF doesn't fold
+        // the new row into the navigation automatically), which would make the
+        // attach response come back without the photo just attached.
+        await db.Entry(memory).Collection(m => m.Media).LoadAsync(ct);
         return Map(memory);
     }
 

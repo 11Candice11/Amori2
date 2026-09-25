@@ -4,19 +4,24 @@
  * library is installed in this project).
  */
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, Vibration, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, typography } from '../../../shared/theme';
+// Named imports rather than a `haptics` object: this component already takes a
+// `haptics` prop, which such an import would shadow.
+import { cancelVibration, vibrate } from '../../../shared/haptics';
 
 type Props = {
   size?: number;
-  /** Seconds for one grow-and-shrink cycle. */
+  /** Milliseconds for one grow-and-shrink cycle. */
   durationMs?: number;
   /** Whether the pulse animation is running. */
   active?: boolean;
   /**
-   * When true, the device gently vibrates through the inhale (grow) phase and
-   * falls still on the exhale (shrink) phase, so the breath can be felt as
-   * well as seen.
+   * When true, the device gently vibrates while the user is actively pressing
+   * and holding the circle. Vibration syncs with the breathing animation:
+   * - 4 seconds of gentle vibration (expand phase)
+   * - 3 seconds of silence (contract phase)
+   * Stops immediately when touch ends.
    */
   haptics?: boolean;
   centerContent?: React.ReactNode;
@@ -26,7 +31,7 @@ type Props = {
 
 export function PulseCircle({
   size = 220,
-  durationMs = 4000,
+  durationMs = 7000, // 7 second cycle: 4s expand + 3s contract
   active = true,
   haptics = false,
   centerContent,
@@ -34,66 +39,108 @@ export function PulseCircle({
   sublabel,
 }: Props) {
   const pulse = useRef(new Animated.Value(0)).current;
+  const isPressingRef = useRef(false);
+  const vibrationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!active) {
       pulse.stopAnimation();
       return;
     }
-    const inhaleMs = durationMs / 2;
 
-    // A soft, repeating buzz for the inhale: short pulses spaced by pauses so
-    // it reads as a gentle swell rather than a harsh continuous rumble. The
-    // pattern is [wait, vibrate, wait, vibrate, ...] and is looped for the
-    // duration of the inhale, then cancelled on the exhale.
-    const gentlePattern = [0, 40, 160];
-    let inhaleTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const startInhaleBuzz = () => {
-      if (!haptics) return;
-      Vibration.vibrate(gentlePattern, true);
-      // Stop the buzz once the inhale completes; the exhale stays still.
-      inhaleTimer = setTimeout(() => Vibration.cancel(), inhaleMs);
-    };
+    const expandDuration = 4000; // 4 seconds expand (vibrating)
+    const contractDuration = 3000; // 3 seconds contract (silent)
 
     const loop = Animated.loop(
       Animated.sequence([
+        // Expand phase (4 seconds)
         Animated.timing(pulse, {
           toValue: 1,
-          duration: inhaleMs,
+          duration: expandDuration,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
+        // Contract phase (3 seconds)
         Animated.timing(pulse, {
           toValue: 0,
-          duration: inhaleMs,
+          duration: contractDuration,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ]),
     );
 
-    // Kick off the first inhale buzz immediately, then re-trigger it at the
-    // start of every subsequent cycle.
-    startInhaleBuzz();
-    const cycleTimer = haptics
-      ? setInterval(startInhaleBuzz, durationMs)
-      : undefined;
-
     loop.start();
     return () => {
       loop.stop();
-      if (inhaleTimer) clearTimeout(inhaleTimer);
-      if (cycleTimer) clearInterval(cycleTimer);
-      Vibration.cancel();
     };
-  }, [active, durationMs, haptics, pulse]);
+  }, [active, pulse]);
+
+  // Clean up vibration on unmount
+  useEffect(() => {
+    return () => {
+      cancelVibration();
+      if (vibrationIntervalRef.current) {
+        clearInterval(vibrationIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const startBreathingVibration = () => {
+    if (!haptics || !isPressingRef.current) return;
+
+    // Gentle continuous vibration pattern (40ms pulse, 60ms pause = 100ms cycle)
+    // Creates a soft, subtle vibration
+    const gentlePattern = [0, 40, 60];
+    
+    let isVibratingPhase = true; // Start with vibration
+    
+    const runCycle = () => {
+      if (!isPressingRef.current) return;
+      
+      if (isVibratingPhase) {
+        // Vibrate for 4 seconds
+        vibrate(gentlePattern, true);
+        vibrationIntervalRef.current = setTimeout(() => {
+          cancelVibration();
+          isVibratingPhase = false;
+          runCycle();
+        }, 4000);
+      } else {
+        // Silent for 3 seconds
+        cancelVibration();
+        vibrationIntervalRef.current = setTimeout(() => {
+          isVibratingPhase = true;
+          runCycle();
+        }, 3000);
+      }
+    };
+    
+    runCycle();
+  };
+
+  const handlePressIn = () => {
+    if (!haptics) return;
+    isPressingRef.current = true;
+    startBreathingVibration();
+  };
+
+  const handlePressOut = () => {
+    if (!haptics) return;
+    isPressingRef.current = false;
+    // Stop vibration immediately when touch ends
+    cancelVibration();
+    if (vibrationIntervalRef.current) {
+      clearTimeout(vibrationIntervalRef.current);
+      vibrationIntervalRef.current = null;
+    }
+  };
 
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.06] });
   const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] });
   const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
 
-  return (
+  const content = (
     <View style={[styles.wrap, { width: size, height: size }]}>
       <Animated.View
         style={[
@@ -124,6 +171,21 @@ export function PulseCircle({
       </Animated.View>
     </View>
   );
+
+  if (haptics) {
+    return (
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onLongPress={() => {}}
+        delayLongPress={100}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({

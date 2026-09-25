@@ -19,16 +19,17 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { cancelVibration, vibrate } from '../../../shared/haptics';
 import type { HugStackParamList } from '../../../navigation/HugStackParamList';
 import { hugService } from '../services/hugService';
 import type { HugResponse } from '../../../services/api/types';
 import {
-  BackIcon,
+  ChevronRightIcon,
   HeartIcon,
   HistoryIcon,
   HomeIcon,
   LeafIcon,
-  SyncIcon,
   WhisperIcon,
 } from '../components/HugIcons';
 
@@ -98,37 +99,71 @@ export function HugSentScreen() {
   const partnerName = hug?.recipientName?.trim() || 'your partner';
   const acknowledged = hug?.isAcknowledged ?? false;
 
+  // Gentle vibration for press-and-hold on the yellow heart
+  const vibrationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const handlePressIn = useCallback(() => {
+    // Start gentle repeating vibration pattern: short pulse, pause, repeat
+    const gentlePattern = [0, 40, 160];
+    vibrate(gentlePattern, true);
+  }, []);
+
+  const handlePressOut = useCallback(() => {
+    // Stop vibration immediately when touch ends
+    cancelVibration();
+    if (vibrationTimerRef.current) {
+      clearInterval(vibrationTimerRef.current);
+      vibrationTimerRef.current = null;
+    }
+  }, []);
+
+  // Clean up vibration on unmount
+  useEffect(() => {
+    return () => {
+      cancelVibration();
+      if (vibrationTimerRef.current) clearInterval(vibrationTimerRef.current);
+    };
+  }, []);
+
+  /**
+   * Hand the breathing screen the hug's own timestamp: that's the clock origin
+   * both partners derive the shared cadence from.
+   */
+  const openBreatheTogether = useCallback(() => {
+    cancelVibration();
+    navigation.navigate('BreatheTogether', {
+      hugId: params.hugId,
+      anchorIso: hug?.createdAt,
+      partnerName: hug?.recipientName ?? undefined,
+      isAcknowledged: hug?.isAcknowledged,
+    });
+  }, [navigation, params.hugId, hug]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      <View style={styles.topBar}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <BackIcon color={colors.neutral} />
-        </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>Need A Hug · Active</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader title="Need A Hug · Active" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Orbiting heart */}
-        <View style={styles.orbitWrap}>
-          <View style={styles.orbitOuter}>
-            <View style={styles.orbitInner}>
-              <View style={styles.planet}>
-                <HeartIcon color={colors.secondary} size={40} />
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onLongPress={() => {}}
+          delayLongPress={100}
+        >
+          <View style={styles.orbitWrap}>
+            <View style={styles.orbitOuter}>
+              <View style={styles.orbitInner}>
+                <View style={styles.planet}>
+                  <HeartIcon color={colors.secondary} size={40} />
+                </View>
               </View>
+              <View style={styles.moon} />
             </View>
-            <View style={styles.moon} />
           </View>
-        </View>
+        </Pressable>
 
         {/* Delivery meta */}
         <View style={styles.metaRow}>
@@ -160,38 +195,27 @@ export function HugSentScreen() {
           </View>
         ) : null}
 
-        {/* Breathe together */}
-        <View style={[styles.card, styles.breatheCard]}>
+        {/* Breathe together — opens the synced breathing rhythm */}
+        <Pressable
+          style={({ pressed }) => [styles.card, styles.breatheCard, pressed && styles.breatheCardPressed]}
+          onPress={openBreatheTogether}
+          accessibilityRole="button"
+          accessibilityLabel="Breathe together"
+          accessibilityHint={`Opens a breathing rhythm synced with ${partnerName}`}
+          android_ripple={{ color: 'rgba(167,210,182,0.12)' }}
+        >
           <View style={styles.breatheRow}>
             <View style={styles.breatheIcon}>
               <LeafIcon color={colors.primaryLight} size={20} />
             </View>
             <Text style={styles.breatheTitle}>Breathe together</Text>
+            <ChevronRightIcon color={colors.primaryLight} size={20} />
           </View>
           <Text style={styles.breatheBody}>
             Take a deep breath while the warmth travels. You don't have to explain or carry anything alone.
           </Text>
-        </View>
-
-        {/* Shared hearth sync — reflects the partner acknowledging the hug */}
-        <View style={styles.syncRow}>
-          <View style={[styles.syncIcon, acknowledged && styles.syncIconActive]}>
-            <SyncIcon color={acknowledged ? colors.primaryLight : colors.gold} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.syncTitle}>Shared Hearth Sync</Text>
-            <Text style={styles.syncBody}>
-              {acknowledged
-                ? `${partnerName} held your hug back`
-                : `Sent to ${partnerName} — waiting for them to hold it`}
-            </Text>
-          </View>
-          <Text style={[styles.syncActive, acknowledged && styles.syncHeld]}>
-            {acknowledged ? 'Held' : 'Sent'}
-          </Text>
-        </View>
-
-        <View style={{ height: spacing.md }} />
+          <Text style={styles.breatheCue}>Tap to breathe in sync · 4s in · 4s hold · 6s out</Text>
+        </Pressable>
 
         {/* Actions */}
         <Pressable
@@ -311,35 +335,16 @@ const styles = StyleSheet.create({
   whisperQuote: { ...typography.headlineSm, color: colors.neutral, fontStyle: 'italic', lineHeight: 30 },
 
   breatheCard: { backgroundColor: 'rgba(6,78,59,0.35)', borderColor: 'rgba(167,210,182,0.18)' },
+  breatheCardPressed: { backgroundColor: 'rgba(6,78,59,0.55)', borderColor: 'rgba(167,210,182,0.34)' },
   breatheRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.sm },
   breatheIcon: {
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(167,210,182,0.12)',
   },
-  breatheTitle: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 17 },
+  breatheTitle: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 17, flex: 1 },
   breatheBody: { ...typography.body, color: colors.neutralMuted, lineHeight: 22 },
-
-  syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  syncIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(197,163,101,0.1)',
-  },
-  syncIconActive: { backgroundColor: 'rgba(167,210,182,0.14)' },
-  syncTitle: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 14 },
-  syncBody: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 2 },
-  syncActive: { ...typography.label, color: colors.gold, fontSize: 10 },
-  syncHeld: { color: colors.primaryLight },
+  breatheCue: { ...typography.label, color: colors.primaryLight, fontSize: 10, marginTop: spacing.sm },
 
   cta: {
     flexDirection: 'row',

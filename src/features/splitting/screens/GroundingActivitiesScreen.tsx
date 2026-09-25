@@ -21,6 +21,7 @@ import { GROUNDING_ACTIVITIES, PARTNER_NAME, type GroundingActivity } from '../u
 import { EMPTY_FLOW_STATE } from '../types/splitting.types';
 import { useCountdown } from '../hooks/useCountdown';
 import { useSpaceWindow } from '../hooks/useSpaceWindow';
+import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 import { MoonIcon } from '../components';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'GroundingActivities'>;
@@ -40,6 +41,9 @@ export function GroundingActivitiesScreen() {
   const flow = route.params?.flow ?? EMPTY_FLOW_STATE;
 
   const [filter, setFilter] = useState<Filter>('all');
+
+  // Leaving this screen after the Inward Check saves the grounding as history.
+  useSaveGroundingOnLeave(flow, { actions: ['Space'] });
 
   // Live self-regulation window countdown (only when a fixed space duration
   // was requested). Hydrates from the backend so it survives restart, then
@@ -62,7 +66,7 @@ export function GroundingActivitiesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="De-escalation Pacing" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Grounding Activities" subtitle="De-escalation Pacing" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <StatusPill label="Sanctuary harbor" />

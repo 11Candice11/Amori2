@@ -14,7 +14,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
 import { friendlyError } from '../utils/errorMessages';
 
@@ -47,7 +51,7 @@ export function ReopenIncidentScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader title="Reopen Incident" onBack={() => navigation.goBack()} />
+      <AppHeader title="Reopen Incident" onBack={() => navigation.goBack()} showNotificationBell={false} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
           <View style={styles.warningBox}>
@@ -68,6 +72,7 @@ export function ReopenIncidentScreen() {
             textAlignVertical="top"
             maxLength={2000}
             autoFocus
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
           <Text style={styles.count}>{reason.length}/2000</Text>
 
@@ -86,6 +91,8 @@ export function ReopenIncidentScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

@@ -14,7 +14,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
 import { friendlyError } from '../utils/errorMessages';
 
@@ -48,7 +52,7 @@ export function AddNoteScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader title="Add Investigation Note" onBack={() => navigation.goBack()} />
+      <AppHeader title="Add Investigation Note" onBack={() => navigation.goBack()} showNotificationBell={false} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
           <View style={styles.noteTag}>
@@ -65,6 +69,7 @@ export function AddNoteScreen() {
             textAlignVertical="top"
             maxLength={MAX}
             autoFocus
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
           <Text style={styles.count}>{content.length}/{MAX}</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -81,6 +86,8 @@ export function AddNoteScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

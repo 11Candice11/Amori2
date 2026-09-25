@@ -4,6 +4,7 @@
  */
 import { api } from '../../../services/api/client';
 import type {
+  AddMemoryMediaRequest,
   CreateMemoryRequest,
   MemoryResponse,
   UpdateMemoryRequest,
@@ -29,6 +30,14 @@ export const memoriesService = {
 
   remove(memoryId: string): Promise<void> {
     return api.delete<void>(`/api/memories/${memoryId}`);
+  },
+
+  /**
+   * Attach an already-uploaded media file to a memory. The file must first be
+   * uploaded via mediaService.uploadImage to obtain its fileKey.
+   */
+  addMedia(memoryId: string, payload: AddMemoryMediaRequest): Promise<MemoryResponse> {
+    return api.post<MemoryResponse>(`/api/memories/${memoryId}/media`, payload);
   },
 
   favorite(memoryId: string): Promise<MemoryResponse> {

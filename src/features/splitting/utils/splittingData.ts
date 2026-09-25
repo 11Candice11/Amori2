@@ -5,7 +5,7 @@
  */
 import type { NeedOption, TriggerOption } from '../types/splitting.types';
 
-export const PARTNER_NAME = 'Candice';
+export const PARTNER_NAME = 'Your love';
 
 // ─── Grounding checkpoint triggers ──────────────────────────────────────────
 
@@ -29,10 +29,15 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
   { id: 'something-happened', label: 'Something happened', group: 'relational' },
 ];
 
-/** Resolve selected trigger ids to their human-readable labels (for the API). */
-export function triggerLabels(ids: string[]): string[] {
+/**
+ * Resolve selected trigger ids to their human-readable labels (for the API).
+ * Pass the person's saved custom triggers as `extraOptions` so their own
+ * wording resolves alongside the built-in list instead of being dropped.
+ */
+export function triggerLabels(ids: string[], extraOptions: TriggerOption[] = []): string[] {
+  const all = [...TRIGGER_OPTIONS, ...extraOptions];
   return ids
-    .map(id => TRIGGER_OPTIONS.find(o => o.id === id)?.label)
+    .map(id => all.find(o => o.id === id)?.label)
     .filter((label): label is string => Boolean(label));
 }
 

@@ -35,11 +35,20 @@ services:
       - Jwt__Issuer=${JWT_ISSUER}
       - Jwt__Audience=${JWT_AUDIENCE}
       - Jwt__ExpiryMinutes=60
-      - Jwt__RefreshTokenExpiryDays=30
+      - Jwt__RefreshTokenExpiryDays=7
       # Allow the mobile app origins through CORS (RN dev + generic).
       - Cors__AllowedOrigins__0=http://localhost:8081
     ports:
       - "5001:5001"
+      # NOTE: We do NOT publish port 80 from the container. nginx runs on the
+      # host, owns :80 and :443 (TLS via Certbot for amori.ycare.org) and
+      # reverse-proxies to 127.0.0.1:5001. Publishing 80 here collides with
+      # nginx ("address already in use") and is unnecessary — public traffic
+      # reaches the API through nginx on 443, not the container's :80.
+    volumes:
+      # Uploaded images live on disk when S3 isn't configured. Keep them in a
+      # named volume so they survive container rebuilds/redeploys.
+      - api_uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,6 +57,7 @@ services:
 
 volumes:
   postgres_data:
+  api_uploads:
 
 networks:
   amori-network:

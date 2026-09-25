@@ -18,6 +18,8 @@ public sealed class TimelineEventConfiguration : IEntityTypeConfiguration<Timeli
         builder.Property(t => t.Description).HasColumnName("description").HasMaxLength(2000);
         builder.Property(t => t.EventDate).HasColumnName("event_date").IsRequired();
         builder.Property(t => t.Location).HasColumnName("location").HasMaxLength(300);
+        builder.Property(t => t.Latitude).HasColumnName("latitude");
+        builder.Property(t => t.Longitude).HasColumnName("longitude");
         builder.Property(t => t.EventType).HasColumnName("event_type").IsRequired();
         builder.Property(t => t.PhotoKeys).HasColumnName("photo_keys").HasColumnType("jsonb").IsRequired();
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").IsRequired();

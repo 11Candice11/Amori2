@@ -14,6 +14,7 @@ import {
   SafeTransitionScreen,
   PartnerDispatchScreen,
   SanctuaryJournalScreen,
+  SplittingHistoryScreen,
 } from '../screens';
 
 const Stack = createNativeStackNavigator<SplittingStackParamList>();
@@ -36,6 +37,7 @@ export function SplittingNavigator() {
       <Stack.Screen name="SafeTransition" component={SafeTransitionScreen} />
       <Stack.Screen name="PartnerDispatch" component={PartnerDispatchScreen} />
       <Stack.Screen name="SanctuaryJournal" component={SanctuaryJournalScreen} />
+      <Stack.Screen name="SplittingHistory" component={SplittingHistoryScreen} />
     </Stack.Navigator>
   );
 }

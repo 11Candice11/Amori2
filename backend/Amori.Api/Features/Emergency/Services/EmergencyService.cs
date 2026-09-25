@@ -5,13 +5,27 @@ using Amori.Api.Domain.Enums;
 using Amori.Api.Infrastructure.Relationships;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.Emergency.DTOs;
+using Amori.Api.Features.Notifications;
+using Amori.Api.Features.Notifications.Services;
 
 namespace Amori.Api.Features.Emergency.Services;
 
 public sealed class EmergencyService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IEmergencyService
+    IRelationshipAccessService relAccess,
+    INotificationService notifications) : IEmergencyService
 {
+    private const string NotificationType = NotificationTypes.Emergency;
+
+    // What the recipient sees for each kind of request.
+    private static string DescribeRequest(EmergencyRequestType type, string senderName) => type switch
+    {
+        EmergencyRequestType.Support => $"{senderName} needs support right now.",
+        EmergencyRequestType.Space => $"{senderName} is asking for some space.",
+        EmergencyRequestType.Distraction => $"{senderName} could use a distraction.",
+        _ => $"{senderName} sent an emergency request.",
+    };
+
     private static EmergencyRequestResponse Map(EmergencyRequest r) => new()
     {
         Id = r.Id, RelationshipId = r.RelationshipId,
@@ -40,6 +54,17 @@ public sealed class EmergencyService(
         var partner = await relAccess.GetPartnerAsync(userId)
             ?? throw new ConflictException("Your relationship does not have a second partner yet.");
 
+        // Respect the recipient's "Allow emergency alerts" permission. Defaults
+        // to allowed when they have no settings row yet.
+        var partnerAllowsAlerts = await db.UserSettings
+            .Where(s => s.UserId == partner.Id)
+            .Select(s => (bool?)s.AllowEmergencyAlerts)
+            .FirstOrDefaultAsync(ct) ?? true;
+
+        if (!partnerAllowsAlerts)
+            throw new ConflictException(
+                $"{partner.DisplayName} is not accepting emergency alerts right now.");
+
         var req = new EmergencyRequest
         {
             RelationshipId = rel.Id, SenderId = userId, RecipientId = partner.Id,
@@ -49,6 +74,21 @@ public sealed class EmergencyService(
         await db.SaveChangesAsync(ct);
         req.Sender = (await db.Users.FindAsync([userId], ct))!;
         req.Recipient = partner;
+
+        // Alert the recipient (in-app bell + best-effort push). CreateAsync never
+        // throws, so a notification failure won't fail the request itself.
+        var senderName = req.Sender.DisplayName;
+        var body = string.IsNullOrWhiteSpace(req.Message)
+            ? DescribeRequest(req.Type, senderName)
+            : $"{DescribeRequest(req.Type, senderName)} \u201C{req.Message.Trim()}\u201D";
+        await notifications.CreateAsync(
+            partner.Id,
+            "Your partner needs you",
+            body,
+            notificationType: NotificationType,
+            referenceId: req.Id.ToString(),
+            ct);
+
         return Map(req);
     }
 

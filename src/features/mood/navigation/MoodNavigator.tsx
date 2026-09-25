@@ -7,6 +7,10 @@ import { MoodBreatheScreen } from '../screens/MoodBreatheScreen';
 import { MoodGroundingScreen } from '../screens/MoodGroundingScreen';
 import { MoodGiftScreen } from '../screens/MoodGiftScreen';
 import { MoodDetailScreen } from '../screens/MoodDetailScreen';
+import { Exercise54321Screen } from '../screens/Exercise54321Screen';
+import { ExerciseBodyScanScreen } from '../screens/ExerciseBodyScanScreen';
+import { ExerciseWarmDrinkScreen } from '../screens/ExerciseWarmDrinkScreen';
+import { ExerciseWalkScreen } from '../screens/ExerciseWalkScreen';
 
 const Stack = createNativeStackNavigator<MoodStackParamList>();
 
@@ -23,6 +27,10 @@ export function MoodNavigator() {
       <Stack.Screen name="MoodGrounding" component={MoodGroundingScreen} />
       <Stack.Screen name="MoodGift" component={MoodGiftScreen} />
       <Stack.Screen name="MoodDetail" component={MoodDetailScreen} />
+      <Stack.Screen name="Exercise54321" component={Exercise54321Screen} />
+      <Stack.Screen name="ExerciseBodyScan" component={ExerciseBodyScanScreen} />
+      <Stack.Screen name="ExerciseWarmDrink" component={ExerciseWarmDrinkScreen} />
+      <Stack.Screen name="ExerciseWalk" component={ExerciseWalkScreen} />
     </Stack.Navigator>
   );
 }

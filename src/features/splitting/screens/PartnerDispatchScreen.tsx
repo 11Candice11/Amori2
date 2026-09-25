@@ -30,6 +30,7 @@ import type { SpaceDuration, SupportNeed } from '../types/splitting.types';
 import { useSanctuaryIdentity } from '../hooks/useSanctuaryIdentity';
 import { useCountdown } from '../hooks/useCountdown';
 import { useSpaceWindow } from '../hooks/useSpaceWindow';
+import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 import { hugService } from '../../hugs/services/hugService';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'PartnerDispatch'>;
@@ -57,6 +58,9 @@ export function PartnerDispatchScreen() {
   const flow = route.params?.flow ?? EMPTY_FLOW_STATE;
 
   const { userName, partnerName } = useSanctuaryIdentity();
+
+  // Leaving this screen after the Inward Check saves the grounding as history.
+  useSaveGroundingOnLeave(flow, { actions: ['ContactPartner'] });
 
   // Live self-regulation window (only when a fixed space duration was set).
   // Hydrates from the backend session so it survives restart.
@@ -116,9 +120,9 @@ export function PartnerDispatchScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SplittingHeader
-        eyebrow="Connection Bridge"
+        eyebrow="Partner Dispatch"
+        subtitle="Connection Bridge"
         onBack={() => navigation.goBack()}
-        partnerChipLabel={partner}
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

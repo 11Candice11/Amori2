@@ -12,6 +12,12 @@ pluginManagement {
 
 plugins { id("com.facebook.react.settings") }
 
+// Wire Expo modules into the native Android build. This makes expo-modules-core
+// (and thus expo-notifications / expo-device) autolink and initialize the Expo
+// runtime, which is required for getExpoPushTokenAsync to work on Android.
+apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle")
+useExpoModules()
+
 def getRNMinorVersion() {
   def version = providers.exec {
     commandLine("node", "-e", "console.log(require('react-native/package.json').version);")

@@ -10,6 +10,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 import { useDashboard } from '../../home/hooks/useDashboard';
 import {
@@ -60,18 +61,7 @@ export function MoodDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={goHome}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
-        <Text style={styles.eyebrow}>Emotional Pulse</Text>
-      </View>
+      <AppHeader title="Emotional Pulse" onBack={goHome} />
 
       {dashboard.loading && !dashboard.currentMood ? (
         <View style={styles.loading}>

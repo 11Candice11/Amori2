@@ -1,6 +1,6 @@
 /**
  * Screen — De-escalation Pacing ("Take some space").
- * Grounding rituals, an option to let Cat know you need space with a
+ * Grounding rituals, an option to let your love know you need space with a
  * pre-written gentle message, and a self-regulation duration picker.
  */
 import React, { useState } from 'react';
@@ -31,6 +31,7 @@ import {
 import type { SpaceDuration } from '../types/splitting.types';
 import { EMPTY_FLOW_STATE, SPACE_DURATION_MINUTES } from '../types/splitting.types';
 import { useSplittingSession } from '../hooks/useSplittingSession';
+import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'DeEscalationPacing'>;
 type Rt = RouteProp<SplittingStackParamList, 'DeEscalationPacing'>;
@@ -58,6 +59,9 @@ export function DeEscalationPacingScreen() {
   const [notify, setNotify] = useState<boolean>(flow.notifiedPartner || true);
   const [duration, setDuration] = useState<SpaceDuration>(flow.spaceDuration ?? '30m');
   const { update, pending } = useSplittingSession();
+
+  // Leaving this screen after the Inward Check saves the grounding as history.
+  useSaveGroundingOnLeave(flow, { actions: ['Space'] });
 
   /**
    * Continue into grounding activities, starting the self-regulation window.
@@ -88,7 +92,7 @@ export function DeEscalationPacingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="De-escalation Pacing" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Take Some Space" subtitle="De-escalation Pacing" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.protectedCard}>

@@ -49,6 +49,7 @@ public sealed class BucketListController(
         return NoContent();
     }
 
+    /// <summary>Toggle the item's completion state (completes or un-completes).</summary>
     [HttpPost("{itemId:guid}/complete")]
     [ProducesResponseType(typeof(BucketListItemResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Complete(Guid itemId, CancellationToken ct) =>

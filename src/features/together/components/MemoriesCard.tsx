@@ -5,23 +5,9 @@
  */
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
-
-function CameraIcon() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 8.5A1.5 1.5 0 015.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0120 8.5v9A1.5 1.5 0 0118.5 19h-13A1.5 1.5 0 014 17.5v-9z"
-        stroke={colors.gold}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-      <Circle cx={12} cy={12.5} r={3} stroke={colors.gold} strokeWidth={1.5} />
-    </Svg>
-  );
-}
+import { ActionImageIcon } from '../../../shared/components/icons/AppIcons';
 
 type MemoriesCardProps = {
   onOpenMemories?: () => void;
@@ -43,9 +29,7 @@ export function MemoriesCard({ onOpenMemories, onOpenTimeline }: MemoriesCardPro
         accessibilityLabel="Open our memories"
       >
         <View style={styles.cardHeader}>
-          <View style={styles.iconCircle}>
-            <CameraIcon />
-          </View>
+          <ActionImageIcon name="memories" size={40} />
           <View style={styles.headerTextWrap}>
             <Text style={styles.title}>Our Memories</Text>
             <Text style={styles.preview} numberOfLines={2}>
@@ -56,12 +40,12 @@ export function MemoriesCard({ onOpenMemories, onOpenTimeline }: MemoriesCardPro
 
         <View style={styles.footerRow}>
           <Pressable
+            style={({ pressed }) => [styles.timelineBtn, pressed && styles.viewBtnPressed]}
             onPress={onOpenTimeline}
-            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Open the relationship timeline"
           >
-            <Text style={styles.timelineLink}>View timeline →</Text>
+            <Text style={styles.timelineBtnText}>View timeline</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.viewBtn, pressed && styles.viewBtnPressed]}
@@ -103,16 +87,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.sm,
   },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
-    backgroundColor: 'rgba(197,163,101,0.08)',
-  },
   headerTextWrap: {
     flex: 1,
     gap: 4,
@@ -136,8 +110,16 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  timelineLink: {
-    ...typography.bodySm,
+  timelineBtn: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(197,163,101,0.12)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  timelineBtnText: {
+    ...typography.bodySemiBold,
     color: colors.gold,
     fontSize: 13,
   },

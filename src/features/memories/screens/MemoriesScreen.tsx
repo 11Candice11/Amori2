@@ -5,12 +5,12 @@
  * filter tabs derived from the actual categories present, memories grouped by
  * month, and rich cards showing every field the API returns (category badge,
  * date-time, title, photo count from media, location, description, favorite,
- * and who added it). Milestone cards also show a "days loved" counter computed
- * from the earliest recorded memory. Reached from the Together dashboard.
+ * and who added it). Reached from the Together dashboard.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,14 +24,22 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { api } from '../../../services/api/client';
 import type { RelationshipResponse } from '../../../services/api/types';
 import { memoriesService } from '../services/memoriesService';
+import { PhotoCarousel } from '../components/PhotoCarousel';
+import { MemoryLocationMap } from '../components/MemoryLocationMap';
+import { MemoryDetailModal } from '../components/MemoryDetailModal';
+import { openInMaps } from '../../../services/geocoding/openInMaps';
+import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import type { MemoryCategory, MemoryResponse } from '../types/memory.types';
 import {
-  MEMORY_CATEGORY_LABELS,
-  MEMORY_MEDIA_TYPE_VALUES,
+  decodeMemoryCategory,
+  isPhotoMedia,
 } from '../types/memory.types';
 import { formatMemoryDate } from '../utils/formatMemoryDateTime';
 
@@ -40,14 +48,6 @@ type Nav = NativeStackNavigationProp<TogetherStackParamList, 'Memories'>;
 type Filter = 'All' | MemoryCategory;
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
-
-function BackIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M15 18l-6-6 6-6" stroke={colors.neutral} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
 
 function PlusIcon({ color = colors.ctaText }: { color?: string }) {
   return (
@@ -92,11 +92,18 @@ function timeOf(iso: string): number {
 }
 
 function categoryOf(m: MemoryResponse): MemoryCategory {
-  return MEMORY_CATEGORY_LABELS[m.category] ?? 'Everyday';
+  return decodeMemoryCategory(m.category);
 }
 
 function photoCount(m: MemoryResponse): number {
-  return m.media.filter((mm) => mm.mediaType === MEMORY_MEDIA_TYPE_VALUES.Photo).length;
+  return m.media.filter((mm) => isPhotoMedia(mm.mediaType)).length;
+}
+
+/** Loadable photo URLs for a memory (skips media without a resolved URL). */
+function photoUrls(m: MemoryResponse): string[] {
+  return m.media
+    .filter((mm) => isPhotoMedia(mm.mediaType) && !!mm.url)
+    .map((mm) => resolveMediaUrl(mm.url));
 }
 
 /** "August 2026" grouping key + label. */
@@ -130,27 +137,35 @@ function yearsTogether(start: Date | null): number | null {
   return Math.max(0, years);
 }
 
-/** Days between the relationship start date and today — the "days loved" count. */
-function daysLoved(start: Date | null): number | null {
-  if (!start) return null;
-  return Math.max(0, Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)));
-}
-
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 function MemoryCard({
   item,
-  daysLovedValue,
+  onOpenMap,
+  onOpen,
 }: {
   item: MemoryResponse;
-  daysLovedValue: number | null;
+  onOpenMap: (item: MemoryResponse) => void;
+  onOpen: (item: MemoryResponse) => void;
 }) {
   const category = categoryOf(item);
   const photos = photoCount(item);
+  const photoUris = photoUrls(item);
+  const hasCoords = item.latitude != null && item.longitude != null;
+  const hasPhotos = photoUris.length > 0;
   const isMilestone = category === 'Milestone';
 
   return (
-    <View style={[styles.card, isMilestone && styles.cardMilestone]}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.card,
+        isMilestone && styles.cardMilestone,
+        pressed && styles.cardPressed,
+      ]}
+      onPress={() => onOpen(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open memory ${item.title}`}
+    >
       <View style={styles.cardTopRow}>
         <View style={[styles.badge, isMilestone && styles.badgeMilestone]}>
           <Text style={[styles.badgeText, isMilestone && styles.badgeTextMilestone]}>
@@ -165,36 +180,70 @@ function MemoryCard({
         {item.isFavorite ? <Text style={styles.star}>♥</Text> : null}
       </View>
 
-      {photos > 0 ? (
+      {photoUris.length > 0 ? (
+        <View style={styles.carouselWrap}>
+          <PhotoCarousel uris={photoUris} />
+        </View>
+      ) : photos > 0 ? (
         <View style={styles.photoStrip}>
           <PhotoIcon />
           <Text style={styles.photoCount}>
             {photos} {photos === 1 ? 'photo' : 'photos'}
           </Text>
         </View>
+      ) : hasCoords ? (
+        <Pressable
+          style={styles.carouselWrap}
+          onPress={() => onOpenMap(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open map for ${item.title}`}
+        >
+          <MemoryLocationMap
+            latitude={item.latitude as number}
+            longitude={item.longitude as number}
+            label={item.location}
+          />
+        </Pressable>
       ) : null}
 
       {item.description ? (
         <Text style={styles.cardDesc}>{item.description}</Text>
       ) : null}
 
-      {isMilestone && daysLovedValue != null ? (
-        <View style={styles.milestoneCounter}>
-          <Text style={styles.milestoneNumber}>{daysLovedValue.toLocaleString()}</Text>
-          <Text style={styles.milestoneLabel}>DAYS LOVED</Text>
-        </View>
-      ) : null}
-
       <View style={styles.cardMeta}>
-        {item.location ? (
-          <View style={styles.metaItem}>
-            <PinIcon />
-            <Text style={styles.metaText}>{item.location}</Text>
-          </View>
+        {/* When a memory has photos, the carousel is the focus — hide the
+            location row so the images carry the card. Tap through to the
+            detail popup to see the location. */}
+        {!hasPhotos && item.location ? (
+          hasCoords ? (
+            <Pressable
+              style={styles.metaItem}
+              onPress={() =>
+                openInMaps(
+                  item.latitude as number,
+                  item.longitude as number,
+                  item.location ?? item.title,
+                )
+              }
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${item.location} in Maps`}
+            >
+              <PinIcon />
+              <Text style={[styles.metaText, styles.metaLink]} numberOfLines={1}>
+                {item.location}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.metaItem}>
+              <PinIcon />
+              <Text style={styles.metaText}>{item.location}</Text>
+            </View>
+          )
         ) : null}
         <Text style={styles.byLine}>by {item.createdByName}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -208,6 +257,9 @@ export function MemoriesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('All');
+  // The memory whose detail popup is open (null = closed).
+  const [selected, setSelected] = useState<MemoryResponse | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -279,7 +331,13 @@ export function MemoriesScreen() {
 
   const start = useMemo(() => parseStartDate(startDate), [startDate]);
   const years = useMemo(() => yearsTogether(start), [start]);
-  const daysLovedValue = useMemo(() => daysLoved(start), [start]);
+
+  // Only the creator of a memory may edit or delete it. Compare the memory's
+  // creator to the signed-in user (cached from /api/users/me at bootstrap).
+  const canModifySelected = useMemo(() => {
+    const myId = userSettingsStore.get()?.id;
+    return !!selected && !!myId && selected.createdByUserId === myId;
+  }, [selected]);
 
   const goAdd = useCallback(() => navigation.navigate('AddMemory'), [navigation]);
   const goTimeline = useCallback(
@@ -287,21 +345,71 @@ export function MemoriesScreen() {
     [navigation],
   );
 
+  const openDetail = useCallback((m: MemoryResponse) => {
+    setSelected(m);
+    setDetailVisible(true);
+  }, []);
+
+  const closeDetail = useCallback(() => setDetailVisible(false), []);
+
+  const goEdit = useCallback(
+    (m: MemoryResponse) => {
+      setDetailVisible(false);
+      navigation.navigate('AddMemory', { memoryId: m.id });
+    },
+    [navigation],
+  );
+
+  const confirmDelete = useCallback(
+    (m: MemoryResponse) => {
+      Alert.alert(
+        'Delete memory',
+        `Delete "${m.title}"? This can't be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              // Optimistically remove from the list and close the popup.
+              setDetailVisible(false);
+              setItems((prev) => prev.filter((x) => x.id !== m.id));
+              try {
+                await memoriesService.remove(m.id);
+                showSuccess('Deleted!');
+              } catch (err) {
+                // Restore on failure and surface the error.
+                setItems((prev) =>
+                  [...prev, m].sort(
+                    (a, b) => timeOf(b.memoryDateTime) - timeOf(a.memoryDateTime),
+                  ),
+                );
+                setError(err instanceof Error ? err.message : 'Could not delete the memory.');
+                showError('Sorry that failed :(');
+              }
+            },
+          },
+        ],
+      );
+    },
+    [],
+  );
+  const goMap = useCallback(
+    (m: MemoryResponse) => {
+      if (m.latitude == null || m.longitude == null) return;
+      navigation.navigate('MemoryMap', {
+        latitude: m.latitude,
+        longitude: m.longitude,
+        title: m.title,
+        location: m.location,
+      });
+    },
+    [navigation],
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerKicker}>AMORI MEMORIES</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader title="Memories" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.center}>
@@ -391,7 +499,12 @@ export function MemoriesScreen() {
                   </Text>
                 </View>
                 {memories.map((m) => (
-                  <MemoryCard key={m.id} item={m} daysLovedValue={daysLovedValue} />
+                  <MemoryCard
+                    key={m.id}
+                    item={m}
+                    onOpenMap={goMap}
+                    onOpen={openDetail}
+                  />
                 ))}
               </View>
             ))
@@ -419,9 +532,18 @@ export function MemoriesScreen() {
           accessibilityLabel="Add a memory"
         >
           <PlusIcon />
-          <Text style={styles.fabText}>Add to Timeline</Text>
+          <Text style={styles.fabText}>Add to Memories</Text>
         </Pressable>
       </View>
+
+      <MemoryDetailModal
+        visible={detailVisible}
+        memory={selected}
+        canModify={canModifySelected}
+        onClose={closeDetail}
+        onEdit={goEdit}
+        onDelete={confirmDelete}
+      />
     </SafeAreaView>
   );
 }
@@ -548,6 +670,9 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
     backgroundColor: 'rgba(197,163,101,0.06)',
   },
+  cardPressed: {
+    opacity: 0.85,
+  },
   cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -606,28 +731,15 @@ const styles = StyleSheet.create({
     color: colors.neutralMuted,
     fontSize: 12,
   },
+  carouselWrap: {
+    marginTop: spacing.sm,
+  },
   cardDesc: {
     ...typography.body,
     color: colors.neutralMuted,
     fontSize: 14,
     marginTop: spacing.sm,
     fontStyle: 'italic',
-  },
-  milestoneCounter: {
-    alignItems: 'center',
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  milestoneNumber: {
-    ...typography.headlineSm,
-    color: colors.gold,
-    fontSize: 32,
-  },
-  milestoneLabel: {
-    ...typography.label,
-    color: colors.neutralMuted,
-    fontSize: 10,
-    letterSpacing: 2,
   },
   cardMeta: {
     flexDirection: 'row',
@@ -651,6 +763,10 @@ const styles = StyleSheet.create({
     color: colors.neutralSubtle,
     fontSize: 12,
     flexShrink: 1,
+  },
+  metaLink: {
+    color: colors.gold,
+    textDecorationLine: 'underline',
   },
   byLine: {
     ...typography.bodySm,

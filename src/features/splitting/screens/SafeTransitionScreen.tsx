@@ -29,6 +29,7 @@ import type { ClimateState, NextStep, SplittingAction } from '../types/splitting
 import { EMPTY_FLOW_STATE, CLIMATE_TO_MOOD } from '../types/splitting.types';
 import { splittingService } from '../services/splittingService';
 import { useSplittingSession } from '../hooks/useSplittingSession';
+import { useLeaveSplittingFlow } from '../hooks/useLeaveSplittingFlow';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'SafeTransition'>;
 type Rt = RouteProp<SplittingStackParamList, 'SafeTransition'>;
@@ -54,7 +55,10 @@ export function SafeTransitionScreen() {
 
   const [climate, setClimate] = useState<ClimateState | undefined>(flow.climate ?? 'same');
   const [nextStep, setNextStep] = useState<NextStep | undefined>(flow.nextStep);
-  const { update, cancel, pending, error } = useSplittingSession();
+  const { update, pending, error } = useSplittingSession();
+  // Persist the grounding (including the current climate pick) when leaving via
+  // "Back to Home Sanctuary" so the moment they worked through lands in history.
+  const { saveAndLeave } = useLeaveSplittingFlow({ ...flow, climate });
 
   /** Map the chosen next step to the backend action it represents, if any. */
   const NEXT_STEP_ACTION: Partial<Record<NextStep, SplittingAction>> = {
@@ -114,7 +118,7 @@ export function SafeTransitionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="Splitting Anchor" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Safe Transition" subtitle="Splitting Anchor" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <StatusPill label="Safe transition" />
@@ -173,9 +177,9 @@ export function SafeTransitionScreen() {
         <TextButton
           label="Back to Home Sanctuary"
           onPress={async () => {
-            // Leaving without finishing — cancel the in-progress session so we
-            // don't strand it, then unwind the flow.
-            if (flow.sessionId) await cancel(flow.sessionId);
+            // Leaving the flow after grounding — save it as history (rather than
+            // cancelling) so they can come back and see this moment, then unwind.
+            await saveAndLeave();
             navigation.popToTop();
           }}
         />

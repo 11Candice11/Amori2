@@ -2,118 +2,260 @@
  * Amori API client.
  *
  * Uses the native fetch API — no external HTTP library needed.
- * The access token is cached in memory and persisted to disk (expo-file-system)
- * so the session survives app restarts until the user signs out.
+ * The access token is persisted to disk with AsyncStorage so the session
+ * survives app restarts until the user signs out.
  *
- * In development:   http://10.0.2.2:5000  (Android emulator → host machine)
- * In production:    https://api.amori.app
+ * Default origin (dev and production): https://amori.ycare.org
+ * See DEV_TARGET below to point development builds at a local backend instead.
  */
 
-// ── API host selection ────────────────────────────────────────────────────────
-// The backend is hosted on EC2, reachable over the internet, so both the
-// emulator and a physical device use the same host — no more Mac-LAN/10.0.2.2
-// juggling. Switch DEV_TARGET to run against a local backend instead.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ── API origin selection ──────────────────────────────────────────────────────
+// The hosted backend is reachable over HTTPS on a real domain (nginx terminates
+// TLS on the EC2 box and reverse-proxies to the api container on :5001), so the
+// emulator and physical devices all use the same origin. Because it's HTTPS on
+// port 443 it also works on networks that block non-standard ports, and needs no
+// iOS ATS exception or Android cleartext permit.
 //
-//   'ec2'      → hosted backend at EC2_HOST (works anywhere)
+// Switch DEV_TARGET to run against a local backend instead:
+//   'ec2'      → hosted backend at HOSTED_ORIGIN (works anywhere)
 //   'emulator' → local backend via the Android emulator alias 10.0.2.2
-//   'lan'      → local backend via the Mac's LAN IP (physical device on same WiFi)
+//   'lan'      → local backend via the Mac's LAN IP (physical device, same WiFi)
 type DevTarget = 'ec2' | 'emulator' | 'lan';
 const DEV_TARGET: DevTarget = 'ec2';
 
-const EC2_HOST = '51.20.141.199'; // Amori EC2 (eu-north-1)
-const LAN_HOST = '192.168.1.51';   // Mac's local IP (update if your network changes)
+const HOSTED_ORIGIN = 'https://amori.ycare.org'; // EC2 (eu-north-1) behind nginx/TLS
+const LAN_ORIGIN = 'http://172.20.3.74:5001';    // Mac's LAN IP (update per network)
+const EMULATOR_ORIGIN = 'http://10.0.2.2:5001';
 
-const DEV_HOST =
-  DEV_TARGET === 'ec2' ? EC2_HOST : DEV_TARGET === 'lan' ? LAN_HOST : '10.0.2.2';
+const DEV_ORIGIN =
+  DEV_TARGET === 'ec2' ? HOSTED_ORIGIN : DEV_TARGET === 'lan' ? LAN_ORIGIN : EMULATOR_ORIGIN;
 
-// NOTE: production currently points at the EC2 host over plain HTTP. This
-// requires an iOS App Transport Security exception for 51.20.141.199 (see
-// ios/Amori/Info.plist) and an Android cleartext permit (see AndroidManifest).
-// Move to HTTPS (api.amori.app) before shipping to real users.
-const PROD_HOST = '51.20.141.199';
-
-const BASE_URL = __DEV__
-  ? `http://${DEV_HOST}:5001`
-  : `http://${PROD_HOST}:5001`;
+const BASE_URL = __DEV__ ? DEV_ORIGIN : HOSTED_ORIGIN;
 
 // ─── Persistent token store ─────────────────────────────────────────────────
 // The token is cached in memory for synchronous access (request headers) and
-// mirrored to a small file in the app's document directory so the user stays
-// signed in across app restarts — until they explicitly sign out. Mirrors the
-// best-effort `expo-file-system` approach used by themeStore; persistence
-// failures never crash the app, they just mean the session won't survive a
-// restart.
-import * as FileSystem from 'expo-file-system';
+// persisted to disk with AsyncStorage so the session survives app restarts.
 
-const TOKEN_FILE_NAME = 'auth-token.json';
+const TOKEN_STORAGE_KEY = '@amori/auth-token';
+const REFRESH_TOKEN_STORAGE_KEY = '@amori/refresh-token';
 let _accessToken: string | null = null;
+let _refreshToken: string | null = null;
 
-function tokenFileUri(): string | null {
-  const dir = FileSystem.documentDirectory;
-  return dir ? `${dir}${TOKEN_FILE_NAME}` : null;
+async function persistValue(key: string, value: string | null): Promise<void> {
+  try {
+    if (value === null) {
+      await AsyncStorage.removeItem(key);
+    } else {
+      await AsyncStorage.setItem(key, value);
+    }
+  } catch (err) {
+    console.error(`Failed to persist ${key}:`, err);
+  }
 }
 
-async function persistToken(token: string | null): Promise<void> {
-  const uri = tokenFileUri();
-  if (!uri) return;
+async function loadValue(key: string): Promise<string | null> {
   try {
-    if (token) {
-      await FileSystem.writeAsStringAsync(uri, JSON.stringify({ accessToken: token }));
-    } else {
-      // Delete on sign-out so no stale token lingers on disk.
-      await FileSystem.deleteAsync(uri, { idempotent: true });
-    }
-  } catch {
-    // Ignore — a failed write/delete just means the change won't persist.
+    return await AsyncStorage.getItem(key);
+  } catch (err) {
+    console.error(`Failed to load ${key}:`, err);
+    return null;
   }
 }
 
 export const tokenStore = {
-  /** Synchronous read of the in-memory token (used for request headers). */
+  /** Synchronous read of the in-memory access token (used for request headers). */
   get: () => _accessToken,
 
-  /** Set the token in memory and mirror it to disk (best-effort). */
+  /** Synchronous read of the in-memory refresh token. */
+  getRefresh: () => _refreshToken,
+
+  /** Set the access token in memory and persist to disk. */
   set: (token: string | null) => {
     _accessToken = token;
-    void persistToken(token);
+    void persistValue(TOKEN_STORAGE_KEY, token);
   },
 
-  /** Clear the token from memory and delete the persisted copy. */
-  clear: () => {
-    _accessToken = null;
-    void persistToken(null);
+  /** Set the refresh token in memory and persist to disk. */
+  setRefresh: (token: string | null) => {
+    _refreshToken = token;
+    void persistValue(REFRESH_TOKEN_STORAGE_KEY, token);
   },
 
   /**
-   * Hydrate the in-memory token from disk. Call once at app startup, before
-   * checking authentication, so a previously signed-in user stays signed in.
-   * Returns the restored token (or null when none was stored).
+   * Persist both tokens together after a login / register / refresh. Keeps the
+   * access and refresh tokens in step so a half-written session can't occur.
+   */
+  setTokens: (accessToken: string, refreshToken: string) => {
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
+    void persistValue(TOKEN_STORAGE_KEY, accessToken);
+    void persistValue(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+  },
+
+  /** Clear both tokens from memory and disk. */
+  clear: () => {
+    _accessToken = null;
+    _refreshToken = null;
+    void persistValue(TOKEN_STORAGE_KEY, null);
+    void persistValue(REFRESH_TOKEN_STORAGE_KEY, null);
+  },
+
+  /**
+   * Hydrate both tokens from AsyncStorage on app startup. Returns the access
+   * token for the bootstrap auth check. Call this once during bootstrap before
+   * checking authentication state.
    */
   async hydrate(): Promise<string | null> {
-    const uri = tokenFileUri();
-    if (!uri) return null;
-    try {
-      const info = await FileSystem.getInfoAsync(uri);
-      if (!info.exists) return null;
-      const raw = await FileSystem.readAsStringAsync(uri);
-      const parsed = JSON.parse(raw) as { accessToken?: unknown };
-      _accessToken = typeof parsed.accessToken === 'string' ? parsed.accessToken : null;
-      return _accessToken;
-    } catch {
-      return null;
-    }
+    const [accessToken, refreshToken] = await Promise.all([
+      loadValue(TOKEN_STORAGE_KEY),
+      loadValue(REFRESH_TOKEN_STORAGE_KEY),
+    ]);
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
+    return accessToken;
   },
 };
+
+// ─── Errors ───────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown for any non-2xx API response. Carries the HTTP status so callers
+ * can distinguish an authentication failure (401/403) from a transient network
+ * or server error — important so we don't sign a user out on a flaky launch.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+
+  /** True for 401/403 — the token is missing, invalid, or expired. */
+  get isAuthError(): boolean {
+    return this.status === 401 || this.status === 403;
+  }
+}
+
+/**
+ * Parse a response body as JSON, tolerating non-JSON payloads.
+ *
+ * A reverse proxy (nginx) can return an HTML error page — e.g. a 413 "Request
+ * Entity Too Large" for an oversized upload, or a 502/504 gateway page — before
+ * the request ever reaches the API. Blindly running JSON.parse on that HTML
+ * throws "unexpected char <", masking the real problem. Instead we detect a
+ * non-JSON body and turn it into a clear ApiError keyed off the HTTP status.
+ */
+function parseJsonBody(status: number, contentType: string | null, text: string): unknown {
+  if (!text) return null;
+
+  const looksJson =
+    (contentType?.includes('application/json') ?? false) ||
+    text.trimStart().startsWith('{') ||
+    text.trimStart().startsWith('[');
+
+  if (!looksJson) {
+    // The server (or a proxy in front of it) returned something that isn't JSON.
+    throw new ApiError(status, messageForNonJson(status));
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new ApiError(status, messageForNonJson(status));
+  }
+}
+
+/** A human-friendly message for a non-JSON (usually proxy HTML) response. */
+function messageForNonJson(status: number): string {
+  switch (status) {
+    case 413:
+      return 'That file is too large to upload. Try a smaller image.';
+    case 502:
+    case 503:
+    case 504:
+      return 'The server is unavailable right now. Please try again in a moment.';
+    default:
+      return `Unexpected server response (HTTP ${status}).`;
+  }
+}
+
+// ─── Silent token refresh ─────────────────────────────────────────────────────
+// When a request comes back 401 (access token expired), we transparently
+// exchange the refresh token for a new access token and retry the request once.
+// The user only gets signed out if the refresh itself is rejected — so a session
+// lasts until the refresh token expires or the user explicitly signs out.
+
+// Endpoints that must never trigger a refresh-and-retry, to avoid infinite loops.
+const AUTH_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout'];
+
+// Shared in-flight refresh so concurrent 401s trigger a single refresh call.
+let _refreshInFlight: Promise<boolean> | null = null;
+
+/**
+ * Exchange the stored refresh token for a new access + refresh token pair.
+ * Returns true on success (new tokens stored), false if there is no refresh
+ * token or the server rejected it (in which case tokens are cleared).
+ * Concurrent callers share one in-flight request.
+ */
+function refreshAccessToken(): Promise<boolean> {
+  if (_refreshInFlight) return _refreshInFlight;
+
+  const attempt = (async (): Promise<boolean> => {
+    const refreshToken = tokenStore.getRefresh();
+    if (!refreshToken) return false;
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        // The refresh token is invalid/expired/revoked — the session is over.
+        if (response.status === 401 || response.status === 403) {
+          tokenStore.clear();
+        }
+        return false;
+      }
+
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : null;
+      if (!data?.accessToken || !data?.refreshToken) return false;
+
+      tokenStore.setTokens(data.accessToken, data.refreshToken);
+      return true;
+    } catch (err) {
+      // Network error — keep the tokens; the caller surfaces the original error.
+      console.warn('Token refresh failed:', err);
+      return false;
+    }
+  })();
+
+  // Clear the shared promise once it settles so the next 401 can refresh again.
+  _refreshInFlight = attempt;
+  void attempt.finally(() => {
+    _refreshInFlight = null;
+  });
+  return attempt;
+}
 
 // ─── Core request helper ──────────────────────────────────────────────────────
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
-export async function apiRequest<T>(
+async function performRequest(
   path: string,
-  method: HttpMethod = 'GET',
-  body?: unknown,
-): Promise<T> {
+  method: HttpMethod,
+  body: unknown,
+): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -124,23 +266,44 @@ export async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
+  return fetch(`${BASE_URL}${path}`, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+}
+
+export async function apiRequest<T>(
+  path: string,
+  method: HttpMethod = 'GET',
+  body?: unknown,
+): Promise<T> {
+  let response = await performRequest(path, method, body);
+
+  // On a 401 for a normal request, try one silent refresh + retry before failing.
+  if (response.status === 401 && !AUTH_PATHS.includes(path) && tokenStore.getRefresh()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      response = await performRequest(path, method, body);
+    }
+  }
 
   if (response.status === 204) {
     return undefined as unknown as T;
   }
 
-  // Guard against empty bodies (e.g. 401 with no JSON payload)
+  // Guard against empty bodies (e.g. 401 with no JSON payload) and non-JSON
+  // responses (e.g. an nginx HTML error page) — see parseJsonBody.
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJsonBody(
+    response.status,
+    response.headers.get('content-type'),
+    text,
+  ) as { message?: string; title?: string } | null;
 
   if (!response.ok) {
     const message = data?.message ?? data?.title ?? `HTTP ${response.status}`;
-    throw new Error(message);
+    throw new ApiError(response.status, message);
   }
 
   return data as T;
@@ -167,30 +330,46 @@ export async function apiUpload<T>(
   file: UploadFile,
   fieldName = 'file',
 ): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  const token = tokenStore.get();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const send = (): Promise<Response> => {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    const token = tokenStore.get();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const form = new FormData();
-  form.append(fieldName, {
-    uri: file.uri,
-    type: file.type ?? 'image/jpeg',
-    name: file.name ?? 'upload.jpg',
-    // React Native's FormData accepts this shape; cast for TS.
-  } as unknown as Blob);
+    const form = new FormData();
+    form.append(fieldName, {
+      uri: file.uri,
+      type: file.type ?? 'image/jpeg',
+      name: file.name ?? 'upload.jpg',
+      // React Native's FormData accepts this shape; cast for TS.
+    } as unknown as Blob);
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers,
-    body: form,
-  });
+    return fetch(`${BASE_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: form,
+    });
+  };
+
+  let response = await send();
+
+  // Silent refresh + retry once on an expired access token.
+  if (response.status === 401 && !AUTH_PATHS.includes(path) && tokenStore.getRefresh()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      response = await send();
+    }
+  }
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJsonBody(
+    response.status,
+    response.headers.get('content-type'),
+    text,
+  ) as { message?: string; title?: string } | null;
 
   if (!response.ok) {
     const message = data?.message ?? data?.title ?? `HTTP ${response.status}`;
-    throw new Error(message);
+    throw new ApiError(response.status, message);
   }
 
   return data as T;

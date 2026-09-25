@@ -25,7 +25,8 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors, spacing, typography } from '../../../shared/theme';
 import type { DistractionStackParamList } from '../../../navigation/DistractionStackParamList';
 import type { MainTabParamList } from '../../../navigation/types';
-import { BackIcon, Card, SectionLabel } from '../components/DistractionUI';
+import { Card, SectionLabel } from '../components/DistractionUI';
+import { AppHeader } from '../../../shared/components/header';
 import { useDistractionCentre } from '../hooks/useDistractionCentre';
 
 type Nav = NativeStackNavigationProp<DistractionStackParamList, 'DistractionHome'>;
@@ -45,20 +46,16 @@ export function DistractionScreen() {
       ?.navigate('Home');
   };
 
+  const sendSignOfPeace = () => {
+    // A gentle sign of peace hands off to the Send a hug flow.
+    navigation
+      .getParent<BottomTabNavigationProp<MainTabParamList>>()
+      ?.navigate('Hugs', { screen: 'NeedAHug' });
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.topBar}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={goHome}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Back to sanctuary"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <BackIcon />
-        </Pressable>
-      </View>
+      <AppHeader title="Distraction Centre" onBack={goHome} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -68,7 +65,6 @@ export function DistractionScreen() {
         <View style={styles.pill}>
           <Text style={styles.pillText}>MINDFUL, SOFT & DE-ESCALATION</Text>
         </View>
-        <Text style={styles.title}>Distraction Centre</Text>
         <Text style={styles.subtitle}>
           A gentle place to shift your focus. Pick something light while your
           nervous system settles.
@@ -210,7 +206,7 @@ export function DistractionScreen() {
           </Text>
           <Pressable
             style={styles.reconnectBtn}
-            onPress={goHome}
+            onPress={sendSignOfPeace}
             accessibilityRole="button"
             accessibilityLabel="Send a gentle sign of peace"
           >
@@ -224,18 +220,6 @@ export function DistractionScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xl,
@@ -251,7 +235,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   pillText: { ...typography.label, color: colors.gold, fontSize: 10 },
-  title: { ...typography.headline, color: colors.neutral },
   subtitle: {
     ...typography.body,
     color: colors.neutralMuted,

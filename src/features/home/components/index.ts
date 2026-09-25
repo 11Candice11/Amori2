@@ -4,7 +4,6 @@ export { EmergencyBanner } from './EmergencyBanner';
 export { GentleRhythm } from './GentleRhythm';
 export type { RhythmItem } from './GentleRhythm';
 export { HavenAnchors } from './HavenAnchors';
-export { HeroHeader } from './HeroHeader';
 export { SacredCadenceCard } from './SacredCadenceCard';
 export { SanctuaryDashboard } from './SanctuaryDashboard';
 export type { SanctuaryDashboardProps } from './SanctuaryDashboard';

@@ -140,7 +140,7 @@ export interface SplittingFlowState {
   climate?: ClimateState;
   /** The path they chose to continue with after the transition check. */
   nextStep?: NextStep;
-  /** Whether Cat was notified that space was requested. */
+  /** Whether your love was notified that space was requested. */
   notifiedPartner: boolean;
   /** Requested space duration, if any. */
   spaceDuration?: SpaceDuration;

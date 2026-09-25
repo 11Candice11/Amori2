@@ -1,19 +1,20 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { NavigationRoute, ParamListBase } from '@react-navigation/native';
+import type { Route } from '@react-navigation/native';
 
-import {
-  CheckInIcon,
-  DeskIcon,
-  HomeIcon,
-  ProfileIcon,
-  TogetherIcon,
-} from '../icons/TabIcons';
+import { TabImageIcon, type TabIconName } from '../icons/AppIcons';
 import { colors, layout, typography } from '../../theme';
 import type { TabRouteName } from './BottomNavBar.types';
 
+/** Route names that have illustrated PNG art. */
+const TAB_ICON_NAMES: TabIconName[] = ['Home', 'CheckIn', 'Together', 'Desk', 'Profile'];
+
+function isTabIconName(name: string): name is TabIconName {
+  return (TAB_ICON_NAMES as string[]).includes(name);
+}
+
 type TabBarItemProps = {
-  route: NavigationRoute<ParamListBase, string>;
+  route: Route<string>;
   label: string;
   isFocused: boolean;
   onPress: () => void;
@@ -21,23 +22,15 @@ type TabBarItemProps = {
   androidRipple?: boolean;
 };
 
-function getTabIcon(name: TabRouteName, color: string) {
-  const size = layout.tabIconSize;
+function getTabIcon(name: TabRouteName, isFocused: boolean) {
+  // The framed illustrated art reads better a touch larger than the line-glyph
+  // size, so scale up slightly from the base token.
+  const size = layout.tabIconSize + 4;
 
-  switch (name) {
-    case 'Home':
-      return <HomeIcon color={color} size={size} />;
-    case 'CheckIn':
-      return <CheckInIcon color={color} size={size} />;
-    case 'Together':
-      return <TogetherIcon color={color} size={size} />;
-    case 'Desk':
-      return <DeskIcon color={color} size={size} />;
-    case 'Profile':
-      return <ProfileIcon color={color} size={size} />;
-    default:
-      return null;
+  if (isTabIconName(name)) {
+    return <TabImageIcon name={name} size={size} active={isFocused} />;
   }
+  return null;
 }
 
 export function TabBarItem({
@@ -64,7 +57,7 @@ export function TabBarItem({
           : undefined
       }
     >
-      <View style={styles.icon}>{getTabIcon(route.name as TabRouteName, iconColor)}</View>
+      <View style={styles.icon}>{getTabIcon(route.name as TabRouteName, isFocused)}</View>
       <Text style={[styles.label, { color: iconColor }]}>{label}</Text>
     </Pressable>
   );

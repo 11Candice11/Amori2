@@ -1,41 +1,37 @@
 /**
  * PrivateRepositories — the couple's shared, backend-backed collections
- * surfaced as "vaulted" repository cards.
+ * surfaced as repository cards.
  *
- * Only real repositories are shown. Today that's the Shared Wishlist
- * (GET /api/wishlist): item count, favorite count, and the most recently
- * updated preview all come from the response. There is no fabricated
- * "cipher/journal" surface because the backend has no such feature.
+ * Two real repositories are shown:
+ *   - Shared Wishlist (GET /api/wishlist): item count, favorite count, and the
+ *     most recently updated preview all come from the response.
+ *   - Date Ideas (GET /api/dates): item count, favorite count, and a preview
+ *     of the most recent titles.
+ *
+ * Everything is real; there is no fabricated content.
  */
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
-import type { WishlistItemResponse } from '../types/together.types';
+import { ActionImageIcon } from '../../../shared/components/icons/AppIcons';
+import type {
+  DateIdeaResponse,
+  WishlistItemResponse,
+} from '../types/together.types';
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
-function GiftIcon() {
+function HeartIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Rect x={3.5} y={9} width={17} height={11.5} rx={2} stroke={colors.gold} strokeWidth={1.5} />
-      <Path d="M3.5 12.5h17M12 9v11.5" stroke={colors.gold} strokeWidth={1.5} strokeLinecap="round" />
       <Path
-        d="M12 9S10.5 5 8.3 5a2 2 0 000 4H12zm0 0s1.5-4 3.7-4a2 2 0 010 4H12z"
+        d="M12 20s-7-4.5-9.2-9A4.6 4.6 0 0112 6.5 4.6 4.6 0 0121.2 11C19 15.5 12 20 12 20z"
         stroke={colors.gold}
         strokeWidth={1.5}
         strokeLinejoin="round"
       />
-    </Svg>
-  );
-}
-
-function LockBadgeIcon() {
-  return (
-    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-      <Rect x={5} y={10} width={14} height={10} rx={2.5} stroke={colors.neutralMuted} strokeWidth={1.8} />
-      <Path d="M8 10V7.5a4 4 0 018 0V10" stroke={colors.neutralMuted} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -54,7 +50,7 @@ function relativeDay(iso: string | null | undefined): string | null {
 }
 
 /** Most recent updatedAt/createdAt across items. */
-function lastTouched(items: WishlistItemResponse[]): string | null {
+function lastTouched(items: { updatedAt?: string | null; createdAt: string }[]): string | null {
   let latest: number | null = null;
   for (const it of items) {
     const stamp = it.updatedAt ?? it.createdAt;
@@ -64,79 +60,142 @@ function lastTouched(items: WishlistItemResponse[]): string | null {
   return latest != null ? new Date(latest).toISOString() : null;
 }
 
+// ─── Repository card ────────────────────────────────────────────────────────
+
+type RepositoryCardProps = {
+  title: string;
+  icon: React.ReactNode;
+  count: number;
+  favorites: number;
+  preview: string;
+  touched: string | null;
+  onPress?: () => void;
+  accessibilityLabel: string;
+  /**
+   * When true, the icon is a self-framed illustrated PNG and is rendered on its
+   * own (the small tinted circle would double-frame it). Line-glyph SVGs get
+   * the circle.
+   */
+  framedIcon?: boolean;
+};
+
+function RepositoryCard({
+  title,
+  icon,
+  count,
+  favorites,
+  preview,
+  touched,
+  onPress,
+  accessibilityLabel,
+  framedIcon = false,
+}: RepositoryCardProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      onPress={onPress}
+      android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <View style={styles.cardHeader}>
+        {framedIcon ? icon : <View style={styles.iconCircle}>{icon}</View>}
+        <View style={styles.headerTextWrap}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{title}</Text>
+            {favorites > 0 ? (
+              <View style={styles.newBadge}>
+                <Text style={styles.newBadgeText}>{favorites} ★</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.preview} numberOfLines={2}>
+            {preview}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.metaRow}>
+        <View style={styles.metaCol}>
+          <Text style={styles.metaValue}>{count} items</Text>
+          <Text style={styles.metaLabel}>recorded</Text>
+        </View>
+        <View style={styles.metaCol}>
+          <Text style={styles.metaValue}>{touched ? 'Last touched' : 'Not yet'}</Text>
+          <Text style={styles.metaLabel}>{touched ?? 'touched'}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type PrivateRepositoriesProps = {
   wishlist: WishlistItemResponse[];
+  dateIdeas: DateIdeaResponse[];
   onOpenWishlist?: () => void;
+  onOpenDateIdeas?: () => void;
 };
 
 export function PrivateRepositories({
   wishlist,
+  dateIdeas,
   onOpenWishlist,
+  onOpenDateIdeas,
 }: PrivateRepositoriesProps) {
-  const favorites = useMemo(
+  // ── Shared Wishlist ─────────────────────────────────────────────────────
+  const wishFavorites = useMemo(
     () => wishlist.filter((w) => w.isFavorite).length,
     [wishlist],
   );
-  const touched = useMemo(() => relativeDay(lastTouched(wishlist)), [wishlist]);
-
-  // Preview: names of the first couple of items, if any.
-  const preview = useMemo(() => {
+  const wishTouched = useMemo(() => relativeDay(lastTouched(wishlist)), [wishlist]);
+  const wishPreview = useMemo(() => {
     const names = wishlist.slice(0, 3).map((w) => w.name);
     if (names.length === 0) return 'Nothing saved yet — add a wish to get started.';
     return names.join(', ') + (wishlist.length > 3 ? '…' : '.');
   }, [wishlist]);
 
+  // ── Date Ideas ───────────────────────────────────────────────────────────
+  const dateFavorites = useMemo(
+    () => dateIdeas.filter((d) => d.isFavorite).length,
+    [dateIdeas],
+  );
+  const dateTouched = useMemo(() => relativeDay(lastTouched(dateIdeas)), [dateIdeas]);
+  const datePreview = useMemo(() => {
+    const titles = dateIdeas.slice(0, 3).map((d) => d.title);
+    if (titles.length === 0) return 'No date ideas yet — add one to get started.';
+    return titles.join(', ') + (dateIdeas.length > 3 ? '…' : '.');
+  }, [dateIdeas]);
+
   return (
     <View>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Private Repositories</Text>
-        <View style={styles.vaultedTag}>
-          <LockBadgeIcon />
-          <Text style={styles.vaultedText}>VAULTED</Text>
-        </View>
       </View>
 
-      <Pressable
-        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      <RepositoryCard
+        title="Shared Wishlist"
+        icon={<ActionImageIcon name="wishlist" size={40} />}
+        framedIcon
+        count={wishlist.length}
+        favorites={wishFavorites}
+        preview={wishPreview}
+        touched={wishTouched}
         onPress={onOpenWishlist}
-        android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
-        accessibilityRole="button"
         accessibilityLabel="Open shared wishlist"
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.iconCircle}>
-            <GiftIcon />
-          </View>
-          <View style={styles.headerTextWrap}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>Shared Wishlist</Text>
-              {favorites > 0 ? (
-                <View style={styles.newBadge}>
-                  <Text style={styles.newBadgeText}>{favorites} ★</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={styles.preview} numberOfLines={2}>
-              {preview}
-            </Text>
-          </View>
-        </View>
+      />
 
-        <View style={styles.metaRow}>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaValue}>{wishlist.length} items</Text>
-            <Text style={styles.metaLabel}>recorded</Text>
-          </View>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaValue}>
-              {touched ? 'Last touched' : 'Not yet'}
-            </Text>
-            <Text style={styles.metaLabel}>{touched ?? 'touched'}</Text>
-          </View>
-        </View>
-      </Pressable>
+      <RepositoryCard
+        title="Date Ideas"
+        icon={<HeartIcon />}
+        count={dateIdeas.length}
+        favorites={dateFavorites}
+        preview={datePreview}
+        touched={dateTouched}
+        onPress={onOpenDateIdeas}
+        accessibilityLabel="Open date ideas"
+      />
     </View>
   );
 }
@@ -157,17 +216,6 @@ const styles = StyleSheet.create({
     ...typography.headlineSm,
     color: colors.gold,
     fontSize: 18,
-  },
-  vaultedTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  vaultedText: {
-    ...typography.label,
-    color: colors.neutralMuted,
-    fontSize: 9,
-    letterSpacing: 1,
   },
   card: {
     backgroundColor: colors.surfaceCard,

@@ -15,29 +15,54 @@ public sealed class IncidentService(
     IIncidentPriorityService priorityService,
     IIncidentStatusService statusService,
     IIncidentSlaService slaService,
-    INotificationService notifications) : IIncidentService
+    INotificationService notifications,
+    ILogger<IncidentService> logger) : IIncidentService
 {
     /// <summary>Notification type tag carried in push payloads so the app can route taps.</summary>
     private const string NotificationType = "Incident";
 
     /// <summary>
     /// Notify the given relationship members about an incident change, except the actor
-    /// who performed it. Best-effort: CreateAsync never throws, so a push/notification
-    /// failure will not break the incident operation.
+    /// who performed it. Best-effort by contract: a notification failure (push OR the
+    /// in-app notification persistence) must never surface as a failed lifecycle
+    /// transition, because the transition itself has already been committed by the
+    /// time this runs. Each member is dispatched independently and any error is logged
+    /// and swallowed so one bad recipient can't block the others or fail the request.
     /// </summary>
     private async Task NotifyOthersAsync(
         Guid relationshipId, Guid actorUserId, RelationshipIncident incident,
         string title, string body, CancellationToken ct)
     {
-        var members = await relAccess.GetMembersAsync(relationshipId);
+        IReadOnlyList<User> members;
+        try
+        {
+            members = await relAccess.GetMembersAsync(relationshipId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Could not load members of relationship {RelationshipId} to notify about incident {IncidentId}; skipping notifications.",
+                relationshipId, incident.Id);
+            return;
+        }
+
         foreach (var member in members)
         {
             if (member.Id == actorUserId) continue; // don't notify the person who made the change
-            await notifications.CreateAsync(
-                member.Id, title, body,
-                notificationType: NotificationType,
-                referenceId: incident.Id.ToString(),
-                ct);
+            try
+            {
+                await notifications.CreateAsync(
+                    member.Id, title, body,
+                    notificationType: NotificationType,
+                    referenceId: incident.Id.ToString(),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Failed to notify user {UserId} about incident {IncidentId}; continuing.",
+                    member.Id, incident.Id);
+            }
         }
     }
 

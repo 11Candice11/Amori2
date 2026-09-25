@@ -12,7 +12,12 @@ export type MainTabParamList = {
   CheckIn: NavigatorScreenParams<MoodStackParamList> | undefined;
   Together: NavigatorScreenParams<TogetherStackParamList> | undefined;
   Desk: NavigatorScreenParams<IncidentStackParamList> | undefined;
-  Profile: undefined;
+  /**
+   * The settings tab. `openLink` carries a nonce (e.g. Date.now()) that, when
+   * it changes, tells ProfileScreen to open the Link Partner modal — used when
+   * a partner link-request notification is tapped.
+   */
+  Profile: { openLink?: number } | undefined;
   /**
    * The Hug flow (nested stack). Deliberately absent from TAB_CONFIG so it
    * has no bottom-bar button — it's reached from the dashboard "Send a hug"
@@ -39,6 +44,11 @@ export type MainTabParamList = {
    * bar — reached from the Together dashboard.
    */
   Timeline: NavigatorScreenParams<TimelineStackParamList> | undefined;
+  /**
+   * The notifications inbox (hugs, reminders, partner-link requests, etc.).
+   * Hidden from the bottom bar — reached from the header bell on the tab roots.
+   */
+  Notifications: undefined;
 };
 
 /**
@@ -50,7 +60,7 @@ export const TAB_CONFIG = [
   { name: 'CheckIn' as const,  label: 'Check-in' },
   { name: 'Together' as const, label: 'Together' },
   { name: 'Desk' as const,     label: 'Desk' },
-  { name: 'Profile' as const,  label: 'More' },
+  { name: 'Profile' as const,  label: 'Settings' },
 ];
 
 /** Route names that appear in the bottom nav bar. */

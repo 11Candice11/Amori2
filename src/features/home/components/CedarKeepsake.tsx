@@ -53,7 +53,7 @@ type CedarKeepsakeProps = {
 };
 
 export function CedarKeepsake({
-  senderName = 'Cat',
+  senderName = 'Your love',
   arrivalTime = '07:15 AM',
   hint = `${senderName} pressed a sweet thought & secret photo inside`,
   onUnlock,

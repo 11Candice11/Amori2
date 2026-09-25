@@ -1,9 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  ImageBackground,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -13,16 +15,19 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import { AppHeader } from '../../../shared/components/header';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import { StatusBadge, PriorityBadge, CategoryBadge } from '../components/IncidentBadges';
 import { SlaCard } from '../components/SlaCard';
 import { EmptyState } from '../components/EmptyState';
 import { useIncidentDetail } from '../hooks/useIncidentDetail';
+import { useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 import { useIncidentSla } from '../hooks/useIncidentSla';
 import { useIncidentConversation } from '../hooks/useIncidentConversation';
 import { useIncidentHistory } from '../hooks/useIncidentHistory';
 import { incidentService } from '../services/incidentService';
 import { authService } from '../../../services/auth/authService';
+import { settingsService } from '../../profile/services/settingsService';
 import { friendlyError, formatDateTime, formatRelativeDate } from '../utils/errorMessages';
 import type { IncidentStatus } from '../types/incident.types';
 
@@ -71,11 +76,26 @@ export function IncidentDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Whether the user has a linked partner — gates the "Reassign to Partner"
+  // action so we don't offer a call that would 409 for a solo user.
+  const [partnerLinked, setPartnerLinked] = useState<boolean>(false);
+
+  useEffect(() => {
+    let active = true;
+    settingsService
+      .getPartnerStatus()
+      .then(status => { if (active) setPartnerLinked(status.isLinked); })
+      .catch(() => { if (active) setPartnerLinked(false); });
+    return () => { active = false; };
+  }, []);
 
   const { incident, loading, error, refresh } = useIncidentDetail(incidentId);
   const { sla, remainingSeconds } = useIncidentSla(incidentId);
   const { items: convItems, refresh: refreshConv } = useIncidentConversation(incidentId);
   const { entries: histEntries, refresh: refreshHist } = useIncidentHistory(incidentId);
+
+  // Same mood-driven image as the rest of the Desk stack, Check-in and Together.
+  const backgroundImage = useMoodBackground();
 
   // Re-fetch conversation + history whenever the screen regains focus, e.g. after
   // returning from the Add Note / Add Response screens, so new items show up.
@@ -93,8 +113,10 @@ export function IncidentDetailScreen() {
       await fn();
       refresh();
       refreshHist();
+      showSuccess('Saved!');
     } catch (err) {
       setActionError(friendlyError(err));
+      showError('Sorry that failed :(');
     } finally {
       setActionLoading(false);
     }
@@ -102,19 +124,27 @@ export function IncidentDetailScreen() {
 
   if (loading && !incident) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <IncidentScreenHeader title="Incident" onBack={() => navigation.goBack()} />
-        <View style={styles.center}><ActivityIndicator color={colors.gold} size="large" /></View>
-      </SafeAreaView>
+      <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+        <View style={styles.scrim} />
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={false} />
+          <AppHeader title="Incident" onBack={() => navigation.goBack()} />
+          <View style={styles.center}><ActivityIndicator color={colors.gold} size="large" /></View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   if (error && !incident) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <IncidentScreenHeader title="Incident" onBack={() => navigation.goBack()} />
-        <EmptyState icon="⚠" title="Couldn't load incident" message={friendlyError(error)} ctaLabel="Retry" onCta={refresh} />
-      </SafeAreaView>
+      <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+        <View style={styles.scrim} />
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={false} />
+          <AppHeader title="Incident" onBack={() => navigation.goBack()} />
+          <EmptyState icon="⚠" title="Couldn't load incident" message={friendlyError(error)} ctaLabel="Retry" onCta={refresh} />
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
@@ -123,7 +153,7 @@ export function IncidentDetailScreen() {
   const incNum = `#${incident.id.slice(0, 8).toUpperCase()}`;
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'overview', label: 'Overview' },
-    { key: 'conversation', label: `Conversation${convItems.length > 0 ? ` ${convItems.length}` : ''}` },
+    { key: 'conversation', label: `Chat` },
     { key: 'details', label: 'Details' },
     { key: 'history', label: 'History' },
     ...(incident.status === 'Resolved' || incident.status === 'Closed'
@@ -132,12 +162,15 @@ export function IncidentDetailScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader
-        title="Ticket Detail"
-        subtitle={`${incNum} · ${incident.status}`}
-        onBack={() => navigation.goBack()}
-      />
+    <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+      <View style={styles.scrim} />
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={false} />
+        <AppHeader
+          title="Ticket Detail"
+          subtitle={`${incNum} · ${incident.status}`}
+          onBack={() => navigation.goBack()}
+        />
 
       {/* Top badges */}
       <View style={styles.topBadges}>
@@ -162,18 +195,20 @@ export function IncidentDetailScreen() {
       </View>
 
       {/* Tab bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
+      <View style={styles.tabBar}>
         {tabs.map(t => (
           <Pressable
             key={t.key}
             style={[styles.tabBtn, activeTab === t.key && styles.tabBtnActive]}
             onPress={() => setActiveTab(t.key)}
             android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === t.key }}
           >
             <Text style={[styles.tabBtnText, activeTab === t.key && styles.tabBtnTextActive]}>{t.label}</Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
 
@@ -232,6 +267,7 @@ export function IncidentDetailScreen() {
               status={incident.status}
               incidentId={incidentId}
               loading={actionLoading}
+              partnerLinked={partnerLinked}
               onDoAction={doAction}
               navigation={navigation}
               refresh={refresh}
@@ -356,7 +392,8 @@ export function IncidentDetailScreen() {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
@@ -366,6 +403,7 @@ function ActionButtons({
   status,
   incidentId,
   loading,
+  partnerLinked,
   onDoAction,
   navigation,
   refresh,
@@ -373,6 +411,7 @@ function ActionButtons({
   status: IncidentStatus;
   incidentId: string;
   loading: boolean;
+  partnerLinked: boolean;
   onDoAction: (fn: () => Promise<unknown>) => Promise<void>;
   navigation: Nav;
   refresh: () => void;
@@ -404,23 +443,32 @@ function ActionButtons({
 
   if (status === 'Open') {
     buttons.push({ label: 'Assign to Me', onPress: handleAssignSelf });
-    buttons.push({ label: 'Assign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    // Only offer partner assignment when a partner is actually linked.
+    if (partnerLinked) {
+      buttons.push({ label: 'Assign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    }
   }
   if (status === 'Assigned') {
     buttons.push({ label: 'Start Investigation', onPress: () => onDoAction(() => incidentService.investigateIncident(incidentId)) });
-    buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    if (partnerLinked) {
+      buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    }
   }
   if (status === 'Investigating' || status === 'Reopened') {
     buttons.push({ label: 'Add Response', style: 'secondary', onPress: () => navigation.navigate('AddResponse', { incidentId }) });
     buttons.push({ label: 'Add Investigation Note', style: 'secondary', onPress: () => navigation.navigate('AddNote', { incidentId }) });
     buttons.push({ label: 'Mark Awaiting Response', style: 'secondary', onPress: () => onDoAction(() => incidentService.awaitResponse(incidentId)) });
-    buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    if (partnerLinked) {
+      buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    }
     buttons.push({ label: 'Resolve Incident', onPress: () => navigation.navigate('ResolveIncident', { incidentId }) });
   }
   if (status === 'AwaitingResponse') {
     buttons.push({ label: 'Add Response', onPress: () => navigation.navigate('AddResponse', { incidentId }) });
     buttons.push({ label: 'Resume Investigation', style: 'secondary', onPress: () => onDoAction(() => incidentService.investigateIncident(incidentId)) });
-    buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    if (partnerLinked) {
+      buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    }
   }
   if (status === 'Resolved') {
     buttons.push({ label: 'Close Incident', onPress: () => navigation.navigate('CloseIncident', { incidentId }) });
@@ -490,7 +538,15 @@ const actionStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  background: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(6, 18, 10, 0.45)',
+  },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   tabContent: { padding: spacing.md, paddingBottom: spacing.xl },
@@ -502,11 +558,28 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   metaText: { ...typography.bodySm, color: colors.neutralMuted },
 
-  tabBar: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: 6 },
-  tabBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'transparent' },
-  tabBtnActive: { borderColor: colors.gold, backgroundColor: 'rgba(197,163,101,0.1)' },
-  tabBtnText: { ...typography.bodySm, color: colors.neutralMuted },
-  tabBtnTextActive: { color: colors.gold },
+  tabBar: { 
+    flexDirection: 'row',
+    gap: spacing.xs, 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm,
+  },
+  tabBtn: { 
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceCard,
+  },
+  tabBtnActive: { 
+    borderColor: colors.gold, 
+    backgroundColor: 'rgba(197,163,101,0.08)',
+  },
+  tabBtnText: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 11 },
+  tabBtnTextActive: { color: colors.gold, fontFamily: typography.bodySemiBold.fontFamily },
 
   card: { backgroundColor: colors.surfaceCard, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.md },
   cardLabel: { ...typography.label, color: colors.neutralMuted, marginBottom: 8 },

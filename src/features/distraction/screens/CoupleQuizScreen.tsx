@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -73,7 +74,11 @@ export function CoupleQuizScreen() {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      >
         {/* Author-your-own composer, available any time. */}
         {composing ? (
           <QuizComposer

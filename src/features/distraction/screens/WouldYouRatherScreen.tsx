@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
 import { ScreenHeader, Button } from '../components/DistractionUI';
 import { distractionService } from '../services/distractionService';
 import { useDistractionCentre } from '../hooks/useDistractionCentre';
@@ -97,7 +102,11 @@ export function WouldYouRatherScreen() {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      >
         {composing ? (
           <View style={styles.composer}>
             <Text style={styles.prompt}>Write your own</Text>
@@ -108,6 +117,7 @@ export function WouldYouRatherScreen() {
               placeholder="Would you rather… (option A)"
               placeholderTextColor={colors.neutralSubtle}
               multiline
+              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
             />
             <Text style={styles.or}>or</Text>
             <TextInput
@@ -117,6 +127,7 @@ export function WouldYouRatherScreen() {
               placeholder="…or this (option B)"
               placeholderTextColor={colors.neutralSubtle}
               multiline
+              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
             />
             {composerError ? (
               <Text style={styles.error}>{composerError}</Text>
@@ -195,6 +206,8 @@ export function WouldYouRatherScreen() {
           ))
         )}
       </ScrollView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

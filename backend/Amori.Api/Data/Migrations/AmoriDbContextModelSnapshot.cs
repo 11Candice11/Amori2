@@ -895,6 +895,16 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("memory_id");
 
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("thumbnail_url");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -2276,10 +2286,18 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("event_type");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
                     b.Property<string>("Location")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
                         .HasColumnName("location");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
 
                     b.PrimitiveCollection<List<string>>("PhotoKeys")
                         .IsRequired()
@@ -2382,9 +2400,39 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AllowEmergencyAlerts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("allow_emergency_alerts");
+
+                    b.Property<bool>("AllowHugs")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("allow_hugs");
+
+                    b.Property<bool>("AllowPartnerReminders")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("allow_partner_reminders");
+
+                    b.Property<bool>("CheckInReminders")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("check_in_reminders");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<bool>("DailyDigest")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("daily_digest");
 
                     b.Property<bool>("EmergencyNotifications")
                         .HasColumnType("boolean")
@@ -2405,6 +2453,12 @@ namespace Amori.Api.Data.Migrations
                     b.Property<bool>("MoodShareDefault")
                         .HasColumnType("boolean")
                         .HasColumnName("mood_share_default");
+
+                    b.Property<bool>("NotificationsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notifications_enabled");
 
                     b.Property<bool>("PartnerActivityNotifications")
                         .HasColumnType("boolean")
@@ -2428,6 +2482,72 @@ namespace Amori.Api.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("share_activity");
 
+                    b.Property<bool>("ShareCheckIns")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("share_check_ins");
+
+                    b.Property<bool>("ShareLocation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("share_location");
+
+                    b.Property<bool>("ShareTimeline")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("share_timeline");
+
+                    b.Property<bool>("SoundEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("sound_enabled");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<bool>("VibrationEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("vibration_enabled");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_user_settings_user_id");
+
+                    b.ToTable("user_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VaultGift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CardNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("card_number");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("MemoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("memory_id");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -2438,11 +2558,16 @@ namespace Amori.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_user_settings_user_id");
+                    b.HasIndex("MemoryId");
 
-                    b.ToTable("user_settings", (string)null);
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_vault_gifts_user_id");
+
+                    b.HasIndex("UserId", "MemoryId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_vault_gifts_user_id_memory_id");
+
+                    b.ToTable("vault_gifts", (string)null);
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.VoiceNote", b =>
@@ -3377,6 +3502,25 @@ namespace Amori.Api.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VaultGift", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.Memory", "Memory")
+                        .WithMany()
+                        .HasForeignKey("MemoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Amori.Api.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Memory");
 
                     b.Navigation("User");
                 });

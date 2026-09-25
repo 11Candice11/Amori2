@@ -4,9 +4,8 @@
  * Every card is wired to real backend data via useTogether:
  *   1. Header             — couple label + next important-date countdown
  *   2. Shared calendar    — real calendar events + important dates for the month
- *   3. Anniversary beacon  — the soonest upcoming important date
- *   4. Shared collections  — real bucket list (with add/complete) + wishlist
- *   5. Private repositories — the real shared wishlist summary
+ *   3. Shared collections  — real bucket list + to-do list (with add/complete)
+ *   4. Private repositories — the real shared wishlist + date ideas summaries
  *
  * Writes (add bucket item, complete bucket item, create calendar event) hit
  * the API and refresh. The screen refetches on focus so items added on the
@@ -15,6 +14,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -28,10 +28,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import type { MainTabParamList } from '../../../navigation/types';
 import {
-  AnniversaryBeaconCard,
   MemoriesCard,
   PrivateRepositories,
   SharedCalendarCard,
@@ -43,6 +44,7 @@ import {
 import { useTogether } from '../hooks/useTogether';
 import { togetherService } from '../services/togetherService';
 import type { BucketListItemResponse } from '../types/together.types';
+import { useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'TogetherHome'>;
 
@@ -59,7 +61,13 @@ export function TogetherScreen() {
   const { refresh } = together;
 
   const [savingBucket, setSavingBucket] = useState(false);
+  const [savingTodo, setSavingTodo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  /** Id of a list row with an action (toggle/delete) in flight. */
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
+
+  // Shared with Check-in and Desk — driven by today's mood check-in.
+  const backgroundImage = useMoodBackground();
 
   // Refetch whenever the screen regains focus (e.g. after adding an event on
   // the pushed compose screen). The stack keeps this screen mounted.
@@ -88,9 +96,11 @@ export function TogetherScreen() {
       setSavingBucket(true);
       try {
         await togetherService.createBucketListItem(title);
+        showSuccess('Created!');
         refresh();
       } catch {
-        // Surfaced silently for now; the input keeps the text on failure.
+        // The input keeps the text on failure so the user can retry.
+        showError('Sorry that failed :(');
       } finally {
         setSavingBucket(false);
       }
@@ -98,18 +108,56 @@ export function TogetherScreen() {
     [refresh],
   );
 
-  const handleToggleBucketComplete = useCallback(
-    async (item: BucketListItemResponse) => {
-      // Backend /complete only completes; don't call it for done items.
-      if (item.isCompleted) return;
+  const handleAddTodoItem = useCallback(
+    async (title: string) => {
+      setSavingTodo(true);
       try {
-        await togetherService.completeBucketListItem(item.id);
+        await togetherService.createTodoItem(title);
+        showSuccess('Created!');
         refresh();
       } catch {
-        // no-op; a refresh will reconcile state
+        // The input keeps the text on failure so the user can retry.
+        showError('Sorry that failed :(');
+      } finally {
+        setSavingTodo(false);
       }
     },
     [refresh],
+  );
+
+  // The /complete endpoint toggles completion both ways, so the same handler
+  // marks an item done or un-does an accidental tick. Shared by both lists.
+  const handleToggleComplete = useCallback(
+    async (item: BucketListItemResponse) => {
+      if (busyItemId) return;
+      setBusyItemId(item.id);
+      try {
+        await togetherService.toggleBucketListItemComplete(item.id);
+        refresh();
+      } catch {
+        // no-op; a refresh will reconcile state
+      } finally {
+        setBusyItemId(null);
+      }
+    },
+    [busyItemId, refresh],
+  );
+
+  const handleDeleteItem = useCallback(
+    async (item: BucketListItemResponse) => {
+      if (busyItemId) return;
+      setBusyItemId(item.id);
+      try {
+        await togetherService.deleteBucketListItem(item.id);
+        showSuccess('Deleted!');
+        refresh();
+      } catch {
+        showError('Sorry that failed :(');
+      } finally {
+        setBusyItemId(null);
+      }
+    },
+    [busyItemId, refresh],
   );
 
   const handlePrevMonth = useCallback(() => {
@@ -121,15 +169,25 @@ export function TogetherScreen() {
   }, [together]);
 
   const handleAddEvent = useCallback(() => {
+    // Default to today when today is in view, otherwise the 1st of the month
+    // the user is actually looking at.
+    const now = new Date();
+    const inCurrentMonth =
+      now.getFullYear() === together.year && now.getMonth() === together.month;
     navigation.navigate('AddCalendarEvent', {
-      // Default the compose form's date to the 1st of the visible month.
-      date: isoForDay(together.year, together.month, 1),
+      date: isoForDay(
+        together.year,
+        together.month,
+        inCurrentMonth ? now.getDate() : 1,
+      ),
     });
   }, [navigation, together.year, together.month]);
 
+  // Tapping a day opens the day view (that day's events), from which the user
+  // can add an event — the same shape as the iPhone calendar.
   const handleSelectDay = useCallback(
     (day: number) => {
-      navigation.navigate('AddCalendarEvent', {
+      navigation.navigate('CalendarDay', {
         date: isoForDay(together.year, together.month, day),
       });
     },
@@ -138,6 +196,10 @@ export function TogetherScreen() {
 
   const handleOpenWishlist = useCallback(() => {
     navigation.navigate('Wishlist');
+  }, [navigation]);
+
+  const handleOpenDateIdeas = useCallback(() => {
+    navigation.navigate('DateIdeas');
   }, [navigation]);
 
   const handleOpenMemories = useCallback(() => {
@@ -155,22 +217,29 @@ export function TogetherScreen() {
   // ── Initial loading state ──────────────────────────────────────────────────
   if (together.loading && !together.coupleLabel) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={false} />
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.gold} size="large" />
-        </View>
-      </SafeAreaView>
+      <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+        <View style={styles.scrim} />
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <StatusBar barStyle="light-content" backgroundColor={colors.background} translucent={false} />
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.gold} size="large" />
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={colors.background}
-        translucent={false}
-      />
+    <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+      <View style={styles.scrim} />
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={colors.background}
+          translucent={false}
+        />
+
+      <AppHeader title="Together" bordered={false} style={styles.headerTransparent} />
 
       <ScrollView
         style={styles.scroll}
@@ -199,18 +268,18 @@ export function TogetherScreen() {
           onSelectDay={handleSelectDay}
         />
 
-        <AnniversaryBeaconCard
-          dates={together.importantDates}
-          onAddDate={handleAddEvent}
-        />
-
         <SharedCollections
           bucketList={together.bucketList}
-          wishlist={together.wishlist}
+          todoList={together.todoList}
           loading={together.loading}
-          saving={savingBucket}
+          saving={savingBucket || savingTodo}
+          busyId={busyItemId}
           onAddBucketItem={handleAddBucketItem}
-          onToggleBucketComplete={handleToggleBucketComplete}
+          onAddTodoItem={handleAddTodoItem}
+          onToggleBucketComplete={handleToggleComplete}
+          onToggleTodoComplete={handleToggleComplete}
+          onDeleteBucketItem={handleDeleteItem}
+          onDeleteTodoItem={handleDeleteItem}
         />
 
         <MemoriesCard
@@ -220,21 +289,33 @@ export function TogetherScreen() {
 
         <PrivateRepositories
           wishlist={together.wishlist}
+          dateIdeas={together.dateIdeas}
           onOpenWishlist={handleOpenWishlist}
+          onOpenDateIdeas={handleOpenDateIdeas}
         />
 
         {together.error ? <Text style={styles.error}>{together.error}</Text> : null}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  background: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(6, 18, 10, 0.45)',
+  },
+  headerTransparent: { backgroundColor: 'transparent' },
+  safe: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   scroll: {
     flex: 1,

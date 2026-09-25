@@ -17,4 +17,6 @@ export type SplittingStackParamList = {
   SafeTransition: { flow?: SplittingFlowState } | undefined;
   PartnerDispatch: { flow?: SplittingFlowState } | undefined;
   SanctuaryJournal: { flow?: SplittingFlowState } | undefined;
+  /** Read-only record of past grounding sessions — not part of the flow itself. */
+  SplittingHistory: undefined;
 };

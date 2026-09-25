@@ -5,9 +5,10 @@
  * Fully backend-driven, no mocks: milestone events (first conversation, first
  * date, anniversary, trips, custom moments) are shown oldest → newest as a
  * vertical timeline with a connecting rail, an emoji marker per type, the event
- * date, title, optional location/note and who recorded it. A floating button
- * opens the AddTimelineEvent compose screen. The event creator can delete their
- * own milestones with a long-press.
+ * date, title, optional photos/location/note and who recorded it. Tapping a
+ * milestone flips it open in a detail popup (TimelineEventDetailModal); the
+ * creator can edit or delete their own milestones from there. A floating button
+ * opens the AddTimelineEvent compose screen.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -26,23 +27,21 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import type { TimelineStackParamList } from '../../../navigation/TimelineStackParamList';
 import { authService } from '../../../services/auth/authService';
 import type { TimelineEventResponse } from '../../../services/api/types';
 import { timelineService } from '../services/timelineService';
+import { openInMaps } from '../../../services/geocoding/openInMaps';
+import { resolveMediaUrl } from '../../../services/media/mediaUrl';
+import { PhotoCarousel } from '../../memories/components/PhotoCarousel';
+import { TimelineEventDetailModal } from '../components/TimelineEventDetailModal';
 import { TIMELINE_EVENT_EMOJI, TIMELINE_EVENT_LABELS } from '../types/timeline.types';
 
 type Nav = NativeStackNavigationProp<TimelineStackParamList, 'TimelineHome'>;
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
-
-function BackIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M15 18l-6-6 6-6" stroke={colors.neutral} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
 
 function PlusIcon({ color = colors.ctaText }: { color?: string }) {
   return (
@@ -60,6 +59,16 @@ function dayOf(iso: string): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
+/** True when an event has usable map coordinates. */
+function hasCoords(e: TimelineEventResponse): boolean {
+  return e.latitude != null && e.longitude != null;
+}
+
+/** Loadable photo URLs for a milestone (skips entries without a resolved URL). */
+function photoUrls(e: TimelineEventResponse): string[] {
+  return e.photos.filter((p) => !!p.url).map((p) => resolveMediaUrl(p.url));
+}
+
 /** "12 August 2026" from a "YYYY-MM-DD" event date. */
 function formatEventDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
@@ -74,14 +83,14 @@ function formatEventDate(iso: string): string {
 function TimelineItem({
   item,
   isLast,
-  canDelete,
-  onDelete,
+  onOpen,
 }: {
   item: TimelineEventResponse;
   isLast: boolean;
-  canDelete: boolean;
-  onDelete: (e: TimelineEventResponse) => void;
+  onOpen: (e: TimelineEventResponse) => void;
 }) {
+  const photos = photoUrls(item);
+
   return (
     <View style={styles.item}>
       <View style={styles.rail}>
@@ -91,10 +100,10 @@ function TimelineItem({
         {isLast ? null : <View style={styles.line} />}
       </View>
       <Pressable
-        style={styles.card}
-        onLongPress={canDelete ? () => onDelete(item) : undefined}
-        accessibilityRole={canDelete ? 'button' : undefined}
-        accessibilityLabel={canDelete ? `${item.title}. Long-press to delete.` : item.title}
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+        onPress={() => onOpen(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Open milestone ${item.title}`}
       >
         <View style={styles.cardTop}>
           <View style={styles.badge}>
@@ -103,11 +112,33 @@ function TimelineItem({
           <Text style={styles.date}>{formatEventDate(item.eventDate)}</Text>
         </View>
         <Text style={styles.title}>{item.title}</Text>
+
+        {photos.length > 0 ? (
+          <View style={styles.carouselWrap}>
+            <PhotoCarousel uris={photos} height={180} />
+          </View>
+        ) : null}
+
         {item.description ? (
           <Text style={styles.desc}>{item.description}</Text>
         ) : null}
         <View style={styles.cardMeta}>
-          {item.location ? <Text style={styles.location}>📍 {item.location}</Text> : null}
+          {item.location ? (
+            hasCoords(item) ? (
+              <Pressable
+                onPress={() =>
+                  openInMaps(item.latitude as number, item.longitude as number, item.location)
+                }
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.location} in Maps`}
+              >
+                <Text style={[styles.location, styles.locationLink]}>📍 {item.location}</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.location}>📍 {item.location}</Text>
+            )
+          ) : null}
           <Text style={styles.byLine}>by {item.createdByName}</Text>
         </View>
       </Pressable>
@@ -124,6 +155,9 @@ export function TimelineScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The milestone whose detail popup is open (null = closed).
+  const [selected, setSelected] = useState<TimelineEventResponse | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -159,6 +193,27 @@ export function TimelineScreen() {
     [items],
   );
 
+  // Only the creator of a milestone may edit or delete it.
+  const canModifySelected = useMemo(
+    () => !!selected && !!meId && selected.createdByUserId === meId,
+    [selected, meId],
+  );
+
+  const openDetail = useCallback((e: TimelineEventResponse) => {
+    setSelected(e);
+    setDetailVisible(true);
+  }, []);
+
+  const closeDetail = useCallback(() => setDetailVisible(false), []);
+
+  const goEdit = useCallback(
+    (e: TimelineEventResponse) => {
+      setDetailVisible(false);
+      navigation.navigate('AddTimelineEvent', { eventId: e.id });
+    },
+    [navigation],
+  );
+
   const confirmDelete = useCallback((e: TimelineEventResponse) => {
     Alert.alert('Delete milestone', `Remove "${e.title}" from your timeline?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -166,11 +221,14 @@ export function TimelineScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
+          setDetailVisible(false);
           setItems((cur) => cur.filter((x) => x.id !== e.id));
           try {
             await timelineService.deleteEvent(e.id);
+            showSuccess('Deleted!');
           } catch {
             setItems((cur) => [...cur, e]);
+            showError('Sorry that failed :(');
           }
         },
       },
@@ -181,19 +239,7 @@ export function TimelineScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerKicker}>OUR TIMELINE</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader title="Our Timeline" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.center}>
@@ -235,8 +281,7 @@ export function TimelineScreen() {
                   key={e.id}
                   item={e}
                   isLast={i === chronological.length - 1}
-                  canDelete={meId != null && e.createdByUserId === meId}
-                  onDelete={confirmDelete}
+                  onOpen={openDetail}
                 />
               ))}
             </View>
@@ -257,6 +302,15 @@ export function TimelineScreen() {
           <Text style={styles.fabText}>Add milestone</Text>
         </Pressable>
       </View>
+
+      <TimelineEventDetailModal
+        visible={detailVisible}
+        event={selected}
+        canModify={canModifySelected}
+        onClose={closeDetail}
+        onEdit={goEdit}
+        onDelete={confirmDelete}
+      />
     </SafeAreaView>
   );
 }
@@ -319,6 +373,7 @@ const styles = StyleSheet.create({
   badgeText: { ...typography.label, color: colors.gold, fontSize: 10 },
   date: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 12 },
   title: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 17, marginTop: spacing.sm },
+  carouselWrap: { marginTop: spacing.sm },
   desc: { ...typography.body, color: colors.neutralMuted, fontSize: 14, marginTop: 6 },
   cardMeta: {
     flexDirection: 'row',
@@ -332,6 +387,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   location: { ...typography.bodySm, color: colors.neutralSubtle, fontSize: 12, flexShrink: 1 },
+  locationLink: { color: colors.gold, textDecorationLine: 'underline' },
   byLine: { ...typography.bodySm, color: colors.neutralSubtle, fontSize: 12 },
 
   emptyBlock: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },

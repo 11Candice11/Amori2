@@ -7,6 +7,10 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
 import { Button } from './DistractionUI';
 import { distractionService } from '../services/distractionService';
 
@@ -74,6 +78,7 @@ export function QuizComposer({
         placeholder="e.g. What's my go-to comfort meal?"
         placeholderTextColor={colors.neutralSubtle}
         multiline
+        inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
       />
 
       <Text style={[styles.label, { marginTop: spacing.md }]}>
@@ -94,6 +99,8 @@ export function QuizComposer({
             onChangeText={v => setOption(i, v)}
             placeholder={`Option ${i + 1}`}
             placeholderTextColor={colors.neutralSubtle}
+            returnKeyType="done"
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
           {options.length > 2 ? (
             <Pressable
@@ -134,6 +141,8 @@ export function QuizComposer({
           style={styles.actionBtn}
         />
       </View>
+
+      <KeyboardDoneAccessory />
     </View>
   );
 }

@@ -1,6 +1,13 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+// Firebase Cloud Messaging: reads android/app/google-services.json.
+// Only applied when that file is present — FCM push isn't wired up yet, so a
+// missing file must not break release builds. Drop a real google-services.json
+// into android/app/ (from the Firebase console) to enable push.
+if (file("google-services.json").exists()) {
+    apply plugin: "com.google.gms.google-services"
+}
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -110,6 +117,12 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "0.0.1"
+        // Google Maps API key for react-native-maps on Android. Set
+        // GOOGLE_MAPS_API_KEY in android/gradle.properties (kept out of git).
+        // iOS uses Apple Maps and needs no key.
+        manifestPlaceholders = [
+            googleMapsApiKey: (findProperty('GOOGLE_MAPS_API_KEY') ?: "")
+        ]
     }
     signingConfigs {
         debug {

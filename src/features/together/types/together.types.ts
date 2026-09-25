@@ -49,6 +49,19 @@ export interface CreateCalendarEventRequest {
   isShared?: boolean;
 }
 
+export interface UpdateCalendarEventRequest {
+  title?: string | null;
+  description?: string | null;
+  /** "YYYY-MM-DD" */
+  eventDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  reminderEnabled?: boolean | null;
+  reminderMinutesBefore?: number | null;
+  isShared?: boolean | null;
+}
+
 // ─── Important dates ────────────────────────────────────────────────────────
 
 export interface ImportantDateResponse {
@@ -72,14 +85,20 @@ export interface ImportantDateResponse {
 
 // ─── Bucket list ──────────────────────────────────────────────────────────────
 
-/** Backend BucketListCategory (integer enum). */
+/**
+ * Backend BucketListCategory. The API serializes enums as their string names
+ * (JsonStringEnumConverter is registered globally), so responses carry the
+ * name, e.g. "ToDoList". On write the API accepts either the name or the
+ * numeric value.
+ */
 export type BucketListCategory =
   | 'Travel'    // 1
   | 'Adventure' // 2
   | 'Food'      // 3
   | 'Romantic'  // 4
   | 'Personal'  // 5
-  | 'Fun';      // 6
+  | 'Fun'       // 6
+  | 'ToDoList'; // 7
 
 export const BUCKET_LIST_CATEGORY_VALUES: Record<BucketListCategory, number> = {
   Travel: 1,
@@ -88,16 +107,7 @@ export const BUCKET_LIST_CATEGORY_VALUES: Record<BucketListCategory, number> = {
   Romantic: 4,
   Personal: 5,
   Fun: 6,
-};
-
-/** Numeric → label, for decoding responses (backend serializes enums as ints). */
-export const BUCKET_LIST_CATEGORY_LABELS: Record<number, BucketListCategory> = {
-  1: 'Travel',
-  2: 'Adventure',
-  3: 'Food',
-  4: 'Romantic',
-  5: 'Personal',
-  6: 'Fun',
+  ToDoList: 7,
 };
 
 export interface BucketListItemResponse {
@@ -108,8 +118,8 @@ export interface BucketListItemResponse {
   title: string;
   description: string | null;
   location: string | null;
-  /** Serialized as the integer enum value. */
-  category: number;
+  /** Serialized as the string enum name, e.g. "ToDoList". */
+  category: BucketListCategory;
   /** "YYYY-MM-DD" */
   targetDate: string | null;
   notes: string | null;
@@ -168,4 +178,110 @@ export interface CreateWishlistItemRequest {
   url?: string | null;
   priority?: number;
   notes?: string | null;
+}
+
+export interface UpdateWishlistItemRequest {
+  name?: string | null;
+  description?: string | null;
+  imageKey?: string | null;
+  price?: number | null;
+  url?: string | null;
+  priority?: number;
+  notes?: string | null;
+  isPurchased?: boolean;
+  isFavorite?: boolean;
+}
+
+// ─── Date ideas (Date Planner) ────────────────────────────────────────────────
+//
+// Backed by the dedicated Date Planner API (/api/dates), which stores a richer
+// DateIdea entity than the bucket list (category, estimated cost, duration).
+// Source: backend/Amori.Api/Features/DatePlanner/DTOs
+
+/** Backend DateCategory (integer enum). */
+export type DateCategory =
+  | 'Romantic'    // 1
+  | 'AtHome'      // 2
+  | 'GoingOut'    // 3
+  | 'Adventure'   // 4
+  | 'Food'        // 5
+  | 'CheapOrFree' // 6
+  | 'Weekend'     // 7
+  | 'Holiday';    // 8
+
+export const DATE_CATEGORY_VALUES: Record<DateCategory, number> = {
+  Romantic: 1,
+  AtHome: 2,
+  GoingOut: 3,
+  Adventure: 4,
+  Food: 5,
+  CheapOrFree: 6,
+  Weekend: 7,
+  Holiday: 8,
+};
+
+/** Numeric → label, for decoding responses (backend serializes enums as ints). */
+export const DATE_CATEGORY_LABELS: Record<number, DateCategory> = {
+  1: 'Romantic',
+  2: 'AtHome',
+  3: 'GoingOut',
+  4: 'Adventure',
+  5: 'Food',
+  6: 'CheapOrFree',
+  7: 'Weekend',
+  8: 'Holiday',
+};
+
+/** Human-friendly category labels for display. */
+export const DATE_CATEGORY_DISPLAY: Record<DateCategory, string> = {
+  Romantic: 'Romantic',
+  AtHome: 'At home',
+  GoingOut: 'Going out',
+  Adventure: 'Adventure',
+  Food: 'Food',
+  CheapOrFree: 'Cheap or free',
+  Weekend: 'Weekend',
+  Holiday: 'Holiday',
+};
+
+export interface DateIdeaResponse {
+  id: string;
+  relationshipId: string;
+  createdByUserId: string;
+  createdByName: string;
+  title: string;
+  description: string | null;
+  /** Serialized as the integer enum value. */
+  category: number;
+  location: string | null;
+  estimatedCost: number | null;
+  durationMinutes: number | null;
+  notes: string | null;
+  isFavorite: boolean;
+  isCompleted: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface CreateDateIdeaRequest {
+  title: string;
+  description?: string | null;
+  category: number;
+  location?: string | null;
+  estimatedCost?: number | null;
+  durationMinutes?: number | null;
+  notes?: string | null;
+}
+
+export interface UpdateDateIdeaRequest {
+  title?: string | null;
+  description?: string | null;
+  category?: number;
+  location?: string | null;
+  estimatedCost?: number | null;
+  durationMinutes?: number | null;
+  notes?: string | null;
+  isFavorite?: boolean;
+  isCompleted?: boolean;
 }

@@ -7,7 +7,7 @@
  *   3. Stats row      — days together | days till anniversary
  *   4. Partner state  — partner's most recent mood
  *   5. Check-in row   — record today's state
- *   6. Attunement 2×2 — Send hug · Distraction · Log Incident · Not okay
+ *   6. Attunement 2×2 — Send hug · Distraction · Log Incident · Shared
  *   7. Daily Artifact — sealed "Mystery Booster Pack"
  *
  * All data comes from useDashboard() which calls the backend in parallel.
@@ -27,21 +27,17 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../../navigation/types';
 
 import { colors, spacing } from '../../../shared/theme';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { useDayChange } from '../../../hooks/useDayChange';
 import { SanctuaryDashboard } from '../components/SanctuaryDashboard';
 import { ArtifactRevealModal } from '../components/ArtifactRevealModal';
 import { useDashboard } from '../hooks/useDashboard';
+import { splittingService } from '../../splitting/services/splittingService';
 import { artifactStore } from '../services/artifactStore';
-
-// Cozy backgrounds for the dashboard. One is picked at random each time the
-// app launches (evaluated once at module load) so the sanctuary feels fresh
-// every session while staying stable during a single run.
-const BACKGROUND_IMAGES = [
-  require('../../../../images/cozy.png'),
-  require('../../../../images/fireplace.png'),
-  require('../../../../images/forest.png'),
-];
-const backgroundImage =
-  BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)];
+import { dailyGiftService } from '../services/dailyGiftService';
+import { vaultService } from '../../vault/services/vaultService';
+import type { DailyGift } from '../services/dailyGiftService';
+import { getDashboardBackground } from '../../../utils/backgroundImages';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,17 +104,41 @@ export function HomeScreen() {
   // is persisted per-day on device, so it survives app relaunches and resets
   // when a new day's artifact becomes available.
   const [artifactOpened, setArtifactOpened] = useState(false);
+  // The daily gift loaded from memories
+  const [dailyGift, setDailyGift] = useState<DailyGift | null>(null);
+  const [loadingGift, setLoadingGift] = useState(false);
+  // Memory IDs already kept in the vault. A gift for one of these can't be
+  // saved again, so the reveal shows "Already in Vault" instead of "Save".
+  const [savedMemoryIds, setSavedMemoryIds] = useState<Set<string>>(new Set());
 
-  // Hydrate the opened flag from local storage on mount.
-  useEffect(() => {
-    let active = true;
-    artifactStore.isOpenedToday().then((opened) => {
-      if (active && opened) setArtifactOpened(true);
-    });
-    return () => {
-      active = false;
-    };
+  // Load the opened flag and today's gift. Both are day-scoped: at midnight the
+  // opened flag resolves to false again and the gift re-rolls, so re-running
+  // this on a new day gives a fresh, sealed artifact.
+  const loadArtifact = useCallback(async () => {
+    try {
+      const [opened, gift, savedGifts] = await Promise.all([
+        artifactStore.isOpenedToday(),
+        dailyGiftService.getTodaysGift(),
+        vaultService.getAll().catch(() => []),
+      ]);
+      setArtifactOpened(opened);
+      setDailyGift(gift);
+      setSavedMemoryIds(new Set(savedGifts.map((g) => g.memoryId)));
+    } catch (error) {
+      console.error('Failed to load artifact data:', error);
+    }
   }, []);
+
+  // Hydrate on mount.
+  useEffect(() => {
+    void loadArtifact();
+  }, [loadArtifact]);
+
+  // Reset the artifact when the local day rolls over — the daily gift becomes
+  // available again, so the card flips back to "Tear open".
+  useDayChange(() => {
+    void loadArtifact();
+  });
 
   // Refresh the dashboard whenever Home regains focus (e.g. returning from a
   // check-in). Tab screens stay mounted, so without this the mood shown here
@@ -152,6 +172,11 @@ export function HomeScreen() {
     [dashboard.relationshipDays],
   );
 
+  // The dashboard has its own artwork — it is not mood-driven. Only Check-in,
+  // Together and Desk follow the mood. Picked once per mount so re-renders
+  // (refresh, partner updates) don't swap the image mid-scroll.
+  const [backgroundImage] = useState(() => getDashboardBackground());
+
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleCheckIn = useCallback(() => {
     navigation.navigate('CheckIn');
@@ -169,32 +194,119 @@ export function HomeScreen() {
     navigation.navigate('Desk', { screen: 'LogIncident' });
   }, [navigation]);
 
-  const handleNotOkay = useCallback(() => {
-    // "Not okay" opens the grounding / "I'm splitting" sanctuary flow.
-    navigation.navigate('Splitting', { screen: 'SplittingIntro' });
+  const handleSOS = useCallback(() => {
+    // Navigate to Splitting (emergency) flow
+    navigation.navigate('Splitting', { screen: 'SplittingIntro' } as never);
   }, [navigation]);
 
-  const handleOpenArtifact = useCallback(() => {
+  const handleShared = useCallback(() => {
+    // "Shared" navigates to the Together tab.
+    navigation.navigate('Together');
+  }, [navigation]);
+
+  // Minutes added when the user chooses to extend a finished space window.
+  const SPACE_EXTEND_MINUTES = 15;
+
+  const spaceSessionId = dashboard.spaceWindow?.sessionId ?? null;
+
+  // End the current user's own space window early (the "×" on the card). The
+  // session is completed on the backend so it stops showing on both dashboards.
+  const handleEndSpace = useCallback(async () => {
+    if (!spaceSessionId) return;
+    try {
+      await splittingService.completeSession(spaceSessionId);
+      refresh();
+    } catch (error) {
+      console.error('Failed to end space window:', error);
+      showError('Could not end your space. Please try again.');
+    }
+  }, [spaceSessionId, refresh]);
+
+  // Extend a finished (or nearly-finished) space window by a fixed amount so
+  // the person can keep taking space without starting over.
+  const handleExtendSpace = useCallback(async () => {
+    if (!spaceSessionId) return;
+    const newEndsAt = new Date(Date.now() + SPACE_EXTEND_MINUTES * 60_000).toISOString();
+    try {
+      await splittingService.updateSession(spaceSessionId, { spaceEndsAt: newEndsAt });
+      refresh();
+    } catch (error) {
+      console.error('Failed to extend space window:', error);
+      showError('Could not extend your space. Please try again.');
+    }
+  }, [spaceSessionId, refresh]);
+
+  const handleOpenArtifact = useCallback(async () => {
+    // If gift isn't loaded yet, load it now
+    if (!dailyGift && !loadingGift) {
+      setLoadingGift(true);
+      try {
+        const gift = await dailyGiftService.getTodaysGift();
+        setDailyGift(gift);
+      } catch (error) {
+        console.error('Failed to load daily gift:', error);
+      } finally {
+        setLoadingGift(false);
+      }
+    }
     setArtifactOpen(true);
-  }, []);
+  }, [dailyGift, loadingGift]);
 
   const handleCloseArtifact = useCallback(() => {
     setArtifactOpen(false);
-    // Opening the pack is a one-time action for the day. Persist it so the
-    // "opened" state survives app relaunches.
-    setArtifactOpened(true);
-    void artifactStore.markOpenedToday();
+    // Don't automatically set opened here - only when user explicitly saves to vault
   }, []);
 
   const handleViewVault = useCallback(() => {
     navigation.navigate('Vault');
   }, [navigation]);
 
-  const handleSaveToVault = useCallback(() => {
-    // TODO: persist the surprise to the Hearth Vault via the vault service
-    // once the backend endpoint is wired up. For now the reveal modal shows a
-    // local "Saved" confirmation.
-  }, []);
+  const handleOpenNotifications = useCallback(() => {
+    navigation.navigate('Notifications');
+  }, [navigation]);
+
+  const handleSaveToVault = useCallback(async () => {
+    if (!dailyGift) {
+      console.warn('No daily gift to save');
+      return;
+    }
+
+    // Guard against re-saving a memory that's already in the vault. The reveal
+    // disables the button in this case, but this keeps the rule enforced even
+    // if it's called some other way.
+    if (savedMemoryIds.has(dailyGift.memory.id)) {
+      return;
+    }
+
+    try {
+      // Save the memory to the vault. The server reads the gift's details from
+      // the memory itself, so only the reference goes over the wire.
+      await vaultService.save({
+        memoryId: dailyGift.memory.id,
+        cardNumber: dailyGift.cardNumber,
+      });
+
+      // Remember it's now in the vault so it can't be saved again this session.
+      setSavedMemoryIds((prev) => new Set(prev).add(dailyGift.memory.id));
+      // Only flip the dashboard card to "View vault" once the save is confirmed.
+      setArtifactOpened(true);
+      void artifactStore.markOpenedToday();
+      showSuccess('Saved!');
+    } catch (error) {
+      // Leave the card in its unopened state so the user can retry — a failed
+      // save must not make it look like a gift was kept.
+      console.error('Failed to save gift to vault:', error);
+      showError('Sorry that failed :(');
+      throw error;
+    }
+  }, [dailyGift, savedMemoryIds]);
+
+  // Whether today's gift references a memory the user has already kept. Such a
+  // gift can't be saved again, so the reveal shows it as already in the vault.
+  const giftAlreadySaved = useMemo(
+    () => (dailyGift ? savedMemoryIds.has(dailyGift.memory.id) : false),
+    [dailyGift, savedMemoryIds],
+  );
 
   // ── Loading state ────────────────────────────────────────────────────────
   if (dashboard.loading && !dashboard.partnerName) {
@@ -230,7 +342,6 @@ export function HomeScreen() {
           <SanctuaryDashboard
             userName={dashboard.userName}
             partnerName={dashboard.partnerName}
-            isPartnerOnline={dashboard.isPartnerOnline}
             relationshipDays={dashboard.relationshipDays}
             daysTillAnniversary={anniversaryDays}
             timeOfDay={timeOfDay}
@@ -239,15 +350,20 @@ export function HomeScreen() {
             userMoodLabel={userMoodLabel}
             spaceWindowOwner={dashboard.spaceWindow?.owner ?? null}
             spaceWindowEndsAt={dashboard.spaceWindow?.spaceEndsAt ?? null}
+            canControlSpaceWindow={Boolean(spaceSessionId)}
+            onEndSpace={handleEndSpace}
+            onExtendSpace={handleExtendSpace}
             hasMoodToday={dashboard.hasMoodToday}
             onCheckIn={handleCheckIn}
             onHug={handleHug}
             onDistraction={handleDistraction}
             onLogIncident={handleLogIncident}
-            onNotOkay={handleNotOkay}
+            onSOS={handleSOS}
             onOpenArtifact={handleOpenArtifact}
             artifactOpened={artifactOpened}
             onViewVault={handleViewVault}
+            onOpenNotifications={handleOpenNotifications}
+            cardNumber={dailyGift?.cardNumber ?? null}
           />
 
           {/* Bottom breathing room above nav bar */}
@@ -259,6 +375,15 @@ export function HomeScreen() {
           visible={artifactOpen}
           onClose={handleCloseArtifact}
           onSaveToVault={handleSaveToVault}
+          badge="SERIES 01 · REVEALED"
+          title={dailyGift?.title ?? "Your Daily Memory"}
+          body={dailyGift?.body ?? "Loading your memory gift..."}
+          cardNumber={dailyGift?.cardNumber ?? 1}
+          alreadySaved={giftAlreadySaved}
+          media={dailyGift?.memory?.media}
+          latitude={dailyGift?.memory?.latitude}
+          longitude={dailyGift?.memory?.longitude}
+          location={dailyGift?.memory?.location}
         />
       </SafeAreaView>
     </ImageBackground>

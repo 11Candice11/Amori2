@@ -15,7 +15,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
 import { friendlyError } from '../utils/errorMessages';
 
@@ -55,9 +59,13 @@ export function IncidentReviewScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader title="Post-Incident Review" subtitle="Retrospective & Wisdom" onBack={() => navigation.goBack()} />
+      <AppHeader title="Post-Incident Review" subtitle="Retrospective & Wisdom" onBack={() => navigation.goBack()} showNotificationBell={false} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
           <Text style={styles.intro}>
             Reflecting together strengthens your relationship. Answer whichever questions feel right.
           </Text>
@@ -79,6 +87,7 @@ export function IncidentReviewScreen() {
                 numberOfLines={3}
                 textAlignVertical="top"
                 maxLength={2000}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
               />
             </View>
           ))}
@@ -98,6 +107,8 @@ export function IncidentReviewScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

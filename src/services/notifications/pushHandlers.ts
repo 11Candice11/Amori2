@@ -21,10 +21,42 @@ export interface PushHandlerCallbacks {
    * these with data.type === "Incident" and data.referenceId === <incidentId>.
    */
   onOpenIncident?: (incidentId: string) => void;
+  /**
+   * Called when the user taps a partner link-request notification. Opens the
+   * Link Partner screen so the request can be accepted or declined. Backend
+   * sends these with data.type === "PartnerLinkRequest" and
+   * data.referenceId === <invitationId>.
+   */
+  onOpenPartnerLink?: () => void;
+  /**
+   * Called when the user taps a "gift received" notification. Opens their
+   * Hearth Vault, where the gift now lives. Backend sends these with
+   * data.type === "Gift" and data.referenceId === <memoryId>.
+   */
+  onOpenGift?: () => void;
+}
+
+/**
+ * True when the Expo native runtime is present.
+ *
+ * Every Expo module goes through expo-modules-core, which reads the native
+ * runtime off `globalThis.expo`. That runtime only exists when the platform
+ * project is wired up for Expo modules — iOS is (`use_expo_modules!` in the
+ * Podfile), but Android is NOT (no `useExpoModules()` in settings.gradle and a
+ * plain MainApplication without ApplicationLifecycleDispatcher). On Android the
+ * import therefore fails with "Cannot read property 'NativeModule' of
+ * undefined", which is a fatal error rather than a catchable require failure.
+ *
+ * Checking first keeps the notification layer a genuine no-op there, which is
+ * what the rest of this module already assumes.
+ */
+export function isExpoRuntimeAvailable(): boolean {
+  return typeof (globalThis as { expo?: unknown }).expo !== 'undefined';
 }
 
 /** Lazily load expo-notifications; returns null if not linked/available. */
 function loadNotifications(): typeof import('expo-notifications') | null {
+  if (!isExpoRuntimeAvailable()) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-notifications') as typeof import('expo-notifications');
@@ -47,6 +79,16 @@ function extractIncidentId(data: NotificationData | undefined): string | null {
   return type === 'Incident' && ref ? ref : null;
 }
 
+function isPartnerLinkRequest(data: NotificationData | undefined): boolean {
+  if (!data) return false;
+  return data.type === 'PartnerLinkRequest';
+}
+
+function isGift(data: NotificationData | undefined): boolean {
+  if (!data) return false;
+  return data.type === 'Gift';
+}
+
 /** Route a tapped notification's data payload to the right callback. */
 function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerCallbacks): void {
   const hugId = extractHugId(data);
@@ -57,6 +99,14 @@ function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerC
   const incidentId = extractIncidentId(data);
   if (incidentId) {
     callbacks.onOpenIncident?.(incidentId);
+    return;
+  }
+  if (isPartnerLinkRequest(data)) {
+    callbacks.onOpenPartnerLink?.();
+    return;
+  }
+  if (isGift(data)) {
+    callbacks.onOpenGift?.();
   }
 }
 

@@ -9,6 +9,7 @@
  *   PATCH  /api/timeline/{eventId}           → edit a milestone
  *   DELETE /api/timeline/{eventId}           → delete a milestone
  *   POST   /api/timeline/{eventId}/media     → append a photo key to an event
+ *   DELETE /api/timeline/{eventId}/media     → remove a photo key from an event
  */
 import { api } from '../../../services/api/client';
 import type {
@@ -36,6 +37,8 @@ export const timelineService = {
       description: body.description?.trim() ? body.description.trim() : null,
       eventDate: body.eventDate,
       location: body.location?.trim() ? body.location.trim() : null,
+      latitude: body.latitude ?? null,
+      longitude: body.longitude ?? null,
       eventType: body.eventType ?? 'Custom',
       photoKeys: body.photoKeys ?? [],
     });
@@ -51,6 +54,8 @@ export const timelineService = {
     if (body.description !== undefined) payload.description = body.description;
     if (body.eventDate !== undefined) payload.eventDate = body.eventDate;
     if (body.location !== undefined) payload.location = body.location;
+    if (body.latitude !== undefined) payload.latitude = body.latitude;
+    if (body.longitude !== undefined) payload.longitude = body.longitude;
     if (body.eventType !== undefined) payload.eventType = body.eventType;
     return api.patch<TimelineEventResponse>(`/api/timeline/${eventId}`, payload);
   },
@@ -66,5 +71,12 @@ export const timelineService = {
     body: AddTimelineMediaRequest,
   ): Promise<TimelineEventResponse> {
     return api.post<TimelineEventResponse>(`/api/timeline/${eventId}/media`, body);
+  },
+
+  /** Remove a photo (by its storage key) from an existing milestone. */
+  removeMedia(eventId: string, photoKey: string): Promise<TimelineEventResponse> {
+    return api.delete<TimelineEventResponse>(
+      `/api/timeline/${eventId}/media?photoKey=${encodeURIComponent(photoKey)}`,
+    );
   },
 };

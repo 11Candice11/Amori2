@@ -2,31 +2,55 @@
  * MoodBreatheScreen — a guided breathing exercise reached from the mood
  * check-in confirmation when the user lands in a "High Unpleasant" state.
  *
- * Cadence: Inhale 5s · Hold 6s · Exhale 7s, repeated across several cycles.
+ * Cadence: Inhale 5s · Hold 4s · Exhale 4s, repeated across several cycles.
+ *
+ * Haptics: a gentle, frequent buzz runs *only* while breathing in, then the
+ * body is left still through the hold and exhale. The vibration is cancelled
+ * whenever the exercise pauses, completes, the screen loses focus, or unmounts,
+ * so a buzz can never outlive the view. Honours the user's vibration setting
+ * via the shared haptics helper.
+ *
  * Uses RN's built-in Animated (no animation library installed).
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, typography } from '../../../shared/theme';
+import { colors, spacing, typography, useThemeMode } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { cancelVibration, vibrate } from '../../../shared/haptics';
+import { useUserSetting } from '../../../shared/state/userSettingsStore';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'MoodBreathe'>;
+type Rt = RouteProp<MoodStackParamList, 'MoodBreathe'>;
 
 type Phase = { label: string; seconds: number };
 const PHASES: Phase[] = [
   { label: 'INHALE', seconds: 5 },
-  { label: 'HOLD', seconds: 6 },
-  { label: 'EXHALE', seconds: 7 },
+  { label: 'HOLD', seconds: 4 },
+  { label: 'EXHALE', seconds: 4 },
 ];
 const TOTAL_CYCLES = 4;
 const CIRCLE = 260;
 
+/**
+ * Gentle repeating buzz used through the inhale — a short pulse with a slightly
+ * longer gap, looped, so it reads as small and frequent rather than one long
+ * vibration. Same shape as the other breathing screens.
+ */
+const INHALE_PATTERN = [0, 40, 60];
+
 export function MoodBreatheScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<Rt>();
+  const { setVariant } = useThemeMode();
+  // Read once so the value is captured; the vibrate helper also re-checks the
+  // preference on every call, so a mid-exercise toggle is still respected.
+  const vibrationEnabled = useUserSetting('vibrationEnabled');
 
   const [cycle, setCycle] = useState(1);
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -47,6 +71,44 @@ export function MoodBreatheScreen() {
   useEffect(() => {
     cycleRef.current = cycle;
   }, [cycle]);
+
+  // ── Haptics ────────────────────────────────────────────────────────────────
+  // Buzz through the inhale, fall silent for the hold and exhale. Re-cued on
+  // every phase change (and whenever running/done flips) so it always matches
+  // what the circle is doing.
+  const applyPhaseVibration = useCallback(
+    (label: string, isRunning: boolean, isDone: boolean) => {
+      if (!isRunning || isDone) {
+        cancelVibration();
+        return;
+      }
+      if (label === 'INHALE') {
+        // repeat=true loops the short pattern → small, frequent pulses.
+        vibrate(INHALE_PATTERN, true);
+      } else {
+        cancelVibration();
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    applyPhaseVibration(phase.label, running, done);
+    // vibrationEnabled is included so flipping the setting mid-inhale takes
+    // effect: turning it off cancels, turning it on re-cues the current phase.
+  }, [phase.label, running, done, vibrationEnabled, applyPhaseVibration]);
+
+  // Belt-and-braces: cancel any buzz when the screen unmounts.
+  useEffect(() => {
+    return () => cancelVibration();
+  }, []);
+
+  // Cancel the buzz if the user navigates away while it's still running (e.g.
+  // the back button or a tab switch), so it never outlives the view.
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () => cancelVibration());
+    return unsub;
+  }, [navigation]);
 
   // Animate the circle: grow on inhale, hold, shrink on exhale.
   useEffect(() => {
@@ -89,22 +151,25 @@ export function MoodBreatheScreen() {
     };
   }, [running, done]);
 
-  const goHome = () => navigation.getParent()?.navigate('Home');
+  const goHome = () => {
+    // Stop any buzz before we leave, then apply the deferred mood theme. The
+    // theme switch remounts the navigator, so it must happen as we exit to
+    // Home rather than on entry (which would drop the user on the dashboard).
+    cancelVibration();
+    const applyTheme = route.params?.applyTheme;
+    if (applyTheme) setVariant(applyTheme);
+    navigation.getParent()?.navigate('Home');
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
-        <Text style={styles.eyebrow}>Breathe</Text>
-      </View>
+      <AppHeader
+        title="Breathe"
+        onBack={() => {
+          cancelVibration();
+          navigation.goBack();
+        }}
+      />
 
       <View style={styles.body}>
         <Text style={styles.title}>Breathe with me</Text>
@@ -131,7 +196,7 @@ export function MoodBreatheScreen() {
           </Animated.View>
         </View>
 
-        <Text style={styles.cadence}>5s Inhale · 6s Hold · 7s Exhale</Text>
+        <Text style={styles.cadence}>5s Inhale · 4s Hold · 4s Exhale</Text>
       </View>
 
       <View style={styles.bottomBar}>

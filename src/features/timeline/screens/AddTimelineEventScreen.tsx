@@ -1,13 +1,18 @@
 /**
- * AddTimelineEventScreen — record a relationship milestone.
+ * AddTimelineEventScreen — record or edit a relationship milestone.
  *
- * POSTs a real /api/timeline event. The user picks a milestone type, a title,
- * an event date (YYYY-MM-DD), and optional description/location. On success we
- * pop back to the timeline, which refetches on focus.
+ * POSTs a real /api/timeline event, or PATCHes an existing one when an
+ * `eventId` route param is present. The user picks a milestone type, a title,
+ * an event date (YYYY-MM-DD), optional description/location, and optional
+ * photos. Photos are uploaded straight away (showing a local preview while the
+ * upload catches up), then attached to the milestone via
+ * POST /api/timeline/{id}/media. On success we pop back to the timeline, which
+ * refetches on focus.
  */
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,14 +23,30 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Svg, { Path } from 'react-native-svg';
-
+import {
+  launchImageLibrary,
+  type ImageLibraryOptions,
+  type ImagePickerResponse,
+  type MediaType,
+} from 'react-native-image-picker';
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import {
+  DateTimeField,
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+  LocationPicker,
+  toIsoDate,
+  type LocationValue,
+} from '../../../shared/components/inputs';
 import type { TimelineStackParamList } from '../../../navigation/TimelineStackParamList';
 import type { TimelineEventType } from '../../../services/api/types';
 import { timelineService } from '../services/timelineService';
+import { mediaService } from '../../../services/media/mediaService';
+import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import {
   TIMELINE_EVENT_EMOJI,
   TIMELINE_EVENT_LABELS,
@@ -33,82 +54,288 @@ import {
 } from '../types/timeline.types';
 
 type Nav = NativeStackNavigationProp<TimelineStackParamList, 'AddTimelineEvent'>;
+type AddTimelineEventRoute = RouteProp<TimelineStackParamList, 'AddTimelineEvent'>;
 
-function BackIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M15 18l-6-6 6-6" stroke={colors.neutral} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
+/**
+ * A photo the user picked. `previewUri` is the on-device file (or resolved URL
+ * for an already-attached photo) so the thumbnail shows immediately;
+ * `fileKey`/`photoKey` is what gets attached to the milestone.
+ */
+interface PickedPhoto {
+  id: string;
+  previewUri: string;
+  fileType?: string;
+  fileName?: string;
+  /** The storage key: present once uploaded (or for an existing photo). */
+  fileKey: string | null;
+  uploading: boolean;
+  failed: boolean;
+  errorMessage?: string;
 }
 
-/** Today as "YYYY-MM-DD" in local time. */
-function todayIso(): string {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-/** Validate a "YYYY-MM-DD" string represents a real calendar date. */
-function isValidIsoDate(value: string): boolean {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
-  if (!m) return false;
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const date = new Date(y, mo - 1, d);
-  return (
-    date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d
-  );
-}
+let photoIdSeq = 0;
 
 export function AddTimelineEventScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<AddTimelineEventRoute>();
+  // When an eventId is passed we're editing an existing milestone.
+  const editingId = route.params?.eventId ?? null;
+  const isEditing = editingId != null;
 
   const [eventType, setEventType] = useState<TimelineEventType>('FirstDate');
   const [title, setTitle] = useState('');
-  const [eventDate, setEventDate] = useState(todayIso());
+  const [eventDate, setEventDate] = useState<Date>(() => new Date());
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<LocationValue | null>(null);
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // While the existing milestone loads in edit mode.
+  const [loadingEvent, setLoadingEvent] = useState(isEditing);
+  // Photo keys already attached to the milestone being edited.
+  const [existingPhotoKeys, setExistingPhotoKeys] = useState<string[]>([]);
 
-  const dateValid = useMemo(() => isValidIsoDate(eventDate), [eventDate]);
-  const canSave = title.trim().length > 0 && dateValid && !saving;
+  // In edit mode, load the milestone once and prefill the form.
+  useEffect(() => {
+    if (!editingId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const e = await timelineService.getEvent(editingId);
+        if (cancelled) return;
+        setEventType(e.eventType);
+        setTitle(e.title);
+        const [y, m, d] = e.eventDate.split('-').map(Number);
+        if (y && m && d) setEventDate(new Date(y, m - 1, d));
+        setDescription(e.description ?? '');
+        if (e.location != null && e.latitude != null && e.longitude != null) {
+          setLocation({
+            location: e.location,
+            latitude: e.latitude,
+            longitude: e.longitude,
+          });
+        }
+        // Show the already-attached photos as previews (already have keys).
+        const attached: PickedPhoto[] = e.photos
+          .filter((p) => !!p.url)
+          .map((p) => ({
+            id: `existing-${p.photoKey}`,
+            previewUri: resolveMediaUrl(p.url),
+            fileKey: p.photoKey,
+            uploading: false,
+            failed: false,
+          }));
+        setPhotos(attached);
+        setExistingPhotoKeys(attached.map((p) => p.fileKey as string));
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not load this milestone.');
+        }
+      } finally {
+        if (!cancelled) setLoadingEvent(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editingId]);
+
+  const uploadingPhotos = photos.some((p) => p.uploading);
+  // The picker can only produce real dates, so the gates are a title + no
+  // in-flight photo uploads.
+  const canSave = title.trim().length > 0 && !saving && !uploadingPhotos;
+
+  const uploadPhoto = useCallback(
+    (id: string, file: { uri: string; type?: string; name?: string }) => {
+      mediaService
+        .uploadImage({
+          uri: file.uri,
+          type: file.type ?? 'image/jpeg',
+          name: file.name ?? `milestone-${Date.now()}.jpg`,
+        })
+        .then((uploaded) => {
+          setPhotos((prev) =>
+            prev.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    fileKey: uploaded.fileKey,
+                    uploading: false,
+                    failed: false,
+                    errorMessage: undefined,
+                  }
+                : p,
+            ),
+          );
+        })
+        .catch((err: unknown) => {
+          const message =
+            err instanceof Error ? err.message : 'Could not upload that photo.';
+          setPhotos((prev) =>
+            prev.map((p) =>
+              p.id === id
+                ? { ...p, uploading: false, failed: true, errorMessage: message }
+                : p,
+            ),
+          );
+          setError(message);
+        });
+    },
+    [],
+  );
+
+  const pickPhotos = useCallback(() => {
+    setError(null);
+    const options: ImageLibraryOptions = {
+      mediaType: 'photo' as MediaType,
+      quality: 0.8,
+      // Cap the resolution so full-size phone photos stay well under the
+      // backend's upload limit (a common cause of upload failures).
+      maxWidth: 2048,
+      maxHeight: 2048,
+      includeBase64: false,
+      selectionLimit: 0, // allow multiple
+    };
+
+    launchImageLibrary(options, (response: ImagePickerResponse) => {
+      if (response.didCancel) return;
+      if (response.errorMessage) {
+        setError('Could not access photos: ' + response.errorMessage);
+        return;
+      }
+
+      const assets = (response.assets ?? []).filter((a) => a.uri);
+      if (assets.length === 0) return;
+
+      const picked: PickedPhoto[] = assets.map((asset) => ({
+        id: `photo-${photoIdSeq++}`,
+        previewUri: asset.uri as string,
+        fileType: asset.type,
+        fileName: asset.fileName,
+        fileKey: null,
+        uploading: true,
+        failed: false,
+      }));
+
+      setPhotos((prev) => [...prev, ...picked]);
+
+      picked.forEach((p) => {
+        uploadPhoto(p.id, { uri: p.previewUri, type: p.fileType, name: p.fileName });
+      });
+    });
+  }, [uploadPhoto]);
+
+  const removePhoto = useCallback((id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const retryPhoto = useCallback(
+    (photo: PickedPhoto) => {
+      setError(null);
+      setPhotos((prev) =>
+        prev.map((p) =>
+          p.id === photo.id
+            ? { ...p, uploading: true, failed: false, errorMessage: undefined }
+            : p,
+        ),
+      );
+      uploadPhoto(photo.id, {
+        uri: photo.previewUri,
+        type: photo.fileType,
+        name: photo.fileName,
+      });
+    },
+    [uploadPhoto],
+  );
 
   const handleSave = useCallback(async () => {
-    if (!canSave) return;
+    if (title.trim().length === 0) {
+      setError('Give the milestone a title.');
+      return;
+    }
+    if (uploadingPhotos) {
+      setError('Give the photos a moment to finish uploading.');
+      return;
+    }
+    if (saving) return;
+
     setSaving(true);
     setError(null);
+
+    // All successfully-uploaded photo keys currently on the form.
+    const fileKeys = photos
+      .map((p) => p.fileKey)
+      .filter((k): k is string => !!k);
+
     try {
-      await timelineService.createEvent({
-        title: title.trim(),
-        eventDate: eventDate.trim(),
-        description,
-        location,
-        eventType,
-      });
+      if (isEditing && editingId) {
+        await timelineService.updateEvent(editingId, {
+          title: title.trim(),
+          eventDate: toIsoDate(eventDate),
+          description: description.trim() || null,
+          location: location?.location.trim() || null,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          eventType,
+        });
+        // Attach newly-added photos, and remove ones the user deleted.
+        const newKeys = fileKeys.filter((k) => !existingPhotoKeys.includes(k));
+        for (const photoKey of newKeys) {
+          await timelineService.addMedia(editingId, { photoKey });
+        }
+        const removedKeys = existingPhotoKeys.filter((k) => !fileKeys.includes(k));
+        for (const photoKey of removedKeys) {
+          await timelineService.removeMedia(editingId, photoKey);
+        }
+      } else {
+        // Create with the uploaded photo keys in one shot.
+        await timelineService.createEvent({
+          title: title.trim(),
+          eventDate: toIsoDate(eventDate),
+          description,
+          location: location?.location.trim() || null,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          eventType,
+          photoKeys: fileKeys,
+        });
+      }
+
+      showSuccess(isEditing ? 'Saved!' : 'Created!');
       navigation.goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save this milestone.');
+      showError('Sorry that failed :(');
       setSaving(false);
     }
-  }, [canSave, title, eventDate, description, location, eventType, navigation]);
+  }, [
+    title,
+    uploadingPhotos,
+    saving,
+    eventDate,
+    description,
+    location,
+    eventType,
+    photos,
+    navigation,
+    isEditing,
+    editingId,
+    existingPhotoKeys,
+  ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerKicker}>NEW MILESTONE</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader
+        title={isEditing ? 'Edit Milestone' : 'New Milestone'}
+        onBack={() => navigation.goBack()}
+        showNotificationBell={false}
+      />
+
+      {loadingEvent ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={colors.gold} size="large" />
+        </View>
+      ) : (
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -157,33 +384,22 @@ export function AddTimelineEventScreen() {
           />
 
           {/* Date */}
-          <Text style={styles.label}>Date</Text>
-          <TextInput
-            style={[styles.input, !dateValid && eventDate.length > 0 && styles.inputError]}
+          <DateTimeField
+            label="Date"
+            mode="date"
             value={eventDate}
-            onChangeText={setEventDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.neutralSubtle}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={10}
-            keyboardType="numbers-and-punctuation"
-            accessibilityLabel="Event date, format year dash month dash day"
+            onChange={setEventDate}
+            pickerTitle="When did it happen?"
+            accessibilityLabel="Milestone date"
+            style={styles.dateField}
           />
-          {!dateValid && eventDate.length > 0 ? (
-            <Text style={styles.hint}>Use the format YYYY-MM-DD.</Text>
-          ) : null}
 
           {/* Location */}
           <Text style={styles.label}>Location (optional)</Text>
-          <TextInput
-            style={styles.input}
+          <LocationPicker
             value={location}
-            onChangeText={setLocation}
-            placeholder="e.g. The Roast café"
-            placeholderTextColor={colors.neutralSubtle}
-            maxLength={120}
-            accessibilityLabel="Location"
+            onChange={setLocation}
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
 
           {/* Description */}
@@ -198,7 +414,60 @@ export function AddTimelineEventScreen() {
             maxLength={1000}
             textAlignVertical="top"
             accessibilityLabel="Note"
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
+
+          {/* Photos */}
+          <Text style={styles.label}>Photos (optional)</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.photoRow}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Pressable
+              style={styles.addPhotoTile}
+              onPress={pickPhotos}
+              accessibilityRole="button"
+              accessibilityLabel="Add photos"
+            >
+              <Text style={styles.addPhotoPlus}>+</Text>
+              <Text style={styles.addPhotoText}>Add</Text>
+            </Pressable>
+
+            {photos.map((photo) => (
+              <View key={photo.id} style={styles.photoTile}>
+                <Image source={{ uri: photo.previewUri }} style={styles.photoThumb} />
+
+                {photo.uploading ? (
+                  <View style={styles.photoOverlay}>
+                    <ActivityIndicator color={colors.ctaText} />
+                  </View>
+                ) : null}
+
+                {photo.failed ? (
+                  <Pressable
+                    style={styles.photoOverlay}
+                    onPress={() => retryPhoto(photo)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry upload"
+                  >
+                    <Text style={styles.photoRetryText}>Retry</Text>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  style={styles.photoRemove}
+                  onPress={() => removePhoto(photo.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove photo"
+                >
+                  <Text style={styles.photoRemoveText}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
@@ -214,11 +483,16 @@ export function AddTimelineEventScreen() {
             {saving ? (
               <ActivityIndicator color={colors.ctaText} />
             ) : (
-              <Text style={styles.saveBtnText}>Save milestone</Text>
+              <Text style={styles.saveBtnText}>
+                {isEditing ? 'Save changes' : 'Save milestone'}
+              </Text>
             )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      )}
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }
@@ -272,8 +546,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputMultiline: { minHeight: 120 },
-  inputError: { borderColor: colors.emergency },
-  hint: { ...typography.bodySm, color: colors.emergency, fontSize: 12, marginTop: 6 },
+  dateField: { marginTop: spacing.lg },
   error: { ...typography.bodySm, color: colors.emergency, marginTop: spacing.md },
   footer: {
     padding: spacing.md,
@@ -289,4 +562,48 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 16 },
+
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  photoRow: { gap: spacing.sm, paddingVertical: spacing.xs },
+  addPhotoTile: {
+    width: 84,
+    height: 84,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    backgroundColor: colors.surfaceCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPhotoPlus: { color: colors.gold, fontSize: 26, lineHeight: 28 },
+  addPhotoText: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 12 },
+  photoTile: {
+    width: 84,
+    height: 84,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceCard,
+  },
+  photoThumb: { width: '100%', height: '100%' },
+  photoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  photoRetryText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 13 },
+  photoRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  photoRemoveText: { color: '#fff', fontSize: 15, lineHeight: 17, fontWeight: '600' },
 });

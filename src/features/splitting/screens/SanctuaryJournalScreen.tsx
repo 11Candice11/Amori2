@@ -4,7 +4,7 @@
  * session with an option to save a quiet note and return to the sanctuary.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,6 +13,7 @@ import { colors, spacing, typography } from '../../../shared/theme';
 import {
   SplittingHeader,
   PrimaryButton,
+  SecondaryButton,
   DropIcon,
   HeartIcon,
   LeafIcon,
@@ -21,8 +22,9 @@ import {
 } from '../components';
 import { PARTNER_NAME, NEED_OPTIONS } from '../utils/splittingData';
 import type { ClimateState, MoodType, SplittingSession } from '../types/splitting.types';
-import { EMPTY_FLOW_STATE } from '../types/splitting.types';
+import { EMPTY_FLOW_STATE, CLIMATE_TO_MOOD } from '../types/splitting.types';
 import { useSplittingSession } from '../hooks/useSplittingSession';
+import { splittingService } from '../services/splittingService';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'SanctuaryJournal'>;
 type Rt = RouteProp<SplittingStackParamList, 'SanctuaryJournal'>;
@@ -49,24 +51,72 @@ export function SanctuaryJournalScreen() {
   const route = useRoute<Rt>();
   const flow = route.params?.flow ?? EMPTY_FLOW_STATE;
 
-  const { session, complete, pending, error } = useSplittingSession();
+  const { session, complete, update, pending, error } = useSplittingSession();
   const [completed, setCompleted] = useState(false);
+  // Set when the session turned out to be already finished — not a real failure,
+  // so we don't show the person an error for a record that is safely saved.
+  const [alreadySaved, setAlreadySaved] = useState<SplittingSession | null>(null);
   const completeStarted = useRef(false);
 
-  // Complete the persisted session once, when the journal opens.
-  useEffect(() => {
-    if (completeStarted.current || !flow.sessionId) return;
-    completeStarted.current = true;
-    complete(flow.sessionId).then(result => {
-      if (result) setCompleted(true);
-    });
-  }, [flow.sessionId, complete]);
+  // Quiet-note composer: tapping the row expands an inline text box the person
+  // can type a private reflection into and save onto their grounding session.
+  const [noteExpanded, setNoteExpanded] = useState(false);
+  const [note, setNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
 
-  const summary = deriveSummary(flow, session);
+  const sessionId = flow.sessionId;
+  const climate = flow.climate;
+
+  // Close out the persisted session once, when the journal opens. This is the
+  // point the flow becomes history, so we make sure the final mood is on the
+  // record even if the person reached the journal without a transition check.
+  useEffect(() => {
+    if (completeStarted.current || !sessionId) return;
+    completeStarted.current = true;
+
+    // Only finalMood is sent: actionsTaken was already merged by earlier steps
+    // and completing with a fresh array would replace (not extend) it.
+    complete(sessionId, climate ? { finalMood: CLIMATE_TO_MOOD[climate] } : {}).then(result => {
+      if (result) {
+        setCompleted(true);
+        return;
+      }
+      // The backend rejects completing a session that isn't in progress. If it
+      // was already completed (e.g. this screen was revisited), the record is
+      // fine — reflect that instead of surfacing a scary error.
+      splittingService
+        .getSession(sessionId)
+        .then(existing => {
+          if (existing.status !== 'InProgress') {
+            setAlreadySaved(existing);
+            setCompleted(true);
+          }
+        })
+        .catch(() => {
+          /* leave the original error visible */
+        });
+    });
+  }, [sessionId, climate, complete]);
+
+  const summary = deriveSummary(flow, session ?? alreadySaved);
+  const showError = Boolean(error) && !completed;
+
+  const handleSaveNote = async () => {
+    const trimmed = note.trim();
+    if (!sessionId || !trimmed || savingNote) return;
+    setSavingNote(true);
+    const result = await update(sessionId, { description: trimmed });
+    setSavingNote(false);
+    if (result) {
+      setNoteSaved(true);
+      setNoteExpanded(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="Sanctuary Journal" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Sanctuary Journal" subtitle="Splitting Anchor" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.badge}>
@@ -87,7 +137,7 @@ export function SanctuaryJournalScreen() {
             <Text style={styles.sentTime}>· Just now</Text>
           </View>
           <Text style={styles.sentBody}>
-            {PARTNER_NAME} was notified with gentle warmth. She knows you took time for yourself and loves you unconditionally.
+            {PARTNER_NAME} was notified with gentle warmth. They know you took time for yourself and love you unconditionally.
           </Text>
         </View>
 
@@ -120,26 +170,72 @@ export function SanctuaryJournalScreen() {
             icon={<AnchorIcon color={colors.gold} size={14} />}
           />
 
-          {error ? <Text style={styles.summaryError}>{error}</Text> : null}
+          {showError ? <Text style={styles.summaryError}>{error}</Text> : null}
 
           <Text style={styles.summaryQuote}>
             "Honor the space you made between the feeling and the reaction."
           </Text>
         </View>
 
-        <Pressable
-          style={styles.saveNoteRow}
-          accessibilityRole="button"
-          accessibilityLabel="Save a quiet note to Hearth Journal"
-          android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
-        >
-          <LeafIcon color={colors.gold} size={16} />
-          <Text style={styles.saveNoteText}>Save a Quiet Note to Hearth Journal</Text>
-          <Text style={styles.chev}>⌄</Text>
-        </Pressable>
+        <View style={styles.saveNoteCard}>
+          <Pressable
+            style={styles.saveNoteRow}
+            accessibilityRole="button"
+            accessibilityLabel="Save a quiet note to Hearth Journal"
+            accessibilityState={{ expanded: noteExpanded }}
+            onPress={() => setNoteExpanded(prev => !prev)}
+            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+          >
+            <LeafIcon color={colors.gold} size={16} />
+            <Text style={styles.saveNoteText}>
+              {noteSaved ? 'Quiet Note Saved to Hearth Journal' : 'Save a Quiet Note to Hearth Journal'}
+            </Text>
+            <Text style={[styles.chev, noteExpanded && styles.chevOpen]}>⌄</Text>
+          </Pressable>
+
+          {noteExpanded ? (
+            <View style={styles.noteBody}>
+              <TextInput
+                style={styles.noteInput}
+                value={note}
+                onChangeText={text => {
+                  setNote(text);
+                  if (noteSaved) setNoteSaved(false);
+                }}
+                placeholder="Write a quiet note to yourself…"
+                placeholderTextColor={colors.neutralSubtle}
+                multiline
+                textAlignVertical="top"
+                accessibilityLabel="Quiet note"
+              />
+              <Pressable
+                style={[
+                  styles.noteSaveBtn,
+                  (!note.trim() || savingNote) && styles.noteSaveBtnDisabled,
+                ]}
+                onPress={handleSaveNote}
+                disabled={!note.trim() || savingNote}
+                accessibilityRole="button"
+                accessibilityLabel="Save note"
+                android_ripple={{ color: 'rgba(10,20,15,0.2)' }}
+              >
+                {savingNote ? (
+                  <ActivityIndicator color={colors.ctaText} size="small" />
+                ) : (
+                  <Text style={styles.noteSaveBtnText}>Save Note</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
 
       <View style={styles.bottomBar}>
+        <SecondaryButton
+          label="View Grounding History"
+          icon={<LeafIcon color={colors.primaryLight} size={16} />}
+          onPress={() => navigation.navigate('SplittingHistory')}
+        />
         <PrimaryButton
           label="Back to Amori Sanctuary"
           icon={<AnchorIcon color={colors.ctaText} size={16} />}
@@ -263,19 +359,49 @@ const styles = StyleSheet.create({
   summaryQuote: { ...typography.bodySm, color: colors.neutralMuted, fontStyle: 'italic', textAlign: 'center', marginTop: spacing.sm, lineHeight: 18 },
   summaryError: { ...typography.bodySm, color: colors.emergency, textAlign: 'center', marginTop: spacing.sm },
 
-  saveNoteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  saveNoteCard: {
     backgroundColor: colors.surfaceCard,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    padding: spacing.md,
     marginTop: spacing.md,
+    overflow: 'hidden',
+  },
+  saveNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: spacing.md,
   },
   saveNoteText: { ...typography.bodyMedium, color: colors.neutral, flex: 1, fontSize: 14 },
   chev: { ...typography.body, color: colors.neutralMuted },
+  chevOpen: { transform: [{ rotate: '180deg' }] },
+
+  noteBody: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  noteInput: {
+    ...typography.body,
+    color: colors.neutral,
+    minHeight: 96,
+    backgroundColor: 'rgba(6,78,59,0.28)',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.md,
+    lineHeight: 22,
+  },
+  noteSaveBtn: {
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.ctaBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noteSaveBtnDisabled: { opacity: 0.5 },
+  noteSaveBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 15 },
 
   bottomBar: {
     paddingHorizontal: spacing.md,

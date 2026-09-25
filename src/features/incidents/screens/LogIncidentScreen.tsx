@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,9 +16,15 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import { incidentService } from '../services/incidentService';
 import { authService } from '../../../services/auth/authService';
+import { settingsService } from '../../profile/services/settingsService';
 import { friendlyError } from '../utils/errorMessages';
 import type { IncidentCategory, IncidentImpact, IncidentUrgency } from '../types/incident.types';
 
@@ -69,6 +76,24 @@ export function LogIncidentScreen() {
   const [assigneeChoice, setAssigneeChoice] = useState<'self' | 'partner' | 'none'>('none');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether the user has a linked partner. Null while we're still checking.
+  // "Assign to Partner" is only offered once we know a partner exists.
+  const [partnerLinked, setPartnerLinked] = useState<boolean | null>(null);
+  // Holds the id of an incident already created in this session so a retry
+  // (after a post-create step failed) never creates a duplicate.
+  const createdIncidentIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    settingsService
+      .getPartnerStatus()
+      .then(status => { if (active) setPartnerLinked(status.isLinked); })
+      // If the check fails, treat it as "no partner" so we don't offer an
+      // option that can't succeed. The user can still assign from the detail
+      // screen once a partner is linked.
+      .catch(() => { if (active) setPartnerLinked(false); });
+    return () => { active = false; };
+  }, []);
 
   const canNext = useCallback(() => {
     if (step === 1) return title.trim().length > 0;
@@ -87,37 +112,59 @@ export function LogIncidentScreen() {
     if (!category || !impact || !urgency) return;
     setSubmitting(true);
     setError(null);
-    try {
-      const incident = await incidentService.createIncident({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        category,
-        subCategory: subCategory.trim() || undefined,
-        impact,
-        urgency,
-      });
 
-      // Apply the assignee choice from step 4, if any. The incident is created
-      // Open/unassigned, so assign it here before opening the detail view.
+    // Step 1: create the incident. If a previous attempt already created it but
+    // a later step failed, reuse that id instead of creating a duplicate.
+    let incidentId = createdIncidentIdRef.current;
+    if (!incidentId) {
+      try {
+        const incident = await incidentService.createIncident({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          category,
+          subCategory: subCategory.trim() || undefined,
+          impact,
+          urgency,
+        });
+        incidentId = incident.id;
+        createdIncidentIdRef.current = incident.id;
+      } catch (err) {
+        // The incident was never created — this is the only truly fatal path.
+        setError(friendlyError(err));
+        showError('Sorry that failed :(');
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    // Step 2: apply the assignee choice from step 4, if any. The incident is
+    // already saved (Open/unassigned) at this point, so a failure here must NOT
+    // be surfaced as a "create failed" error — that would push the user to
+    // resubmit and create duplicates. Assignment can also be done from the
+    // detail screen, so we navigate there regardless and let it handle any
+    // recoverable issue (e.g. no partner linked yet).
+    try {
       if (assigneeChoice === 'self') {
         const me = await authService.getMe();
-        await incidentService.assignIncident(incident.id, me.id);
+        await incidentService.assignIncident(incidentId, me.id);
       } else if (assigneeChoice === 'partner') {
-        await incidentService.reassignIncident(incident.id);
+        await incidentService.reassignIncident(incidentId);
       }
-
-      navigation.replace('IncidentDetail', { incidentId: incident.id });
     } catch (err) {
-      setError(friendlyError(err));
-      setSubmitting(false);
+      // Non-fatal: the incident exists. Log for diagnostics and continue.
+      console.warn('Incident created but assignment failed:', err);
     }
+
+    showSuccess('Created!');
+    navigation.replace('IncidentDetail', { incidentId });
   }, [category, impact, urgency, title, description, subCategory, assigneeChoice, navigation]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader
+      <AppHeader
         title="New Incident"
         subtitle={`Step ${step} of 5 · ${STEP_TITLES[step]}`}
+        showNotificationBell={false}
         onBack={back}
       />
 
@@ -129,7 +176,11 @@ export function LogIncidentScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
 
           {/* ── Step 1: Title + Description ── */}
           {step === 1 && (
@@ -143,6 +194,9 @@ export function LogIncidentScreen() {
                 placeholder="Brief summary of the incident"
                 placeholderTextColor={colors.neutralMuted}
                 maxLength={300}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
               />
               <Text style={styles.fieldLabel}>Description</Text>
               <TextInput
@@ -155,6 +209,7 @@ export function LogIncidentScreen() {
                 numberOfLines={5}
                 textAlignVertical="top"
                 maxLength={4000}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
               />
             </View>
           )}
@@ -185,6 +240,9 @@ export function LogIncidentScreen() {
                 placeholder="e.g. Unshared Assumptions"
                 placeholderTextColor={colors.neutralMuted}
                 maxLength={100}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
               />
             </View>
           )}
@@ -232,17 +290,30 @@ export function LogIncidentScreen() {
               <Text style={styles.fieldDesc}>You can reassign later from the incident detail.</Text>
               {(['self', 'partner', 'none'] as const).map(choice => {
                 const labels = { self: 'Assign to Myself', partner: 'Assign to Partner', none: 'Leave Unassigned' };
+                // "Assign to Partner" needs a linked partner. Disable it until we
+                // know one exists so the user can't pick an option that fails.
+                const disabled = choice === 'partner' && partnerLinked !== true;
                 return (
                   <Pressable
                     key={choice}
-                    style={[styles.assignOption, assigneeChoice === choice && styles.assignOptionActive]}
-                    onPress={() => setAssigneeChoice(choice)}
-                    android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
+                    style={[
+                      styles.assignOption,
+                      assigneeChoice === choice && styles.assignOptionActive,
+                      disabled && styles.assignOptionDisabled,
+                    ]}
+                    onPress={disabled ? undefined : () => setAssigneeChoice(choice)}
+                    disabled={disabled}
+                    android_ripple={disabled ? undefined : { color: 'rgba(197,163,101,0.08)' }}
                   >
                     <View style={[styles.assignRadio, assigneeChoice === choice && styles.assignRadioActive]} />
-                    <Text style={[styles.assignLabel, assigneeChoice === choice && styles.assignLabelActive]}>
-                      {labels[choice]}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.assignLabel, assigneeChoice === choice && styles.assignLabelActive]}>
+                        {labels[choice]}
+                      </Text>
+                      {choice === 'partner' && partnerLinked === false && (
+                        <Text style={styles.assignHint}>Link a partner first to use this</Text>
+                      )}
+                    </View>
                   </Pressable>
                 );
               })}
@@ -294,6 +365,8 @@ export function LogIncidentScreen() {
           </Pressable>
         )}
       </View>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }
@@ -369,10 +442,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assignOptionActive: { borderColor: colors.gold },
+  assignOptionDisabled: { opacity: 0.4 },
   assignRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.border },
   assignRadioActive: { borderColor: colors.gold, backgroundColor: colors.gold },
   assignLabel: { ...typography.bodyMedium, color: colors.neutralMuted },
   assignLabelActive: { color: colors.neutral },
+  assignHint: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 2 },
 
   reviewRow: {
     flexDirection: 'row',

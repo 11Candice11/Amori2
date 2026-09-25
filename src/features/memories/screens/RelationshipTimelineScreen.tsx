@@ -18,23 +18,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Svg, { Path } from 'react-native-svg';
-
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { memoriesService } from '../services/memoriesService';
 import type { MemoryResponse } from '../types/memory.types';
 import { formatMemoryDate } from '../utils/formatMemoryDateTime';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'RelationshipTimeline'>;
-
-function BackIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M15 18l-6-6 6-6" stroke={colors.neutral} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
 
 /** Milliseconds for sorting; NaN-safe (unparseable sorts last-ish as 0). */
 function timeOf(iso: string): number {
@@ -102,19 +93,7 @@ export function RelationshipTimelineScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <BackIcon />
-        </Pressable>
-        <Text style={styles.headerTitle}>Relationship Timeline</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader title="Relationship Timeline" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.center}>

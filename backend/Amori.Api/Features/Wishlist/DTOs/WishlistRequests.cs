@@ -22,4 +22,6 @@ public sealed class UpdateWishlistItemRequest
     public string? Url { get; set; }
     public WishlistPriority? Priority { get; set; }
     public string? Notes { get; set; }
+    public bool? IsPurchased { get; set; }
+    public bool? IsFavorite { get; set; }
 }

@@ -24,13 +24,18 @@
  */
 import { Platform } from 'react-native';
 import type { NotificationPlatform } from '../api/types';
+import { isExpoRuntimeAvailable } from './pushHandlers';
+// Single source of truth for the EAS project id lives in app.json
+// (expo.extra.eas.projectId). Reading it here avoids keeping two copies in
+// sync and stays correct if the project id ever changes.
+import appConfig from '../../../app.json';
 
 /**
  * Your Expo/EAS project id. Required by getExpoPushTokenAsync to resolve the
- * push credentials. Fill this in once you create the EAS project
- * (`eas init`), or leave empty to fall back to null (no push) safely.
+ * push credentials. Sourced from app.json → expo.extra.eas.projectId. Falls
+ * back to an empty string (→ no push, safely) if it isn't set there.
  */
-const EXPO_PROJECT_ID = '';
+const EXPO_PROJECT_ID = appConfig?.expo?.extra?.eas?.projectId ?? '';
 
 export function currentPlatform(): NotificationPlatform {
   return Platform.OS === 'ios' ? 1 : 2;
@@ -57,6 +62,13 @@ export async function getPushToken(): Promise<string | null> {
  * crashing the app at startup.
  */
 async function getNativePushToken(): Promise<string | null> {
+  // Bail out before touching any Expo module when the Expo native runtime is
+  // absent (Android) — importing one there is fatal, not catchable.
+  if (!isExpoRuntimeAvailable()) {
+    console.log('[Push] Expo runtime unavailable on this platform; skipping push token.');
+    return null;
+  }
+
   try {
     // Lazy require — throws (→ caught above) when native modules aren't present.
     // eslint-disable-next-line @typescript-eslint/no-var-requires

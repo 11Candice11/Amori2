@@ -38,8 +38,29 @@ public sealed class UserService(
 
         var settings = await GetOrCreateSettingsAsync(userId, ct);
 
+        // Privacy & Sharing
         if (request.ShareMood.HasValue) settings.MoodShareDefault = request.ShareMood.Value;
         if (request.ShareActivity.HasValue) settings.ShareActivity = request.ShareActivity.Value;
+        if (request.ShareCheckIns.HasValue) settings.ShareCheckIns = request.ShareCheckIns.Value;
+        if (request.ShareLocation.HasValue) settings.ShareLocation = request.ShareLocation.Value;
+        if (request.ShareTimeline.HasValue) settings.ShareTimeline = request.ShareTimeline.Value;
+
+        // Permissions
+        if (request.AllowHugs.HasValue) settings.AllowHugs = request.AllowHugs.Value;
+        if (request.AllowEmergencyAlerts.HasValue) settings.AllowEmergencyAlerts = request.AllowEmergencyAlerts.Value;
+        if (request.AllowPartnerReminders.HasValue) settings.AllowPartnerReminders = request.AllowPartnerReminders.Value;
+
+        // Notifications
+        if (request.NotificationsEnabled.HasValue) settings.NotificationsEnabled = request.NotificationsEnabled.Value;
+        if (request.HugNotifications.HasValue) settings.HugNotifications = request.HugNotifications.Value;
+        if (request.EmergencyNotifications.HasValue) settings.EmergencyNotifications = request.EmergencyNotifications.Value;
+        if (request.CheckInReminders.HasValue) settings.CheckInReminders = request.CheckInReminders.Value;
+        if (request.PartnerActivityNotifications.HasValue) settings.PartnerActivityNotifications = request.PartnerActivityNotifications.Value;
+        if (request.DailyDigest.HasValue) settings.DailyDigest = request.DailyDigest.Value;
+
+        // App Preferences
+        if (request.SoundEnabled.HasValue) settings.SoundEnabled = request.SoundEnabled.Value;
+        if (request.VibrationEnabled.HasValue) settings.VibrationEnabled = request.VibrationEnabled.Value;
 
         await db.SaveChangesAsync(ct);
 
@@ -76,8 +97,30 @@ public sealed class UserService(
         Id = user.Id,
         Name = user.DisplayName,
         Email = user.Email,
+        
+        // Privacy & Sharing
         ShareMood = settings.MoodShareDefault,
         ShareActivity = settings.ShareActivity,
+        ShareCheckIns = settings.ShareCheckIns,
+        ShareLocation = settings.ShareLocation,
+        ShareTimeline = settings.ShareTimeline,
+        
+        // Permissions
+        AllowHugs = settings.AllowHugs,
+        AllowEmergencyAlerts = settings.AllowEmergencyAlerts,
+        AllowPartnerReminders = settings.AllowPartnerReminders,
+        
+        // Notifications
+        NotificationsEnabled = settings.NotificationsEnabled,
+        HugNotifications = settings.HugNotifications,
+        EmergencyNotifications = settings.EmergencyNotifications,
+        CheckInReminders = settings.CheckInReminders,
+        PartnerActivityNotifications = settings.PartnerActivityNotifications,
+        DailyDigest = settings.DailyDigest,
+        
+        // App Preferences
+        SoundEnabled = settings.SoundEnabled,
+        VibrationEnabled = settings.VibrationEnabled,
     };
 
     // UserSettings rows may not exist for users created before settings were

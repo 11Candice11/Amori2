@@ -79,6 +79,11 @@ public sealed class DatePlannerService(
         if (request.DurationMinutes.HasValue) idea.DurationMinutes = request.DurationMinutes;
         if (request.Notes != null) idea.Notes = request.Notes;
         if (request.IsFavorite.HasValue) idea.IsFavorite = request.IsFavorite.Value;
+        if (request.IsCompleted.HasValue)
+        {
+            idea.IsCompleted = request.IsCompleted.Value;
+            idea.CompletedAt = request.IsCompleted.Value ? (idea.CompletedAt ?? DateTime.UtcNow) : null;
+        }
         await db.SaveChangesAsync(ct);
         return Map(idea);
     }

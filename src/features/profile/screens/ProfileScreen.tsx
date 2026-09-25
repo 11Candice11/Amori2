@@ -4,6 +4,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
+  ImageBackground,
   Pressable,
   ScrollView,
   StatusBar,
@@ -13,28 +15,31 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { useRoute, type RouteProp } from '@react-navigation/native';
+import Svg, { Path } from 'react-native-svg';
 
-import { colors, spacing, typography, useThemeMode } from '../../../shared/theme';
+import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import { getSettingsBackground } from '../../../utils/backgroundImages';
 import { authService } from '../../../services/auth/authService';
 import { partnerLinkService } from '../services/partnerLinkService';
 import { settingsService } from '../services/settingsService';
+import { userSettingsStore } from '../../../shared/state/userSettingsStore';
+import { notificationStore } from '../../../shared/state/notificationStore';
 import { usePartnerLinkNotifications } from '../hooks/usePartnerLinkNotifications';
 import { logout } from '../../../app/App';
 import type { UserResponse, UpdateUserSettingsRequest } from '../../../services/api/types';
+import type { MainTabParamList } from '../../../navigation/types';
 import { LinkPartnerScreen } from './LinkPartnerScreen';
 
 function UserIcon() {
   return (
-    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="8" r="4" stroke={colors.gold} strokeWidth={1.5} />
-      <Path
-        d="M4 20c0-4 3.582-7 8-7s8 3 8 7"
-        stroke={colors.gold}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
-    </Svg>
+    <Image
+      source={require('../../../../images/icons/profile.png')}
+      style={styles.avatarImage}
+      resizeMode="contain"
+      accessibilityIgnoresInvertColors
+    />
   );
 }
 
@@ -86,32 +91,45 @@ type Props = {
 };
 
 export function ProfileScreen({ onLogout }: Props) {
-  const { isDark, setMode } = useThemeMode();
+  const route = useRoute<RouteProp<MainTabParamList, 'Profile'>>();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLinked, setIsLinked] = useState<boolean | null>(null);
   const [partnerName, setPartnerName] = useState<string | null>(null);
   const [linkModalVisible, setLinkModalVisible] = useState(false);
   const [savingSetting, setSavingSetting] = useState<keyof UpdateUserSettingsRequest | null>(null);
+  // Picked once per mount so toggling a setting doesn't swap the image mid-scroll.
+  const [backgroundImage] = useState(() => getSettingsBackground());
 
   useEffect(() => {
     authService.getMe()
-      .then(setUser)
+      .then(fresh => {
+        setUser(fresh);
+        // Share the settings with the rest of the app (e.g. haptics).
+        userSettingsStore.set(fresh);
+      })
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   // Toggle a sharing preference with an optimistic update; revert on failure.
+  // The shared store is kept in step at each stage so other screens honour the
+  // preference as soon as it's flipped, not just after the next fetch.
   const toggleSetting = useCallback(
     (key: keyof UpdateUserSettingsRequest, value: boolean) => {
       setUser(prev => (prev ? { ...prev, [key]: value } : prev));
+      userSettingsStore.merge({ [key]: value });
       setSavingSetting(key);
       settingsService
         .update({ [key]: value })
-        .then(setUser)
+        .then(fresh => {
+          setUser(fresh);
+          userSettingsStore.set(fresh);
+        })
         .catch(() => {
           // Revert the optimistic change if the request failed.
           setUser(prev => (prev ? { ...prev, [key]: !value } : prev));
+          userSettingsStore.merge({ [key]: !value });
         })
         .finally(() => setSavingSetting(null));
     },
@@ -140,13 +158,26 @@ export function ProfileScreen({ onLogout }: Props) {
     markSeen();
   }, [markSeen]);
 
+  // Open the Link Partner modal when navigated here from a partner link-request
+  // notification. `openLink` is a nonce that changes on each tap, so re-tapping
+  // re-opens the modal even when the Profile tab is already focused.
+  const openLinkNonce = route.params?.openLink;
+  useEffect(() => {
+    if (openLinkNonce != null) {
+      openLinkModal();
+    }
+  }, [openLinkNonce, openLinkModal]);
+
   const handleLinked = useCallback(() => {
     refreshLinkStatus();
     refreshNotifications();
   }, [refreshLinkStatus, refreshNotifications]);
 
   const handleSignOut = useCallback(() => {
-    authService.logout();
+    void authService.logout();
+    // Drop the cached settings so the next user doesn't inherit them.
+    userSettingsStore.reset();
+    notificationStore.reset();
     // Use prop if provided (from navigator), otherwise fall back to global
     if (onLogout) {
       onLogout();
@@ -156,18 +187,18 @@ export function ProfileScreen({ onLogout }: Props) {
   }, [onLogout]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+      <View style={styles.scrim} />
+      <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+
+      <AppHeader title="Settings" bordered={false} style={styles.headerTransparent} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.screenLabel}>PROFILE</Text>
-        </View>
-
         {/* User card */}
         <View style={styles.userCard}>
           <View style={styles.avatarCircle}>
@@ -182,6 +213,21 @@ export function ProfileScreen({ onLogout }: Props) {
             </View>
           )}
         </View>
+
+        {/* Sign Out */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.signOutButton,
+            pressed && styles.signOutButtonPressed,
+          ]}
+          onPress={handleSignOut}
+          android_ripple={{ color: 'rgba(179,64,64,0.15)' }}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+        >
+          <SignOutIcon />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
 
         {/* Partner link entry — show once we know the status */}
         {isLinked === false && (
@@ -245,31 +291,8 @@ export function ProfileScreen({ onLogout }: Props) {
           </Pressable>
         )}
 
-        {/* Appearance — light / dark theme */}
-        <Text style={styles.sectionLabel}>APPEARANCE</Text>
-        <View style={styles.settingsCard}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextWrap}>
-              <Text style={styles.settingTitle}>Light mode</Text>
-              <Text style={styles.settingSubtitle}>
-                {isDark
-                  ? 'Using the dark botanical theme. Turn on for a light theme.'
-                  : 'Using the light theme. Turn off for the dark botanical theme.'}
-              </Text>
-            </View>
-            <Switch
-              value={!isDark}
-              onValueChange={(toLight) => setMode(toLight ? 'light' : 'dark')}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
-              thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
-              accessibilityLabel="Light mode"
-            />
-          </View>
-        </View>
-
         {/* Privacy / sharing settings */}
-        <Text style={styles.sectionLabel}>SHARING</Text>
+        <Text style={styles.sectionLabel}>PRIVACY & SHARING</Text>
         <View style={styles.settingsCard}>
           <View style={styles.settingRow}>
             <View style={styles.settingTextWrap}>
@@ -279,7 +302,7 @@ export function ProfileScreen({ onLogout }: Props) {
               </Text>
             </View>
             <Switch
-              value={user?.shareMood ?? false}
+              value={user?.shareMood ?? true}
               onValueChange={(v) => toggleSetting('shareMood', v)}
               disabled={loading || !user || savingSetting === 'shareMood'}
               trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
@@ -299,7 +322,7 @@ export function ProfileScreen({ onLogout }: Props) {
               </Text>
             </View>
             <Switch
-              value={user?.shareActivity ?? false}
+              value={user?.shareActivity ?? true}
               onValueChange={(v) => toggleSetting('shareActivity', v)}
               disabled={loading || !user || savingSetting === 'shareActivity'}
               trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
@@ -308,24 +331,295 @@ export function ProfileScreen({ onLogout }: Props) {
               accessibilityLabel="Share activity"
             />
           </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Share check-ins</Text>
+              <Text style={styles.settingSubtitle}>
+                Let your partner see detailed notes from your daily check-ins.
+              </Text>
+            </View>
+            <Switch
+              value={user?.shareCheckIns ?? true}
+              onValueChange={(v) => toggleSetting('shareCheckIns', v)}
+              disabled={loading || !user || savingSetting === 'shareCheckIns'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Share check-ins"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Share location</Text>
+              <Text style={styles.settingSubtitle}>
+                Include your location when sending emergency alerts to your partner.
+              </Text>
+            </View>
+            <Switch
+              value={user?.shareLocation ?? true}
+              onValueChange={(v) => toggleSetting('shareLocation', v)}
+              disabled={loading || !user || savingSetting === 'shareLocation'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Share location"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Share timeline</Text>
+              <Text style={styles.settingSubtitle}>
+                Let your partner view and contribute to your shared timeline.
+              </Text>
+            </View>
+            <Switch
+              value={user?.shareTimeline ?? true}
+              onValueChange={(v) => toggleSetting('shareTimeline', v)}
+              disabled={loading || !user || savingSetting === 'shareTimeline'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Share timeline"
+            />
+          </View>
         </View>
 
-        <View style={styles.spacer} />
+        {/* Permissions settings */}
+        <Text style={styles.sectionLabel}>PERMISSIONS</Text>
+        <View style={styles.settingsCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Allow hugs</Text>
+              <Text style={styles.settingSubtitle}>
+                Let your partner send you virtual hugs for comfort and support.
+              </Text>
+            </View>
+            <Switch
+              value={user?.allowHugs ?? true}
+              onValueChange={(v) => toggleSetting('allowHugs', v)}
+              disabled={loading || !user || savingSetting === 'allowHugs'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Allow hugs"
+            />
+          </View>
 
-        {/* Sign Out */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.signOutButton,
-            pressed && styles.signOutButtonPressed,
-          ]}
-          onPress={handleSignOut}
-          android_ripple={{ color: 'rgba(179,64,64,0.15)' }}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-        >
-          <SignOutIcon />
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </Pressable>
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Allow emergency alerts</Text>
+              <Text style={styles.settingSubtitle}>
+                Let your partner send you emergency alerts when they need immediate support.
+              </Text>
+            </View>
+            <Switch
+              value={user?.allowEmergencyAlerts ?? true}
+              onValueChange={(v) => toggleSetting('allowEmergencyAlerts', v)}
+              disabled={loading || !user || savingSetting === 'allowEmergencyAlerts'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Allow emergency alerts"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Allow partner reminders</Text>
+              <Text style={styles.settingSubtitle}>
+                Let your partner create reminders for you (medication, water, etc.).
+              </Text>
+            </View>
+            <Switch
+              value={user?.allowPartnerReminders ?? true}
+              onValueChange={(v) => toggleSetting('allowPartnerReminders', v)}
+              disabled={loading || !user || savingSetting === 'allowPartnerReminders'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Allow partner reminders"
+            />
+          </View>
+        </View>
+
+        {/* Notification settings */}
+        <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+        <View style={styles.settingsCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Enable notifications</Text>
+              <Text style={styles.settingSubtitle}>
+                Master switch for all app notifications. Disabling will silence everything.
+              </Text>
+            </View>
+            <Switch
+              value={user?.notificationsEnabled ?? true}
+              onValueChange={(v) => toggleSetting('notificationsEnabled', v)}
+              disabled={loading || !user || savingSetting === 'notificationsEnabled'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Enable notifications"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Hug notifications</Text>
+              <Text style={styles.settingSubtitle}>
+                Get notified when your partner sends you a hug.
+              </Text>
+            </View>
+            <Switch
+              value={user?.hugNotifications ?? true}
+              onValueChange={(v) => toggleSetting('hugNotifications', v)}
+              disabled={loading || !user || savingSetting === 'hugNotifications' || !user?.notificationsEnabled}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Hug notifications"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Emergency notifications</Text>
+              <Text style={styles.settingSubtitle}>
+                Receive urgent notifications when your partner needs immediate support.
+              </Text>
+            </View>
+            <Switch
+              value={user?.emergencyNotifications ?? true}
+              onValueChange={(v) => toggleSetting('emergencyNotifications', v)}
+              disabled={loading || !user || savingSetting === 'emergencyNotifications' || !user?.notificationsEnabled}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Emergency notifications"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Check-in reminders</Text>
+              <Text style={styles.settingSubtitle}>
+                Get gentle reminders to complete your daily mood check-ins.
+              </Text>
+            </View>
+            <Switch
+              value={user?.checkInReminders ?? true}
+              onValueChange={(v) => toggleSetting('checkInReminders', v)}
+              disabled={loading || !user || savingSetting === 'checkInReminders' || !user?.notificationsEnabled}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Check-in reminders"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Partner activity</Text>
+              <Text style={styles.settingSubtitle}>
+                Get notified when your partner comes online or completes activities.
+              </Text>
+            </View>
+            <Switch
+              value={user?.partnerActivityNotifications ?? true}
+              onValueChange={(v) => toggleSetting('partnerActivityNotifications', v)}
+              disabled={loading || !user || savingSetting === 'partnerActivityNotifications' || !user?.notificationsEnabled}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Partner activity"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Daily digest</Text>
+              <Text style={styles.settingSubtitle}>
+                Receive a daily summary of shared activities and milestones.
+              </Text>
+            </View>
+            <Switch
+              value={user?.dailyDigest ?? true}
+              onValueChange={(v) => toggleSetting('dailyDigest', v)}
+              disabled={loading || !user || savingSetting === 'dailyDigest' || !user?.notificationsEnabled}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Daily digest"
+            />
+          </View>
+        </View>
+
+        {/* App settings */}
+        <Text style={styles.sectionLabel}>APP PREFERENCES</Text>
+        <View style={styles.settingsCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Sound effects</Text>
+              <Text style={styles.settingSubtitle}>
+                Play sounds for interactions like sending hugs and completing check-ins.
+              </Text>
+            </View>
+            <Switch
+              value={user?.soundEnabled ?? true}
+              onValueChange={(v) => toggleSetting('soundEnabled', v)}
+              disabled={loading || !user || savingSetting === 'soundEnabled'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Sound effects"
+            />
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Vibration</Text>
+              <Text style={styles.settingSubtitle}>
+                Enable haptic feedback for button presses and notifications.
+              </Text>
+            </View>
+            <Switch
+              value={user?.vibrationEnabled ?? true}
+              onValueChange={(v) => toggleSetting('vibrationEnabled', v)}
+              disabled={loading || !user || savingSetting === 'vibrationEnabled'}
+              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              thumbColor={colors.neutral}
+              ios_backgroundColor="rgba(253,252,240,0.16)"
+              accessibilityLabel="Vibration"
+            />
+          </View>
+        </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       <LinkPartnerScreen
@@ -333,15 +627,25 @@ export function ProfileScreen({ onLogout }: Props) {
         onClose={() => setLinkModalVisible(false)}
         onLinked={handleLinked}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  background: {
     flex: 1,
     backgroundColor: colors.background,
   },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(6, 18, 10, 0.45)',
+  },
+  safe: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  headerTransparent: { backgroundColor: 'transparent' },
   scroll: {
     flex: 1,
   },
@@ -378,6 +682,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   loadingIndicator: {
     flex: 1,
@@ -502,8 +812,8 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
   },
-  spacer: {
-    flex: 1,
+  bottomSpacer: {
+    height: spacing.lg,
   },
   signOutButton: {
     flexDirection: 'row',
@@ -515,7 +825,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(179,64,64,0.25)',
     paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
+    marginTop: spacing.md,
   },
   signOutButtonPressed: {
     opacity: 0.75,

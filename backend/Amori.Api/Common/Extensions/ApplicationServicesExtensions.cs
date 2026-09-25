@@ -17,6 +17,7 @@ using Amori.Api.Features.Reminders.Services;
 using Amori.Api.Features.Splitting.Services;
 using Amori.Api.Features.Timeline.Services;
 using Amori.Api.Features.Users.Services;
+using Amori.Api.Features.Vault.Services;
 using Amori.Api.Features.VoiceNotes.Services;
 using Amori.Api.Features.Wishlist.Services;
 using Amori.Api.Infrastructure.Notifications;
@@ -83,6 +84,9 @@ public static class ApplicationServicesExtensions
 
         // ── Memories ──────────────────────────────────────────────────────────
         services.AddScoped<IMemoryService, MemoryService>();
+
+        // ── Vault ─────────────────────────────────────────────────────────────
+        services.AddScoped<IVaultService, VaultService>();
 
         // ── Voice Notes ───────────────────────────────────────────────────────
         services.AddScoped<IVoiceNoteService, VoiceNoteService>();

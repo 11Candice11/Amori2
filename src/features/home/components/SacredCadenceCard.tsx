@@ -69,7 +69,7 @@ type SacredCadenceCardProps = {
 export function SacredCadenceCard({
   title = 'Emotional Pulse & Resonance',
   duration = '2 min',
-  description = 'Calibrate your inner atmosphere and\nlet Cat softly tune in.',
+  description = 'Calibrate your inner atmosphere and\nlet your love softly tune in.',
   ctaLabel = 'Start Daily Check-in',
   onPress,
   onOpenView,

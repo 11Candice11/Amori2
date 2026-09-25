@@ -9,3 +9,4 @@ export { BreatheWithMeScreen } from './BreatheWithMeScreen';
 export { SafeTransitionScreen } from './SafeTransitionScreen';
 export { PartnerDispatchScreen } from './PartnerDispatchScreen';
 export { SanctuaryJournalScreen } from './SanctuaryJournalScreen';
+export { SplittingHistoryScreen } from './SplittingHistoryScreen';

@@ -16,7 +16,7 @@ import type { IncidentStackParamList } from '../../../navigation/IncidentStackPa
 import { colors, spacing, typography } from '../../../shared/theme';
 import { useIncidentList } from '../hooks/useIncidentList';
 import { IncidentCard } from '../components/IncidentCard';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import { AppHeader } from '../../../shared/components/header';
 import { EmptyState } from '../components/EmptyState';
 import type { IncidentFilter, IncidentStatus } from '../types/incident.types';
 
@@ -27,7 +27,7 @@ type FilterTab = { key: string; label: string; filter: IncidentFilter };
 
 const FILTER_TABS: FilterTab[] = [
   { key: 'all',       label: 'All',             filter: {} },
-  { key: 'open',      label: 'Open',            filter: { status: 'Open' as IncidentStatus } },
+  { key: 'open',      label: 'Open',            filter: { openOnly: true } },
   { key: 'mine',      label: 'Assigned to Me',  filter: { assignedToMe: true } },
   { key: 'reported',  label: 'Reported by Me',  filter: { reportedByMe: true } },
   { key: 'resolved',  label: 'Resolved',        filter: { status: 'Resolved' as IncidentStatus } },
@@ -62,7 +62,7 @@ export function IncidentListScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader
+      <AppHeader
         title="Incidents"
         subtitle={totalCount > 0 ? `${totalCount} total` : undefined}
         onBack={() => navigation.goBack()}

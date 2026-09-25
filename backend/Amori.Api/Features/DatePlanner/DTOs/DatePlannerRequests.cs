@@ -23,4 +23,5 @@ public sealed class UpdateDateIdeaRequest
     public int? DurationMinutes { get; set; }
     public string? Notes { get; set; }
     public bool? IsFavorite { get; set; }
+    public bool? IsCompleted { get; set; }
 }

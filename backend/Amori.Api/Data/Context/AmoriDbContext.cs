@@ -64,6 +64,9 @@ public sealed class AmoriDbContext(DbContextOptions<AmoriDbContext> options) : D
     // Bucket List
     public DbSet<BucketListItem> BucketListItems => Set<BucketListItem>();
 
+    // Vault (private per-user saved gifts)
+    public DbSet<VaultGift> VaultGifts => Set<VaultGift>();
+
     // Important Dates
     public DbSet<ImportantDate> ImportantDates => Set<ImportantDate>();
 

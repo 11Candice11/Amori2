@@ -1,15 +1,16 @@
 /**
- * HiddenNumberScreen — "Spot the Hidden Number/Object".
+ * HiddenNumberScreen — "Spot the Hidden Number".
  *
  * Two ways to play:
- *   1. Couple puzzles — image puzzles one partner hides for the other. Tap
- *      where you think the hidden thing is; a close-enough tap wins.
+ *   1. Couple puzzles — one partner hides a number inside a photo; the other
+ *      hunts for it. Tap the number to win.
  *   2. Quick number round — a procedural fallback (a field of similar numbers
  *      with one odd target) always available, even with no couple puzzles yet.
  *
- * Partners can add their own image puzzles: provide an image URL, tap the
- * image to mark where the hidden object is, and write a prompt. Solving either
- * mode records a game session/score to the backend.
+ * Authoring a couple puzzle: choose a photo, choose the number to hide, then
+ * tap the photo to place it. The number is drawn client-side at the stored
+ * (0–1) target coordinates, so both partners see it in exactly the same spot.
+ * Solving either mode records a game session/score to the backend.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -25,7 +26,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import {launchImageLibrary, ImagePickerResponse, MediaType} from 'react-native-image-picker';
+import {
+  launchImageLibrary,
+  type ImageLibraryOptions,
+  type ImagePickerResponse,
+  type MediaType,
+} from 'react-native-image-picker';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { ScreenHeader, Button } from '../components/DistractionUI';
@@ -35,6 +41,63 @@ import { useDistractionCentre } from '../hooks/useDistractionCentre';
 import type { HiddenObjectPuzzleResponse } from '../../../services/api/types';
 
 type Mode = 'menu' | 'numbers' | 'puzzle' | 'create';
+
+// ─── Hidden numbers ──────────────────────────────────────────────────────────
+// A puzzle's `prompt` holds the hidden number (e.g. "47"). Older puzzles may
+// still hold a free-text object, so read them defensively.
+
+const NUMBER_PROMPT = /^\d{1,2}$/;
+
+function hiddenNumberOf(puzzle: { prompt: string }): string | null {
+  const trimmed = puzzle.prompt.trim();
+  return NUMBER_PROMPT.test(trimmed) ? trimmed : null;
+}
+
+function puzzleLabel(puzzle: { prompt: string }): string {
+  const number = hiddenNumberOf(puzzle);
+  return number ? `Find the ${number}` : `Find ${puzzle.prompt}`;
+}
+
+/** A fresh two-digit number to hide (10–99 reads clearly at small sizes). */
+function randomHiddenNumber(): string {
+  return String(Math.floor(Math.random() * 90) + 10);
+}
+
+/**
+ * The hidden number as it sits on the photo — small and softly translucent so
+ * it blends in. Rendered identically for the author's preview and the solver,
+ * so what you place is what they hunt for.
+ */
+function HiddenNumber({
+  value,
+  x,
+  y,
+  frame,
+}: {
+  value: string;
+  x: number;
+  y: number;
+  frame: LayoutRectangle;
+}) {
+  const fontSize = Math.max(12, Math.round(frame.width * 0.05));
+  const box = fontSize * 2.4;
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.hiddenNumberBox,
+        {
+          width: box,
+          height: box,
+          left: x * frame.width - box / 2,
+          top: y * frame.height - box / 2,
+        },
+      ]}
+    >
+      <Text style={[styles.hiddenNumberText, { fontSize }]}>{value}</Text>
+    </View>
+  );
+}
 
 export function HiddenNumberScreen() {
   const navigation = useNavigation();
@@ -126,7 +189,7 @@ function MenuView({
     <ScrollView contentContainerStyle={styles.body}>
       <Text style={styles.intro}>
         Give a racing mind something small to hold. Play a quick round, or find
-        the thing your partner hid for you.
+        the number your partner hid in a photo for you.
       </Text>
 
       <Pressable
@@ -146,9 +209,9 @@ function MenuView({
         <Pressable
           onPress={onCreate}
           accessibilityRole="button"
-          accessibilityLabel="Hide something for your partner"
+          accessibilityLabel="Hide a number for your partner"
         >
-          <Text style={styles.addLink}>+ Hide one</Text>
+          <Text style={styles.addLink}>+ Hide a number</Text>
         </Pressable>
       </View>
 
@@ -156,7 +219,7 @@ function MenuView({
         <ActivityIndicator color={colors.gold} style={{ marginTop: spacing.md }} />
       ) : puzzles.length === 0 ? (
         <Text style={styles.emptySmall}>
-          No hidden puzzles yet. Tap “Hide one” to make the first for your
+          No hidden numbers yet. Tap “Hide a number” to make the first for your
           partner.
         </Text>
       ) : (
@@ -166,11 +229,11 @@ function MenuView({
             style={styles.puzzleRow}
             onPress={() => onPlayPuzzle(p)}
             accessibilityRole="button"
-            accessibilityLabel={`Play puzzle: ${p.prompt}`}
+            accessibilityLabel={`Play puzzle: ${puzzleLabel(p)}`}
           >
             <Image source={{ uri: p.imageUrl }} style={styles.puzzleThumb} />
             <View style={styles.puzzleMeta}>
-              <Text style={styles.puzzlePrompt}>Find {p.prompt}</Text>
+              <Text style={styles.puzzlePrompt}>{puzzleLabel(p)}</Text>
               <Text style={styles.puzzleAuthor}>
                 {p.isMine
                   ? 'You hid this — tap to preview'
@@ -229,7 +292,7 @@ function NumberRound({ onWin }: { onWin: (score: number) => void }) {
   };
 
   return (
-    <View style={styles.body}>
+    <ScrollView contentContainerStyle={styles.body}>
       <Text style={styles.prompt}>
         Find the <Text style={styles.promptTarget}>{round.target}</Text> hidden
         among the {round.base}s.
@@ -265,7 +328,7 @@ function NumberRound({ onWin }: { onWin: (score: number) => void }) {
       ) : (
         <Text style={styles.hint}>Take your time. Let your eyes drift.</Text>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -284,7 +347,10 @@ function PuzzlePlayer({
   const [found, setFound] = useState(false);
   const [misses, setMisses] = useState(0);
   const [tap, setTap] = useState<{ x: number; y: number } | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
   const startRef = useRef<number>(Date.now());
+  const hiddenNumber = hiddenNumberOf(puzzle);
+  const label = puzzleLabel(puzzle);
 
   const handleTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
     if (found || !frame || puzzle.isMine) return;
@@ -305,20 +371,47 @@ function PuzzlePlayer({
 
   return (
     <ScrollView contentContainerStyle={styles.body}>
-      <Text style={styles.prompt}>Find {puzzle.prompt}</Text>
+      <Text style={styles.prompt}>
+        {hiddenNumber ? (
+          <>
+            Find the <Text style={styles.promptTarget}>{hiddenNumber}</Text>{' '}
+            hiding in the photo.
+          </>
+        ) : (
+          label
+        )}
+      </Text>
 
       <Pressable
         onPress={handleTap}
         onLayout={e => setFrame(e.nativeEvent.layout)}
         style={styles.puzzleImageWrap}
         accessibilityRole="imagebutton"
-        accessibilityLabel={`Tap where you see ${puzzle.prompt}`}
+        accessibilityLabel={`Tap where you see ${
+          hiddenNumber ? `the number ${hiddenNumber}` : puzzle.prompt
+        }`}
       >
-        <Image source={{ uri: puzzle.imageUrl }} style={styles.puzzleImage} />
+        <Image
+          source={{ uri: puzzle.imageUrl }}
+          style={styles.puzzleImage}
+          resizeMode="cover"
+          onError={() => setImageFailed(true)}
+        />
+
+        {/* The hidden number itself — this is the thing to spot. */}
+        {hiddenNumber && frame && !imageFailed ? (
+          <HiddenNumber
+            value={hiddenNumber}
+            x={puzzle.targetX}
+            y={puzzle.targetY}
+            frame={frame}
+          />
+        ) : null}
 
         {/* Show the answer marker to the author (preview), or after a win. */}
         {(puzzle.isMine || found) && frame ? (
           <View
+            pointerEvents="none"
             style={[
               styles.targetMarker,
               {
@@ -332,6 +425,7 @@ function PuzzlePlayer({
         {/* Show the last tap for feedback. */}
         {tap && !found && frame ? (
           <View
+            pointerEvents="none"
             style={[
               styles.missMarker,
               { left: tap.x * frame.width - 10, top: tap.y * frame.height - 10 },
@@ -340,9 +434,17 @@ function PuzzlePlayer({
         ) : null}
       </Pressable>
 
+      {imageFailed ? (
+        <Text style={styles.error}>
+          That photo couldn't be loaded right now. Check your connection and try
+          again.
+        </Text>
+      ) : null}
+
       {puzzle.isMine ? (
         <Text style={styles.hint}>
-          This is your puzzle — the marker shows where you hid it.
+          This is your puzzle — the marker shows where you hid the{' '}
+          {hiddenNumber ?? 'answer'}.
         </Text>
       ) : found ? (
         <View style={styles.result}>
@@ -353,7 +455,7 @@ function PuzzlePlayer({
         </View>
       ) : (
         <Text style={styles.hint}>
-          Tap the image where you think it's hiding.
+          Tap the {hiddenNumber ?? 'spot'} when you see it.
           {misses > 0 ? `  ${misses} miss${misses === 1 ? '' : 'es'} so far.` : ''}
         </Text>
       )}
@@ -372,9 +474,17 @@ function PuzzleCreator({
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [prompt, setPrompt] = useState('');
-  // The uploaded image: preview URL for display + storage key for saving.
-  const [image, setImage] = useState<{ url: string; fileKey: string } | null>(null);
+  const [hiddenNumber, setHiddenNumber] = useState(randomHiddenNumber);
+  /**
+   * The chosen photo. `previewUri` is the on-device file so the preview appears
+   * the moment it's picked (no waiting on the upload, and no dependence on the
+   * remote URL being reachable). `fileKey` arrives when the upload finishes and
+   * is what gets persisted.
+   */
+  const [photo, setPhoto] = useState<{
+    previewUri: string;
+    fileKey: string | null;
+  } | null>(null);
   const [target, setTarget] = useState<{ x: number; y: number } | null>(null);
   const [frame, setFrame] = useState<LayoutRectangle | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -383,8 +493,8 @@ function PuzzleCreator({
 
   const pickImage = async () => {
     setError(null);
-    
-    const options = {
+
+    const options: ImageLibraryOptions = {
       mediaType: 'photo' as MediaType,
       quality: 0.8,
       includeBase64: false,
@@ -400,26 +510,26 @@ function PuzzleCreator({
 
       const asset = response.assets?.[0];
       if (!asset?.uri) return;
+      const previewUri = asset.uri;
 
-      setUploading(true);
+      // Show it straight away; the upload catches up in the background.
+      setPhoto({ previewUri, fileKey: null });
       setTarget(null); // reset target for the new image
-      
+      setUploading(true);
+
       mediaService.uploadImage({
-        uri: asset.uri,
+        uri: previewUri,
         type: asset.type ?? 'image/jpeg',
         name: asset.fileName ?? `puzzle-${Date.now()}.jpg`,
       }).then(uploaded => {
-        setImage({ url: uploaded.url, fileKey: uploaded.fileKey });
+        setPhoto({ previewUri, fileKey: uploaded.fileKey });
       }).catch(e => {
+        setPhoto(null);
         setError(e instanceof Error ? e.message : 'Could not upload the image.');
       }).finally(() => {
         setUploading(false);
       });
     });
-  };
-    } finally {
-      setUploading(false);
-    }
   };
 
   const placeTarget = (e: {
@@ -433,16 +543,19 @@ function PuzzleCreator({
   };
 
   const save = async () => {
-    if (!image) return setError('Choose a photo first.');
-    if (!prompt.trim()) return setError('Say what your partner should find.');
-    if (!target) return setError('Tap the image to mark the hidden spot.');
+    if (!photo) return setError('Choose a photo first.');
+    if (uploading || !photo.fileKey)
+      return setError('Give the photo a moment to finish uploading.');
+    if (!NUMBER_PROMPT.test(hiddenNumber))
+      return setError('Pick a number between 0 and 99 to hide.');
+    if (!target) return setError('Tap the photo to place the number.');
 
     setSaving(true);
     setError(null);
     try {
       await distractionService.createHiddenObjectPuzzle({
-        imageFileKey: image.fileKey,
-        prompt: prompt.trim(),
+        imageFileKey: photo.fileKey,
+        prompt: hiddenNumber,
         targetX: target.x,
         targetY: target.y,
       });
@@ -457,15 +570,15 @@ function PuzzleCreator({
   return (
     <ScrollView contentContainerStyle={styles.body}>
       <Text style={styles.intro}>
-        Hide something for your partner to find. Choose a photo, tell them what
-        to look for, then tap the image to mark where it's hiding.
+        Hide a number for your partner to find. Choose a photo, pick the number,
+        then tap the photo to tuck it somewhere quiet.
       </Text>
 
       <Button
         label={
           uploading
             ? 'Uploading…'
-            : image
+            : photo
             ? 'Choose a different photo'
             : 'Choose a photo'
         }
@@ -475,42 +588,75 @@ function PuzzleCreator({
         style={{ alignSelf: 'stretch' }}
       />
 
-      <Text style={[styles.label, { marginTop: spacing.md }]}>
-        What should they find?
-      </Text>
-      <TextInput
-        style={styles.input}
-        value={prompt}
-        onChangeText={setPrompt}
-        placeholder="e.g. the tiny heart in the trees"
-        placeholderTextColor={colors.neutralSubtle}
-      />
+      <View style={styles.numberRow}>
+        <View style={styles.numberField}>
+          <Text style={styles.label}>Number to hide</Text>
+          <TextInput
+            style={[styles.input, styles.numberInput]}
+            value={hiddenNumber}
+            onChangeText={t => setHiddenNumber(t.replace(/[^0-9]/g, '').slice(0, 2))}
+            keyboardType="number-pad"
+            maxLength={2}
+            placeholder="42"
+            placeholderTextColor={colors.neutralSubtle}
+            accessibilityLabel="The number to hide, 0 to 99"
+          />
+        </View>
+        <Pressable
+          onPress={() => setHiddenNumber(randomHiddenNumber())}
+          style={styles.shuffleBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Pick a random number"
+        >
+          <Text style={styles.shuffleText}>Surprise me</Text>
+        </Pressable>
+      </View>
 
-      {image ? (
+      {photo ? (
         <>
           <Text style={[styles.label, { marginTop: spacing.md }]}>
-            Tap to mark the hidden spot
+            Tap to place the {NUMBER_PROMPT.test(hiddenNumber) ? hiddenNumber : 'number'}
           </Text>
           <Pressable
             onPress={placeTarget}
             onLayout={e => setFrame(e.nativeEvent.layout)}
             style={styles.puzzleImageWrap}
             accessibilityRole="imagebutton"
-            accessibilityLabel="Tap to place the hidden target"
+            accessibilityLabel="Tap to place the hidden number"
           >
-            <Image source={{ uri: image.url }} style={styles.puzzleImage} />
+            <Image
+              source={{ uri: photo.previewUri }}
+              style={styles.puzzleImage}
+              resizeMode="cover"
+            />
             {target && frame ? (
-              <View
-                style={[
-                  styles.targetMarker,
-                  {
-                    left: target.x * frame.width - 16,
-                    top: target.y * frame.height - 16,
-                  },
-                ]}
-              />
+              <>
+                {NUMBER_PROMPT.test(hiddenNumber) ? (
+                  <HiddenNumber
+                    value={hiddenNumber}
+                    x={target.x}
+                    y={target.y}
+                    frame={frame}
+                  />
+                ) : null}
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.targetMarker,
+                    {
+                      left: target.x * frame.width - 16,
+                      top: target.y * frame.height - 16,
+                    },
+                  ]}
+                />
+              </>
             ) : null}
           </Pressable>
+          <Text style={styles.hint}>
+            {target
+              ? 'The ring is just for you — your partner only sees the number.'
+              : 'Somewhere busy makes it a longer hunt.'}
+          </Text>
         </>
       ) : null}
 
@@ -526,7 +672,7 @@ function PuzzleCreator({
         <Button
           label={saving ? 'Hiding…' : 'Hide it'}
           onPress={save}
-          disabled={saving}
+          disabled={saving || uploading}
           style={styles.composerBtn}
         />
       </View>
@@ -638,6 +784,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.emergency,
   },
+  hiddenNumberBox: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hiddenNumberText: {
+    fontFamily: 'Manrope-SemiBold',
+    color: 'rgba(253,252,240,0.85)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
   // Creator inputs
   label: { ...typography.label, color: colors.gold, alignSelf: 'stretch' },
   input: {
@@ -652,6 +810,25 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginTop: spacing.xs,
   },
+  numberRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  numberField: { width: 96 },
+  numberInput: { textAlign: 'center', fontSize: 22, letterSpacing: 2 },
+  shuffleBtn: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shuffleText: { ...typography.bodySm, color: colors.gold },
   error: {
     ...typography.bodySm,
     color: colors.emergency,

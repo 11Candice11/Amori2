@@ -6,19 +6,23 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { colors, spacing, typography } from '../../../shared/theme';
+import { colors, spacing, typography, useThemeMode } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'MoodGrounding'>;
+type Rt = RouteProp<MoodStackParamList, 'MoodGrounding'>;
 
 type GroundingItem = {
   id: string;
   title: string;
   meta: string;
   description: string;
+  screen?: keyof MoodStackParamList | 'Distraction';
 };
 
 const GROUNDING_ITEMS: GroundingItem[] = [
@@ -28,6 +32,7 @@ const GROUNDING_ITEMS: GroundingItem[] = [
     meta: 'Sensory · 3 min',
     description:
       'Name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you taste. Come back to the here and now.',
+    screen: 'Exercise54321',
   },
   {
     id: 'body-scan',
@@ -35,6 +40,7 @@ const GROUNDING_ITEMS: GroundingItem[] = [
     meta: 'Solo reset · 4 min',
     description:
       'Move your attention slowly from your feet to your head, softening each part as you go.',
+    screen: 'ExerciseBodyScan',
   },
   {
     id: 'warm-drink',
@@ -42,6 +48,7 @@ const GROUNDING_ITEMS: GroundingItem[] = [
     meta: 'Comfort · 5 min',
     description:
       'Step away and make tea or something warm. Feel the heat of the cup and take slow sips.',
+    screen: 'ExerciseWarmDrink',
   },
   {
     id: 'walk',
@@ -49,6 +56,7 @@ const GROUNDING_ITEMS: GroundingItem[] = [
     meta: 'Movement · 5 min',
     description:
       'Move your body gently. Notice your feet meeting the ground with each step.',
+    screen: 'ExerciseWalk',
   },
   {
     id: 'distraction',
@@ -56,27 +64,41 @@ const GROUNDING_ITEMS: GroundingItem[] = [
     meta: 'Play · 5 min',
     description:
       'Give your mind a soft place to rest — a quick game, a song, or a comforting show.',
+    screen: 'Distraction',
   },
 ];
 
 export function MoodGroundingScreen() {
   const navigation = useNavigation<Nav>();
-  const goHome = () => navigation.getParent()?.navigate('Home');
+  const route = useRoute<Rt>();
+  const { setVariant } = useThemeMode();
+
+  // Apply the deferred mood theme only as we leave for Home. Switching it
+  // earlier would remount the navigator and interrupt the exercise navigation.
+  const goHome = () => {
+    const applyTheme = route.params?.applyTheme;
+    if (applyTheme) setVariant(applyTheme);
+    navigation.getParent()?.navigate('Home');
+  };
+
+  const handleExercisePress = (item: GroundingItem) => {
+    if (!item.screen) {
+      goHome();
+      return;
+    }
+
+    if (item.screen === 'Distraction') {
+      // Navigate to the Distraction hub
+      navigation.getParent()?.navigate('Distraction');
+    } else {
+      // Navigate to the specific exercise screen
+      navigation.navigate(item.screen);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
-        <Text style={styles.eyebrow}>Grounding</Text>
-      </View>
+      <AppHeader title="Grounding" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Grounding exercises</Text>
@@ -88,7 +110,7 @@ export function MoodGroundingScreen() {
           <Pressable
             key={item.id}
             style={styles.card}
-            onPress={goHome}
+            onPress={() => handleExercisePress(item)}
             accessibilityRole="button"
             accessibilityLabel={item.title}
             android_ripple={{ color: 'rgba(197,163,101,0.1)' }}

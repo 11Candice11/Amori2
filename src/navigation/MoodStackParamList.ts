@@ -6,12 +6,28 @@
 export type MoodStackParamList = {
   /** The two-step mood check-in and its "Anchored" confirmation. */
   CheckInHome: undefined;
-  /** Guided breathing (5s in · 6s hold · 7s out) for High Unpleasant. */
-  MoodBreathe: undefined;
+  /**
+   * Guided breathing (5s in · 4s hold · 4s out) for High Unpleasant.
+   *
+   * `applyTheme` names the color variant to switch to when the user finally
+   * leaves this screen for Home. The switch is deferred to exit because
+   * changing the theme remounts the navigator (see ThemeProvider), which would
+   * otherwise discard an in-stack navigation and bounce the user to the
+   * dashboard. Omitted when the theme shouldn't change.
+   */
+  MoodBreathe: { applyTheme?: 'gold' | 'botanical' } | undefined;
   /** Grounding exercises / distractions menu for Low Unpleasant. */
-  MoodGrounding: undefined;
+  MoodGrounding: { applyTheme?: 'gold' | 'botanical' } | undefined;
   /** Daily gift / surprise reveal for High Pleasant. */
-  MoodGift: undefined;
+  MoodGift: { applyTheme?: 'gold' | 'botanical' } | undefined;
   /** Read-only detail of a logged mood + the partner's mood. */
   MoodDetail: undefined;
+  /** 5-4-3-2-1 Senses grounding exercise */
+  Exercise54321: undefined;
+  /** Gentle body scan exercise */
+  ExerciseBodyScan: undefined;
+  /** Make a warm drink exercise */
+  ExerciseWarmDrink: undefined;
+  /** Short slow walk exercise */
+  ExerciseWalk: undefined;
 };

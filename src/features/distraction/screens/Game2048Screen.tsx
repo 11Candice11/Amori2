@@ -53,7 +53,14 @@ export function Game2048Screen() {
 
   const gridSize = Math.min(width - spacing.md * 2, 360);
   const gap = spacing.sm;
-  const cell = (gridSize - gap * (SIZE + 1)) / SIZE;
+  // The board pads itself by `gap` on all sides and puts `gap` between tiles.
+  // Across one axis that's SIZE cells + (SIZE + 1) gaps. Floor the cell so
+  // sub-pixel rounding can never push a row past the container width.
+  const cell = Math.floor((gridSize - gap * (SIZE + 1)) / SIZE);
+  // Recompute the board's actual pixel size from the floored cell so the
+  // container is never a fraction too small for its contents (which is what
+  // was wrapping the 4th tile onto a new row and breaking the layout).
+  const boardSize = cell * SIZE + gap * (SIZE + 1);
 
   const game2048 = useMemo(
     () => games.find(g => g.type === 'Game2048' || /2048/i.test(g.title)),
@@ -129,37 +136,46 @@ export function Game2048Screen() {
         </View>
 
         <View
-          style={[styles.grid, { width: gridSize, height: gridSize, padding: gap }]}
+          style={[
+            styles.grid,
+            { width: boardSize, height: boardSize, padding: gap },
+          ]}
           {...panResponder.panHandlers}
         >
-          {board.map((value, i) => {
-            const t = tileStyle(value);
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.tile,
-                  {
-                    width: cell,
-                    height: cell,
-                    margin: gap / 2,
-                    backgroundColor: t.bg,
-                  },
-                ]}
-              >
-                {value > 0 ? (
-                  <Text
+          {Array.from({ length: SIZE }).map((_, r) => (
+            <View key={r} style={[styles.gridRow, { marginBottom: r < SIZE - 1 ? gap : 0 }]}>
+              {Array.from({ length: SIZE }).map((__, c) => {
+                const i = r * SIZE + c;
+                const value = board[i];
+                const t = tileStyle(value);
+                return (
+                  <View
+                    key={c}
                     style={[
-                      styles.tileText,
-                      { color: t.fg, fontSize: value >= 1024 ? 20 : 26 },
+                      styles.tile,
+                      {
+                        width: cell,
+                        height: cell,
+                        marginRight: c < SIZE - 1 ? gap : 0,
+                        backgroundColor: t.bg,
+                      },
                     ]}
                   >
-                    {value}
-                  </Text>
-                ) : null}
-              </View>
-            );
-          })}
+                    {value > 0 ? (
+                      <Text
+                        style={[
+                          styles.tileText,
+                          { color: t.fg, fontSize: value >= 1024 ? 20 : 26 },
+                        ]}
+                      >
+                        {value}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ))}
         </View>
 
         {gameOver ? (
@@ -223,13 +239,12 @@ const styles = StyleSheet.create({
   scoreLabel: { ...typography.label, color: colors.gold },
   scoreValue: { ...typography.headline, color: colors.neutral },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     backgroundColor: colors.surfaceCard,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
+  gridRow: { flexDirection: 'row' },
   tile: {
     borderRadius: 10,
     alignItems: 'center',

@@ -86,20 +86,27 @@ export function SelectChip({
   label,
   selected,
   onPress,
+  onLongPress,
   icon,
+  accessibilityHint,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  /** Optional secondary gesture, e.g. removing a person's own custom chip. */
+  onLongPress?: () => void;
   icon?: React.ReactNode;
+  accessibilityHint?: string;
 }) {
   return (
     <Pressable
       style={[styles.chip, selected && styles.chipSelected]}
       onPress={onPress}
+      onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
       android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
     >
       {icon ? <View style={styles.chipIcon}>{icon}</View> : null}

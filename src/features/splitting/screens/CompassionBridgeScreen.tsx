@@ -1,15 +1,16 @@
 /**
  * Screen — Partner Compassion Bridge.
- * "You're not alone in this." Cat's handwritten sanctuary note, a voice note,
+ * "You're not alone in this." Your love's handwritten sanctuary note,
  * shared history, and options to send a hug or continue to the check-in.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SplittingStackParamList } from '../../../navigation/SplittingStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
+import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import {
   SplittingHeader,
   PrimaryButton,
@@ -17,14 +18,16 @@ import {
   TextButton,
   HeartIcon,
   SparkleIcon,
-  PlayIcon,
   InfinityIcon,
   CheckIcon,
 } from '../components';
 import { REASSURANCE_NOTES, PARTNER_NAME } from '../utils/splittingData';
 import { EMPTY_FLOW_STATE } from '../types/splitting.types';
+import { useLeaveSplittingFlow, useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 import { hugService } from '../../hugs/services/hugService';
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
+import { dailyGiftService, type DailyGift } from '../../home/services/dailyGiftService';
+import { vaultService } from '../../vault/services/vaultService';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'CompassionBridge'>;
 type Rt = RouteProp<SplittingStackParamList, 'CompassionBridge'>;
@@ -46,8 +49,50 @@ export function CompassionBridgeScreen() {
   const [hugSending, setHugSending] = useState(false);
   const [noteSet, setNoteSet] = useState(0);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [dailyGift, setDailyGift] = useState<DailyGift | null>(null);
+  const [giftAlreadySaved, setGiftAlreadySaved] = useState(false);
+  const [loadingGift, setLoadingGift] = useState(false);
+
+  const { saveAndLeave, saving: savingMemories } = useLeaveSplittingFlow(flow);
+  // Backing out of this screen (after the Inward Check) still saves the
+  // grounding as history — the reassurance path — even without a check-in.
+  useSaveGroundingOnLeave(flow, { actions: ['Reassurance'] });
 
   const notes = REASSURANCE_SETS[noteSet % REASSURANCE_SETS.length];
+
+  // Load today's gift and check if it's already in the vault
+  useEffect(() => {
+    let active = true;
+
+    const loadGiftAndCheckVault = async () => {
+      setLoadingGift(true);
+      try {
+        const gift = await dailyGiftService.getTodaysGift();
+        if (!active) return;
+        
+        setDailyGift(gift);
+
+        if (gift) {
+          // Check if this memory is already saved in the vault
+          const savedGifts = await vaultService.getAll();
+          const isAlreadySaved = savedGifts.some(
+            (savedGift) => savedGift.memoryId === gift.memory.id
+          );
+          setGiftAlreadySaved(isAlreadySaved);
+        }
+      } catch (error) {
+        console.error('Failed to load daily gift or check vault:', error);
+      } finally {
+        if (active) setLoadingGift(false);
+      }
+    };
+
+    loadGiftAndCheckVault();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const shuffleNotes = () => setNoteSet(n => n + 1);
 
@@ -64,11 +109,38 @@ export function CompassionBridgeScreen() {
     }
   };
 
-  const openMemories = () => navigation.getParent()?.navigate('Memories' as never);
+  const goToMemories = () =>
+    navigation
+      .getParent()
+      ?.navigate(({ name: 'Together', params: { screen: 'Memories' } } as unknown) as never);
+
+  // Tapping "View memories" leaves the SOS flow, so this is where reassurance
+  // ends for this person. Save the grounding before navigating away (recording
+  // the reassurance path) so it lands in their history, then open Memories.
+  const openMemories = async () => {
+    await saveAndLeave({ actions: ['Reassurance'] });
+    goToMemories();
+  };
+
+  const handleSaveGiftToVault = async () => {
+    if (!dailyGift || giftAlreadySaved) return;
+
+    try {
+      await vaultService.save({
+        memoryId: dailyGift.memory.id,
+        cardNumber: dailyGift.cardNumber,
+      });
+      setGiftAlreadySaved(true);
+      showSuccess('Saved!');
+    } catch (error) {
+      console.error('Failed to save gift to vault:', error);
+      showError('Sorry that failed :(');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="Partner Compassion Bridge" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Compassion Bridge" subtitle="You're not alone in this" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topRow}>
@@ -126,23 +198,14 @@ export function CompassionBridgeScreen() {
             <Text style={styles.shuffleText}>Show me another message</Text>
             <Text style={styles.shuffleHint}>Tap to shuffle</Text>
           </Pressable>
-
-          <View style={styles.voiceCard}>
-            <View style={styles.voicePlay}>
-              <PlayIcon color={colors.tertiary} size={16} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.voiceTitle}>{PARTNER_NAME}'s Voice Note</Text>
-              <Text style={styles.voiceSub}>Soft whispers for heavy skies</Text>
-            </View>
-            <Text style={styles.voiceTime}>0:45</Text>
-          </View>
         </View>
 
         <Pressable
           style={styles.linkCard}
           accessibilityRole="button"
           accessibilityLabel="Revisit shared memories"
+          accessibilityState={{ busy: savingMemories }}
+          disabled={savingMemories}
           onPress={openMemories}
           android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
         >
@@ -177,9 +240,12 @@ export function CompassionBridgeScreen() {
       <ArtifactRevealModal
         visible={giftOpen}
         onClose={() => setGiftOpen(false)}
+        onSaveToVault={handleSaveGiftToVault}
         badge="SANCTUARY · FOR YOU"
-        title="A moment of tenderness"
-        body={`${PARTNER_NAME} tucked this away for you: you are deeply loved, exactly as you are right now.`}
+        title={dailyGift?.title ?? "A moment of tenderness"}
+        body={dailyGift?.body ?? `${PARTNER_NAME} tucked this away for you: you are deeply loved, exactly as you are right now.`}
+        cardNumber={dailyGift?.cardNumber ?? 1}
+        alreadySaved={giftAlreadySaved}
       />
 
       <View style={styles.bottomBar}>
@@ -284,27 +350,6 @@ const styles = StyleSheet.create({
   },
   shuffleText: { ...typography.bodyMedium, color: colors.gold, flex: 1, fontSize: 14 },
   shuffleHint: { ...typography.bodySm, color: colors.neutralSubtle, fontSize: 11 },
-
-  voiceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(6,78,59,0.35)',
-    borderRadius: 12,
-    padding: spacing.md,
-    marginTop: 12,
-  },
-  voicePlay: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(197,163,101,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  voiceTitle: { ...typography.bodyMedium, color: colors.neutral, fontSize: 14 },
-  voiceSub: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 1 },
-  voiceTime: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 12 },
 
   linkCard: {
     flexDirection: 'row',

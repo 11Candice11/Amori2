@@ -2,13 +2,16 @@
  * SharedCollections — the couple's shared lists.
  *
  * Two real, backend-backed tabs:
- *   - Bucket List → GET/POST /api/bucket-list
- *   - Wishlist    → GET /api/wishlist
+ *   - Bucket List → GET/POST /api/bucket-list (filtered by category)
+ *   - To-Do List  → GET/POST /api/bucket-list (category: ToDoList)
+ *
+ * Note: Wishlist and Date Ideas live in the Private Repositories section as
+ * dedicated cards.
  *
  * Every field shown maps to a real response field (added-by, target date,
  * location, completion, favorite, price, priority). There is no funding/
  * progress model or cover image on the backend, so none is shown. The footer
- * input creates a real bucket-list item.
+ * input creates a real bucket-list item with the appropriate category.
  */
 import React, { useState } from 'react';
 import {
@@ -22,13 +25,12 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import {
-  BUCKET_LIST_CATEGORY_LABELS,
   type BucketListItemResponse,
-  type WishlistItemResponse,
 } from '../types/together.types';
 
-export type CollectionTab = 'bucket' | 'wishlist';
+export type CollectionTab = 'bucket' | 'todo';
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,19 @@ function CircleIcon() {
   );
 }
 
+function DeleteIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 6l12 12M18 6L6 18"
+        stroke={colors.neutralMuted}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
 // ─── Formatting helpers ─────────────────────────────────────────────────────
 
 const MONTHS_SHORT = [
@@ -79,34 +94,43 @@ function formatTargetDate(s: string | null): string | null {
   return `${MONTHS_SHORT[monthIdx] ?? m[2]} ${m[1]}`;
 }
 
-const PRIORITY_LABELS: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
-
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 function BucketRow({
   item,
+  busy,
   onToggleComplete,
+  onDelete,
 }: {
   item: BucketListItemResponse;
+  busy?: boolean;
   onToggleComplete?: (item: BucketListItemResponse) => void;
+  onDelete?: (item: BucketListItemResponse) => void;
 }) {
   const target = formatTargetDate(item.targetDate);
-  const category = BUCKET_LIST_CATEGORY_LABELS[item.category];
+  // The API serializes the category as its string name, so it's display-ready.
+  const category = item.category;
+  // Only the owner can delete (the backend enforces this too), so hide the x
+  // for the partner's items.
+  const canDelete = item.isCompleted && userSettingsStore.get()?.id === item.addedByUserId;
   return (
-    <View style={styles.item}>
+    <View style={[styles.item, item.isCompleted && styles.itemCompleted]}>
       <View style={styles.itemHeaderRow}>
         <Pressable
           onPress={() => onToggleComplete?.(item)}
           hitSlop={8}
+          disabled={busy}
           style={styles.itemIcon}
           accessibilityRole="button"
-          accessibilityLabel={item.isCompleted ? 'Completed' : 'Mark complete'}
+          accessibilityLabel={item.isCompleted ? 'Mark not done' : 'Mark complete'}
         >
           {item.isCompleted ? <CheckCircleIcon /> : <CircleIcon />}
         </Pressable>
 
         <View style={styles.itemTextWrap}>
-          <Text style={styles.itemTitle}>{item.title}</Text>
+          <Text style={[styles.itemTitle, item.isCompleted && styles.itemTitleDone]}>
+            {item.title}
+          </Text>
           <View style={styles.itemMetaRow}>
             <Text style={styles.itemMeta}>Added by {item.addedByName}</Text>
             {category ? (
@@ -124,7 +148,20 @@ function BucketRow({
           </View>
         </View>
 
-        {item.isFavorite ? <StarIcon filled /> : null}
+        {canDelete ? (
+          <Pressable
+            onPress={() => onDelete?.(item)}
+            hitSlop={8}
+            disabled={busy}
+            style={styles.itemIcon}
+            accessibilityRole="button"
+            accessibilityLabel="Delete item"
+          >
+            <DeleteIcon />
+          </Pressable>
+        ) : item.isFavorite ? (
+          <StarIcon filled />
+        ) : null}
       </View>
 
       {item.location ? (
@@ -136,56 +173,6 @@ function BucketRow({
           {item.isCompleted ? 'Completed' : 'In progress'}
         </Text>
       </View>
-    </View>
-  );
-}
-
-function WishlistRow({ item }: { item: WishlistItemResponse }) {
-  const priority = PRIORITY_LABELS[item.priority];
-  return (
-    <View style={styles.item}>
-      <View style={styles.itemHeaderRow}>
-        <View style={styles.itemIcon}>
-          {item.isPurchased ? <CheckCircleIcon /> : <CircleIcon />}
-        </View>
-        <View style={styles.itemTextWrap}>
-          <Text style={styles.itemTitle}>{item.name}</Text>
-          <View style={styles.itemMetaRow}>
-            <Text style={styles.itemMeta}>Added by {item.addedByName}</Text>
-            {priority ? (
-              <>
-                <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.itemMeta}>{priority} priority</Text>
-              </>
-            ) : null}
-            {item.price != null ? (
-              <>
-                <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.itemMetaAccent}>
-                  {item.price.toLocaleString(undefined, {
-                    style: 'currency',
-                    currency: 'EUR',
-                    maximumFractionDigits: 0,
-                  })}
-                </Text>
-              </>
-            ) : null}
-          </View>
-        </View>
-        {item.isFavorite ? <StarIcon filled /> : null}
-      </View>
-
-      {item.description ? (
-        <Text style={styles.itemSub} numberOfLines={2}>
-          {item.description}
-        </Text>
-      ) : null}
-
-      {item.isPurchased ? (
-        <View style={styles.statusRow}>
-          <Text style={[styles.statusText, styles.statusDone]}>Purchased</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -202,20 +189,31 @@ function EmptyList({ message }: { message: string }) {
 
 type SharedCollectionsProps = {
   bucketList: BucketListItemResponse[];
-  wishlist: WishlistItemResponse[];
+  todoList: BucketListItemResponse[];
   loading?: boolean;
   /** Called with the new title; the screen performs the create + refresh. */
   onAddBucketItem?: (title: string) => void | Promise<void>;
+  onAddTodoItem?: (title: string) => void | Promise<void>;
   onToggleBucketComplete?: (item: BucketListItemResponse) => void;
+  onToggleTodoComplete?: (item: BucketListItemResponse) => void;
+  onDeleteBucketItem?: (item: BucketListItemResponse) => void;
+  onDeleteTodoItem?: (item: BucketListItemResponse) => void;
+  /** Id of a row with an action in flight, to disable its buttons. */
+  busyId?: string | null;
   saving?: boolean;
 };
 
 export function SharedCollections({
   bucketList,
-  wishlist,
+  todoList,
   loading = false,
   onAddBucketItem,
+  onAddTodoItem,
   onToggleBucketComplete,
+  onToggleTodoComplete,
+  onDeleteBucketItem,
+  onDeleteTodoItem,
+  busyId = null,
   saving = false,
 }: SharedCollectionsProps) {
   const [activeTab, setActiveTab] = useState<CollectionTab>('bucket');
@@ -223,13 +221,19 @@ export function SharedCollections({
 
   const tabs: { key: CollectionTab; label: string; count: number }[] = [
     { key: 'bucket', label: 'Bucket List', count: bucketList.length },
-    { key: 'wishlist', label: 'Wishlist', count: wishlist.length },
+    { key: 'todo', label: 'To-Do List', count: todoList.length },
   ];
 
   const handleSave = async () => {
     const text = draft.trim();
     if (!text || saving) return;
-    await onAddBucketItem?.(text);
+    
+    if (activeTab === 'bucket') {
+      await onAddBucketItem?.(text);
+    } else if (activeTab === 'todo') {
+      await onAddTodoItem?.(text);
+    }
+    
     setDraft('');
   };
 
@@ -269,7 +273,9 @@ export function SharedCollections({
               <BucketRow
                 key={item.id}
                 item={item}
+                busy={busyId === item.id}
                 onToggleComplete={onToggleBucketComplete}
+                onDelete={onDeleteBucketItem}
               />
             ))
           )}
@@ -305,11 +311,54 @@ export function SharedCollections({
             </Pressable>
           </View>
         </>
-      ) : wishlist.length === 0 ? (
-        <EmptyList message="No wishes shared yet." />
-      ) : (
-        wishlist.map((item) => <WishlistRow key={item.id} item={item} />)
-      )}
+      ) : activeTab === 'todo' ? (
+        <>
+          {todoList.length === 0 ? (
+            <EmptyList message="No to-do items yet. Add your first below." />
+          ) : (
+            todoList.map((item) => (
+              <BucketRow
+                key={item.id}
+                item={item}
+                busy={busyId === item.id}
+                onToggleComplete={onToggleTodoComplete}
+                onDelete={onDeleteTodoItem}
+              />
+            ))
+          )}
+
+          {/* Add-to-list footer */}
+          <View style={styles.addRow}>
+            <TextInput
+              style={styles.addInput}
+              placeholder="Add to To-Do List…"
+              placeholderTextColor={colors.neutralSubtle}
+              value={draft}
+              onChangeText={setDraft}
+              returnKeyType="done"
+              editable={!saving}
+              onSubmitEditing={handleSave}
+            />
+            <Pressable
+              style={({ pressed }) => [
+                styles.saveBtn,
+                (pressed || saving) && styles.pressed,
+              ]}
+              onPress={handleSave}
+              disabled={saving}
+              android_ripple={{ color: 'rgba(10,20,15,0.15)' }}
+              accessibilityRole="button"
+              accessibilityLabel="Save item"
+            >
+              {saving ? (
+                <ActivityIndicator color={colors.ctaText} size="small" />
+              ) : (
+                <Text style={styles.saveBtnText}>Save</Text>
+              )}
+            </Pressable>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -366,6 +415,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
+  itemCompleted: {
+    opacity: 0.6,
+  },
   itemHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -382,6 +434,10 @@ const styles = StyleSheet.create({
     ...typography.headlineSm,
     color: colors.neutral,
     fontSize: 17,
+  },
+  itemTitleDone: {
+    textDecorationLine: 'line-through',
+    color: colors.neutralMuted,
   },
   itemMetaRow: {
     flexDirection: 'row',

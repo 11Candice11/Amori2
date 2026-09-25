@@ -15,7 +15,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
 import { friendlyError } from '../utils/errorMessages';
 
@@ -38,7 +42,10 @@ export function ResolveIncidentScreen() {
     setError(null);
     try {
       await incidentService.resolveIncident(incidentId, resolution.trim(), notes.trim() || undefined);
-      navigation.goBack();
+      // Return to the Desk overview (the ticket list) rather than the just-resolved
+      // ticket detail. popToTop unwinds HelpDesk → IncidentDetail → ResolveIncident
+      // back to the HelpDesk screen at the root of the stack.
+      navigation.popToTop();
     } catch (err) {
       setError(friendlyError(err));
     } finally {
@@ -48,9 +55,13 @@ export function ResolveIncidentScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader title="Resolve Incident" subtitle="Agree on a resolution" onBack={() => navigation.goBack()} />
+      <AppHeader title="Resolve Incident" subtitle="Agree on a resolution" onBack={() => navigation.goBack()} showNotificationBell={false} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
               Capture the agreement you reached together. This becomes part of the incident's resolution record.
@@ -69,6 +80,7 @@ export function ResolveIncidentScreen() {
             textAlignVertical="top"
             maxLength={2000}
             autoFocus
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
 
           <Text style={styles.label}>Notes (optional)</Text>
@@ -82,6 +94,7 @@ export function ResolveIncidentScreen() {
             numberOfLines={3}
             textAlignVertical="top"
             maxLength={2000}
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -99,6 +112,8 @@ export function ResolveIncidentScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

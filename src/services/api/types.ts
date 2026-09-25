@@ -12,11 +12,53 @@ export interface UserResponse {
   shareMood: boolean;
   /** Privacy: share activity/presence (online) with the partner. */
   shareActivity: boolean;
+  /** Privacy: share detailed check-ins with the partner. */
+  shareCheckIns: boolean;
+  /** Privacy: share location when sending emergency alerts. */
+  shareLocation: boolean;
+  /** Privacy: share timeline events with the partner. */
+  shareTimeline: boolean;
+  /** Privacy: allow partner to send you hugs. */
+  allowHugs: boolean;
+  /** Privacy: allow partner to send you emergency alerts. */
+  allowEmergencyAlerts: boolean;
+  /** Privacy: allow partner to set reminders for you. */
+  allowPartnerReminders: boolean;
+  /** Notifications: master toggle for all notifications. */
+  notificationsEnabled: boolean;
+  /** Notifications: receive notifications when partner sends a hug. */
+  hugNotifications: boolean;
+  /** Notifications: receive emergency alert notifications. */
+  emergencyNotifications: boolean;
+  /** Notifications: receive reminders to complete check-ins. */
+  checkInReminders: boolean;
+  /** Notifications: get notified when partner is active. */
+  partnerActivityNotifications: boolean;
+  /** Notifications: receive a daily digest of activities. */
+  dailyDigest: boolean;
+  /** App settings: enable sound effects. */
+  soundEnabled: boolean;
+  /** App settings: enable vibration feedback. */
+  vibrationEnabled: boolean;
 }
 
 export interface UpdateUserSettingsRequest {
   shareMood?: boolean;
   shareActivity?: boolean;
+  shareCheckIns?: boolean;
+  shareLocation?: boolean;
+  shareTimeline?: boolean;
+  allowHugs?: boolean;
+  allowEmergencyAlerts?: boolean;
+  allowPartnerReminders?: boolean;
+  notificationsEnabled?: boolean;
+  hugNotifications?: boolean;
+  emergencyNotifications?: boolean;
+  checkInReminders?: boolean;
+  partnerActivityNotifications?: boolean;
+  dailyDigest?: boolean;
+  soundEnabled?: boolean;
+  vibrationEnabled?: boolean;
 }
 
 export interface PartnerStatusResponse {
@@ -28,6 +70,10 @@ export interface PartnerStatusResponse {
 
 export interface AuthResponse {
   accessToken: string;
+  /** Long-lived token used to silently obtain a new access token. */
+  refreshToken: string;
+  /** ISO instant at which the access token expires. */
+  accessTokenExpiresAt: string;
   user: UserResponse;
 }
 
@@ -369,6 +415,13 @@ export type TimelineEventType =
   | 'Anniversary'
   | 'Custom';
 
+/** A single timeline-event photo: the storage key plus a loadable URL. */
+export interface TimelinePhotoResponse {
+  photoKey: string;
+  /** A loadable URL for the photo (presigned for S3, static for local). */
+  url: string;
+}
+
 export interface TimelineEventResponse {
   id: string;
   relationshipId: string;
@@ -379,8 +432,14 @@ export interface TimelineEventResponse {
   /** ISO date string "YYYY-MM-DD". */
   eventDate: string;
   location: string | null;
+  /** Coordinates of the location, for showing the milestone on a map. */
+  latitude: number | null;
+  longitude: number | null;
   eventType: TimelineEventType;
+  /** Raw storage keys. Prefer `photos` which carries loadable URLs. */
   photoKeys: string[];
+  /** The event's photos with both the storage key and a loadable URL. */
+  photos: TimelinePhotoResponse[];
   createdAt: string;
   updatedAt: string | null;
 }
@@ -391,6 +450,9 @@ export interface CreateTimelineEventRequest {
   /** ISO date string "YYYY-MM-DD". */
   eventDate: string;
   location?: string | null;
+  /** Coordinates of the location, for showing the milestone on a map. */
+  latitude?: number | null;
+  longitude?: number | null;
   eventType?: TimelineEventType;
   photoKeys?: string[];
 }
@@ -401,6 +463,8 @@ export interface UpdateTimelineEventRequest {
   /** ISO date string "YYYY-MM-DD". */
   eventDate?: string | null;
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   eventType?: TimelineEventType | null;
 }
 

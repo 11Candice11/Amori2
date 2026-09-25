@@ -10,6 +10,8 @@ public sealed class TimelineEvent : BaseEntity
     public string? Description { get; set; }
     public DateOnly EventDate { get; set; }
     public string? Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public TimelineEventType EventType { get; set; } = TimelineEventType.Custom;
     public List<string> PhotoKeys { get; set; } = [];
 

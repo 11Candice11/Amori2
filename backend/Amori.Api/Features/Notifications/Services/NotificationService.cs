@@ -19,6 +19,34 @@ public sealed class NotificationService(
         LastSeenAt = d.LastSeenAt, CreatedAt = d.CreatedAt
     };
 
+    /// <summary>
+    /// Decides whether a push may be dispatched for a notification type, given
+    /// the recipient's preferences. The master switch wins over everything; a
+    /// type with no specific preference is governed by the master switch alone.
+    ///
+    /// This gates the push only — the in-app notification is always persisted so
+    /// the bell stays a complete record regardless of push preferences.
+    /// </summary>
+    private static bool IsPushAllowed(string? notificationType, UserSettings settings)
+    {
+        // PushNotificationsEnabled is the legacy master switch; it predates
+        // NotificationsEnabled and is still honoured so existing opt-outs stick.
+        if (!settings.NotificationsEnabled || !settings.PushNotificationsEnabled)
+            return false;
+
+        return notificationType switch
+        {
+            NotificationTypes.Hug => settings.HugNotifications,
+            NotificationTypes.Emergency => settings.EmergencyNotifications,
+            NotificationTypes.PartnerActivity => settings.PartnerActivityNotifications,
+            // A gift is a form of partner activity, so it shares that toggle.
+            NotificationTypes.Gift => settings.PartnerActivityNotifications,
+            NotificationTypes.CheckInReminder => settings.CheckInReminders,
+            NotificationTypes.DailyDigest => settings.DailyDigest,
+            _ => true,
+        };
+    }
+
     private static NotificationResponse MapNotification(AppNotification n) => new()
     {
         Id = n.Id, Title = n.Title, Body = n.Body,
@@ -110,13 +138,13 @@ public sealed class NotificationService(
         db.AppNotifications.Add(notification);
         await db.SaveChangesAsync(ct);
 
-        // Respect the user's push preference (defaults to enabled if no row yet).
-        var pushEnabled = await db.UserSettings
-            .Where(s => s.UserId == userId)
-            .Select(s => (bool?)s.PushNotificationsEnabled)
-            .FirstOrDefaultAsync(ct) ?? true;
+        // Respect the user's push preferences. No settings row yet means the
+        // defaults (all enabled) apply, so send.
+        var settings = await db.UserSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == userId, ct);
 
-        if (!pushEnabled)
+        if (settings != null && !IsPushAllowed(notificationType, settings))
             return;
 
         var data = new Dictionary<string, string>

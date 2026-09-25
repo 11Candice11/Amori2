@@ -5,10 +5,11 @@
  * to their partner, optionally attaching a short "gentle whisper" note.
  * On success we navigate to the HugSent confirmation screen.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,21 +18,26 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  Vibration,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { AppHeader } from '../../../shared/components/header';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { vibrate } from '../../../shared/haptics';
 import type { HugStackParamList } from '../../../navigation/HugStackParamList';
 import { hugService } from '../services/hugService';
 import {
-  BackIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   HandHeartIcon,
+  HistoryIcon,
   HugFiguresIcon,
   LeafIcon,
   SafeHarborIcon,
@@ -49,53 +55,78 @@ const MAX_WHISPER = 500;
 export function NeedAHugScreen() {
   const navigation = useNavigation<Nav>();
 
+  const inputRef = useRef<TextInput>(null);
+
   const [whisper, setWhisper] = useState('');
   const [whisperOpen, setWhisperOpen] = useState(false);
+  const [whisperFocused, setWhisperFocused] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // This screen stays mounted while HugSent sits on top of it, so the in-flight
+  // spinner has to be cleared when we come back — otherwise the CTA is stuck
+  // loading forever after a send.
+  useFocusEffect(
+    useCallback(() => {
+      setSending(false);
+      return undefined;
+    }, []),
+  );
+
+  const dismissKeyboard = useCallback(() => {
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    setWhisperFocused(false);
+  }, []);
+
+  const toggleWhisper = useCallback(() => {
+    setWhisperOpen(open => {
+      // Collapsing while typing should take the keyboard with it.
+      if (open) dismissKeyboard();
+      return !open;
+    });
+  }, [dismissKeyboard]);
+
   const sendHug = useCallback(async () => {
     if (sending) return;
+    dismissKeyboard();
     setSending(true);
     setError(null);
-    // A soft double pulse to mirror the "soft vibration to your partner".
-    Vibration.vibrate([0, 40, 60, 40]);
     const startedAt = Date.now();
     try {
       const hug = await hugService.sendHug(whisper);
       const deliveryMs = Date.now() - startedAt;
+      // Reset the composer so coming back starts fresh instead of re-showing a
+      // whisper that has already been delivered.
+      setWhisper('');
+      setWhisperOpen(false);
+      setSending(false);
       navigation.navigate('HugSent', { hugId: hug.id, deliveryMs });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send your hug. Try again in a moment.');
       setSending(false);
     }
-  }, [navigation, sending, whisper]);
+  }, [dismissKeyboard, navigation, sending, whisper]);
+
+  const handleLongPress = useCallback(() => {
+    // Vibrate on long press for tactile feedback
+    vibrate([0, 40, 60, 40]);
+    sendHug();
+  }, [sendHug]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-        >
-          <BackIcon color={colors.neutral} />
-        </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>Need A Hug</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <AppHeader title="Need A Hug" onBack={() => navigation.goBack()} showNotificationBell={false} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          onScrollBeginDrag={dismissKeyboard}
         >
           {/* Warm cozy hero — pill, headline, and tap-to-hold glow */}
           <ImageBackground
@@ -122,10 +153,11 @@ export function NeedAHugScreen() {
                   <View style={styles.glowMid}>
                     <Pressable
                       style={styles.glowCore}
-                      onPress={sendHug}
+                      onLongPress={handleLongPress}
+                      delayLongPress={500}
                       disabled={sending}
                       accessibilityRole="button"
-                      accessibilityLabel="Tap to hold and send a hug"
+                      accessibilityLabel="Tap and hold to send a hug"
                       android_ripple={{ color: 'rgba(197,163,101,0.2)', borderless: true }}
                     >
                       <HugFiguresIcon color={colors.gold} size={44} />
@@ -165,13 +197,27 @@ export function NeedAHugScreen() {
             <Text style={styles.hintText}>Delivers instantly with a soft vibration to your partner</Text>
           </View>
 
+          {/* Peek at past hugs before sending a new one */}
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('HugsHistory')}
+            disabled={sending}
+            accessibilityRole="button"
+            accessibilityLabel="View our hugs history"
+            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+          >
+            <HistoryIcon color={colors.neutral} />
+            <Text style={styles.secondaryText}>View Hug History</Text>
+          </Pressable>
+
           {/* Gentle whisper (collapsible) */}
           <View style={styles.whisperCard}>
             <Pressable
               style={styles.whisperHeader}
-              onPress={() => setWhisperOpen(o => !o)}
+              onPress={toggleWhisper}
               accessibilityRole="button"
               accessibilityLabel="Add a gentle whisper"
+              accessibilityState={{ expanded: whisperOpen }}
               android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
             >
               <WhisperIcon color={colors.gold} />
@@ -185,6 +231,7 @@ export function NeedAHugScreen() {
             {whisperOpen ? (
               <View style={styles.whisperBody}>
                 <TextInput
+                  ref={inputRef}
                   style={styles.whisperInput}
                   value={whisper}
                   onChangeText={setWhisper}
@@ -193,8 +240,26 @@ export function NeedAHugScreen() {
                   multiline
                   maxLength={MAX_WHISPER}
                   textAlignVertical="top"
+                  onFocus={() => setWhisperFocused(true)}
+                  onBlur={() => setWhisperFocused(false)}
+                  inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
                 />
-                <Text style={styles.whisperCount}>{whisper.length}/{MAX_WHISPER}</Text>
+                <View style={styles.whisperMetaRow}>
+                  {/* Multiline inputs have no return key that closes the keyboard,
+                      so give every platform an explicit way out. */}
+                  {whisperFocused ? (
+                    <Pressable
+                      style={styles.doneBtn}
+                      onPress={dismissKeyboard}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel="Done, close keyboard"
+                    >
+                      <Text style={styles.doneText}>Done</Text>
+                    </Pressable>
+                  ) : null}
+                  <Text style={styles.whisperCount}>{whisper.length}/{MAX_WHISPER}</Text>
+                </View>
               </View>
             ) : null}
           </View>
@@ -207,6 +272,8 @@ export function NeedAHugScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }
@@ -322,6 +389,20 @@ const styles = StyleSheet.create({
   },
   hintText: { ...typography.bodySm, color: colors.neutralMuted, flexShrink: 1 },
 
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  secondaryText: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 16 },
+
   whisperCard: {
     backgroundColor: colors.surfaceCard,
     borderRadius: 16,
@@ -349,7 +430,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     minHeight: 90,
   },
-  whisperCount: { ...typography.bodySm, color: colors.neutralSubtle, textAlign: 'right', marginTop: 6 },
+  whisperMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  doneBtn: { paddingVertical: 2, paddingRight: spacing.sm },
+  doneText: { ...typography.bodySemiBold, color: colors.gold, fontSize: 14 },
+  whisperCount: { ...typography.bodySm, color: colors.neutralSubtle, textAlign: 'right', marginLeft: 'auto' },
 
   footerRow: {
     flexDirection: 'row',

@@ -12,6 +12,7 @@ import { SplittingNavigator } from '../features/splitting/navigation/SplittingNa
 import { DistractionNavigator } from '../features/distraction/navigation/DistractionNavigator';
 import { VaultScreen } from '../features/vault/screens/VaultScreen';
 import { TimelineNavigator } from '../features/timeline/navigation/TimelineNavigator';
+import { NotificationsScreen } from '../features/notifications/screens/NotificationsScreen';
 import type { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -42,6 +43,7 @@ export function MainTabNavigator({ onLogout }: Props) {
       <Tab.Screen name="Distraction" component={DistractionNavigator} />
       <Tab.Screen name="Vault" component={VaultScreen} />
       <Tab.Screen name="Timeline" component={TimelineNavigator} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
     </Tab.Navigator>
   );
 }

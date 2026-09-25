@@ -14,6 +14,23 @@ export type IncidentStatus =
   | 'Closed'      // 6
   | 'Reopened';   // 7
 
+/**
+ * Statuses the backend treats as "open" (i.e. what `openOnly=true` returns):
+ * everything that is not yet Resolved or Closed. Keep this in sync with
+ * IncidentStatus so client-side filters can never drift from the union.
+ */
+export const OPEN_INCIDENT_STATUSES: readonly IncidentStatus[] = [
+  'Open',
+  'Assigned',
+  'Investigating',
+  'AwaitingResponse',
+  'Reopened',
+];
+
+export function isOpenIncidentStatus(status: IncidentStatus): boolean {
+  return OPEN_INCIDENT_STATUSES.includes(status);
+}
+
 export type IncidentCategory =
   | 'Communication'   // 1
   | 'Conflict'        // 2

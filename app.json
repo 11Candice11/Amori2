@@ -1,10 +1,39 @@
 {
-  "name": "Amori",
-  "displayName": "Amori",
-  "ios": {
-    "bundleIdentifier": "com.candice.amori"
-  },
-  "android": {
-    "package": "com.candice.amori"
+  "expo": {
+    "name": "Amori",
+    "slug": "amori",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "plugins": [
+      "expo-notifications"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.candice.amori"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "package": "com.candice.amori"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4a859dca-b375-4810-81e6-7f94a3822316"
+      }
+    },
+    "owner": "11cat11"
   }
 }

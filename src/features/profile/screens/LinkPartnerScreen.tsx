@@ -9,7 +9,7 @@
  *
  * Rendered as a full-screen modal from ProfileScreen.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,10 +22,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { AppHeader } from '../../../shared/components/header';
 
 import { colors, spacing, typography } from '../../../shared/theme';
+import { DateTimeField, toIsoDate } from '../../../shared/components/inputs';
 import { partnerLinkService } from '../services/partnerLinkService';
 import type {
   PartnerLinkRequestResponse,
@@ -39,45 +40,8 @@ type Props = {
   onLinked?: () => void;
 };
 
-function BackIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M15 18l-6-6 6-6"
-        stroke={colors.neutral}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-/**
- * Validates a "YYYY-MM-DD" string and ensures it's a real, non-future date.
- * Returns the normalized date string when valid, otherwise null.
- */
-function normalizeStartDate(value: string): string | null {
-  const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
-
-  const [year, month, day] = trimmed.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  // Guard against overflow like 2024-02-31 rolling into March.
-  const isRealDate =
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day;
-  if (!isRealDate) return null;
-
-  // A relationship can't have started in the future.
-  if (date.getTime() > Date.now()) return null;
-
-  return trimmed;
 }
 
 export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
@@ -89,7 +53,10 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
   const [unlinking, setUnlinking] = useState(false);
   /** Which incoming request is currently showing the start-date prompt. */
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState('');
+  /** The date the couple got together; picked, so it's always a real date. */
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  /** A relationship can't have started in the future. */
+  const today = useMemo(() => new Date(), []);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -106,7 +73,7 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
     if (visible) {
       setEmail('');
       setPendingAcceptId(null);
-      setStartDate('');
+      setStartDate(null);
       loadStatus();
     }
   }, [visible, loadStatus]);
@@ -135,30 +102,27 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
 
   // Tapping Accept reveals the start-date prompt for that request.
   const beginAccept = useCallback((request: PartnerLinkRequestResponse) => {
-    setStartDate('');
+    setStartDate(null);
     setPendingAcceptId(request.id);
   }, []);
 
   const cancelAccept = useCallback(() => {
     setPendingAcceptId(null);
-    setStartDate('');
+    setStartDate(null);
   }, []);
 
   const confirmAccept = useCallback(
     async (request: PartnerLinkRequestResponse) => {
-      const normalized = normalizeStartDate(startDate);
-      if (!normalized) {
-        Alert.alert(
-          'Check the date',
-          'Enter the date you got together as YYYY-MM-DD (it can\u2019t be in the future).',
-        );
+      if (!startDate) {
+        Alert.alert('Pick a date', 'Choose the date the two of you got together.');
         return;
       }
+      const normalized = toIsoDate(startDate);
       setBusyRequestId(request.id);
       try {
         await partnerLinkService.acceptRequest(request.id, normalized);
         setPendingAcceptId(null);
-        setStartDate('');
+        setStartDate(null);
         await loadStatus();
         onLinked?.();
         Alert.alert(
@@ -237,22 +201,11 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-        <View style={styles.header}>
-          <Pressable
-            onPress={onClose}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel="Back to settings"
-            hitSlop={8}
-          >
-            <BackIcon />
-          </Pressable>
-          <Text style={styles.title}>Link to partner</Text>
-          <View style={styles.backButton} />
-        </View>
+        <AppHeader title="Link to partner" onBack={onClose} showNotificationBell={false} />
 
         {loading ? (
           <View style={styles.centered}>
@@ -314,18 +267,15 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
                               When did you two get together? We'll use this to
                               count your days together.
                             </Text>
-                            <TextInput
-                              style={styles.input}
+                            <DateTimeField
+                              mode="date"
                               value={startDate}
-                              onChangeText={setStartDate}
-                              placeholder="YYYY-MM-DD"
-                              placeholderTextColor={colors.neutralSubtle}
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                              keyboardType="numbers-and-punctuation"
-                              maxLength={10}
-                              editable={busyRequestId !== req.id}
-                              accessibilityLabel="Relationship start date, format YYYY-MM-DD"
+                              onChange={setStartDate}
+                              placeholder="Pick the date"
+                              pickerTitle="When did you get together?"
+                              maximumDate={today}
+                              disabled={busyRequestId === req.id}
+                              accessibilityLabel="Relationship start date"
                             />
                             <View style={styles.actionRow}>
                               <Pressable
@@ -466,6 +416,7 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
           </ScrollView>
         )}
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }

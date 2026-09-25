@@ -1,24 +1,22 @@
 /**
  * artifactStore — persists whether today's Daily Artifact has been opened.
  *
- * The app has no state library or AsyncStorage installed, so — mirroring the
- * `themeStore` pattern — this uses the already-available `expo-file-system` to
- * write a tiny JSON file to the app's document directory.
- *
- * The opened flag is keyed by calendar day: the artifact is a *daily* gift, so
- * a stored "opened" only counts for the day it was opened. Opening it today
- * survives app relaunches, but a new day starts sealed again. All operations
- * are best-effort — persistence failures never crash the app; they just fall
- * back to "not opened".
+ * Uses AsyncStorage with in-memory cache for performance. The opened flag is tied
+ * to the specific calendar day: the artifact is a *daily* gift, so a stored
+ * "opened" only counts for the day it was opened. Opening it today survives
+ * app relaunches and persists until a new day starts.
  */
-import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const FILE_NAME = 'daily-artifact.json';
+const CACHE_KEY = 'daily-artifact';
 
 type StoredState = {
   /** The local calendar day (YYYY-MM-DD) the artifact was opened. */
   openedDate?: string;
 };
+
+// In-memory cache for performance
+const memoryCache: Record<string, string> = {};
 
 /** Local calendar-day key, e.g. "2026-09-16". */
 function todayKey(): string {
@@ -29,23 +27,28 @@ function todayKey(): string {
   return `${y}-${m}-${d}`;
 }
 
-function fileUri(): string | null {
-  const dir = FileSystem.documentDirectory;
-  return dir ? `${dir}${FILE_NAME}` : null;
-}
-
 export const artifactStore = {
   /**
    * Whether today's artifact has already been opened. Resolves to `false` when
-   * nothing is stored, the stored day isn't today, or on any read error.
+   * nothing is stored or the stored day isn't today.
    */
   async isOpenedToday(): Promise<boolean> {
-    const uri = fileUri();
-    if (!uri) return false;
     try {
-      const info = await FileSystem.getInfoAsync(uri);
-      if (!info.exists) return false;
-      const raw = await FileSystem.readAsStringAsync(uri);
+      // First check memory cache
+      let raw = memoryCache[CACHE_KEY];
+      
+      // If not in memory, try AsyncStorage
+      if (!raw) {
+        const stored = await AsyncStorage.getItem(CACHE_KEY);
+        if (stored) {
+          // Cache it for next time
+          memoryCache[CACHE_KEY] = stored;
+          raw = stored;
+        }
+      }
+      
+      if (!raw) return false;
+      
       const parsed = JSON.parse(raw) as StoredState;
       return parsed.openedDate === todayKey();
     } catch {
@@ -53,15 +56,30 @@ export const artifactStore = {
     }
   },
 
-  /** Mark today's artifact as opened. Best-effort — failures are swallowed. */
+  /** Mark today's artifact as opened. */
   async markOpenedToday(): Promise<void> {
-    const uri = fileUri();
-    if (!uri) return;
     try {
       const state: StoredState = { openedDate: todayKey() };
-      await FileSystem.writeAsStringAsync(uri, JSON.stringify(state));
+      const serialized = JSON.stringify(state);
+      
+      // Update both memory cache and AsyncStorage
+      memoryCache[CACHE_KEY] = serialized;
+      await AsyncStorage.setItem(CACHE_KEY, serialized);
     } catch {
       // Ignore — a failed write just means the flag won't persist.
+    }
+  },
+
+  /** 
+   * Reset the artifact state (for debugging/testing purposes).
+   * Clears both memory cache and AsyncStorage.
+   */
+  async reset(): Promise<void> {
+    try {
+      delete memoryCache[CACHE_KEY];
+      await AsyncStorage.removeItem(CACHE_KEY);
+    } catch {
+      // Ignore errors
     }
   },
 };

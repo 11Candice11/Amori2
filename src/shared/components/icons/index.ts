@@ -5,3 +5,5 @@ export {
   ProfileIcon,
   TogetherIcon,
 } from './TabIcons';
+export { BackIcon } from './BackIcon';
+export { BellIcon } from './BellIcon';

@@ -92,8 +92,9 @@ public sealed class BucketListService(
     public async Task<BucketListItemResponse> CompleteAsync(Guid userId, Guid itemId, CancellationToken ct = default)
     {
         var (_, item) = await LoadAsync(userId, itemId, ct);
-        item.IsCompleted = true;
-        item.CompletedAt ??= DateTime.UtcNow;
+        // Toggle completion both ways so an accidental tick can be undone.
+        item.IsCompleted = !item.IsCompleted;
+        item.CompletedAt = item.IsCompleted ? DateTime.UtcNow : null;
         await db.SaveChangesAsync(ct);
         return Map(item);
     }

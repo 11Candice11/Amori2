@@ -55,4 +55,14 @@ public sealed class TimelineController(
     [ProducesResponseType(typeof(TimelineEventResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> AddMedia(Guid eventId, [FromBody] AddTimelineMediaRequest req, CancellationToken ct) =>
         Ok(await timelineService.AddMediaAsync(RequireUserId(), eventId, req, ct));
+
+    /// <summary>
+    /// Remove a photo from a timeline event. The photo key is passed as a query
+    /// parameter since storage keys may contain characters (slashes, dots) that
+    /// don't map cleanly onto a path segment.
+    /// </summary>
+    [HttpDelete("{eventId:guid}/media")]
+    [ProducesResponseType(typeof(TimelineEventResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RemoveMedia(Guid eventId, [FromQuery] string photoKey, CancellationToken ct) =>
+        Ok(await timelineService.RemoveMediaAsync(RequireUserId(), eventId, photoKey, ct));
 }

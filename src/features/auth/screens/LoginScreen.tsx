@@ -20,8 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { authService } from '../../../services/auth/authService';
-
-const bgImage = require('../../../../images/forest.png');
+import { getSignInBackground } from '../../../utils/backgroundImages';
+import { validateLogin } from '../utils/authSchema';
 
 type Props = {
   onLoginSuccess: () => void;
@@ -36,14 +36,21 @@ export function LoginScreen({ onLoginSuccess }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
+  
+  // Select a random background once at component mount
+  const [backgroundImage] = useState(() => getSignInBackground());
 
   const isLogin = mode === 'login';
 
   const handleSubmit = useCallback(async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter your email and password.');
+    // Validate the email field and sanitize both email and password.
+    const validation = validateLogin({ email, password });
+    if (!validation.success) {
+      setError(validation.error);
       return;
     }
+    const { email: cleanEmail, password: cleanPassword } = validation.data;
+
     if (!isLogin && !name.trim()) {
       setError('Please enter your name.');
       return;
@@ -52,9 +59,9 @@ export function LoginScreen({ onLoginSuccess }: Props) {
       setLoading(true);
       setError(null);
       if (isLogin) {
-        await authService.login({ email: email.trim(), password });
+        await authService.login({ email: cleanEmail, password: cleanPassword });
       } else {
-        await authService.register({ name: name.trim(), email: email.trim(), password });
+        await authService.register({ name: name.trim(), email: cleanEmail, password: cleanPassword });
       }
       onLoginSuccess();
     } catch (err) {
@@ -66,7 +73,7 @@ export function LoginScreen({ onLoginSuccess }: Props) {
 
   return (
     <ImageBackground
-      source={bgImage}
+      source={backgroundImage}
       style={styles.bg}
       resizeMode="cover"
     >
@@ -87,9 +94,9 @@ export function LoginScreen({ onLoginSuccess }: Props) {
           >
             {/* Wordmark */}
             <View style={styles.wordmarkSection}>
-              <Text style={styles.wordmark}>Amori ★</Text>
+              <Text style={styles.wordmark}>Amori</Text>
               <Text style={styles.tagline}>
-                {isLogin ? 'Welcome back to your sanctuary' : 'Begin your sanctuary'}
+                {isLogin ? 'Welcome back' : 'Begin your sanctuary'}
               </Text>
             </View>
 

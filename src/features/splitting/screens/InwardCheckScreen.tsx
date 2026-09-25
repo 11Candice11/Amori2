@@ -78,7 +78,7 @@ export function InwardCheckScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="Splitting Anchor" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Inward Check" subtitle="Splitting Anchor" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.progressWrap}>

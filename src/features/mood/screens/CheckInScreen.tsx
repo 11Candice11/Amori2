@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { useDayChange } from '../../../hooks/useDayChange';
 import { colors, spacing, typography, useThemeMode } from '../../../shared/theme';
 import {
   QUADRANTS,
@@ -33,12 +34,9 @@ import { moodService } from '../services/moodService';
 import { CheckInStep2Screen } from './CheckInStep2Screen';
 import type { CheckInResponse } from '../../../services/api/types';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
+import { moodBackgroundStore, useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'CheckInHome'>;
-
-const bgImage = require('../../../../images/forest.png');
-// Warm fireplace glow behind the "Anchored" confirmation.
-const doneImage = require('../../../../images/fireplace.png');
 
 // 'loading'  — deciding which entry view to show (fetching today's check-in)
 // 'already'  — user already checked in today: show their mood + follow-on actions
@@ -81,35 +79,49 @@ export function CheckInScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastCheckIn, setLastCheckIn] = useState<CheckInResponse | null>(null);
+  // Shared with Together and Desk — this screen is what keeps it up to date.
+  const backgroundImage = useMoodBackground();
 
   // Whether the user is mid-flow (picking a mood, or on the confirmation). While
   // interacting we must NOT bounce them back to the "already checked in" summary
   // when the tab regains focus — only the initial landing decides that.
   const inFlowRef = useRef(false);
 
-  // On each focus, decide the landing view: if the user already checked in today
-  // (and isn't mid-flow), show the summary; otherwise start the check-in.
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      moodService
-        .getCurrent()
-        .then((current) => {
-          if (!active) return;
-          setLastCheckIn(current);
-          if (inFlowRef.current) return;
-          setStage(isToday(current?.createdAt) ? 'already' : 'quadrant');
-        })
-        .catch(() => {
-          if (!active) return;
-          setLastCheckIn(null);
-          if (!inFlowRef.current) setStage('quadrant');
-        });
-      return () => {
-        active = false;
-      };
-    }, []),
-  );
+  // Decide the landing view: if the user already checked in today (and isn't
+  // mid-flow), show the summary; otherwise start the check-in. Returns a
+  // cleanup that cancels the in-flight decision.
+  const decideLanding = useCallback(() => {
+    let active = true;
+    moodService
+      .getCurrent()
+      .then((current) => {
+        if (!active) return;
+        setLastCheckIn(current);
+        // Refresh the background shared with Together and Desk.
+        moodBackgroundStore.setFromCheckIn(current);
+        if (inFlowRef.current) return;
+        setStage(isToday(current?.createdAt) ? 'already' : 'quadrant');
+      })
+      .catch(() => {
+        if (!active) return;
+        setLastCheckIn(null);
+        moodBackgroundStore.setQuadrant(null);
+        if (!inFlowRef.current) setStage('quadrant');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Re-decide the landing view every time the tab regains focus.
+  useFocusEffect(decideLanding);
+
+  // If the local day rolls over while sitting on this screen, yesterday's
+  // check-in no longer counts — re-decide so the user lands on a fresh
+  // check-in. Skipped while mid-flow so we don't yank them out of picking a mood.
+  useDayChange(() => {
+    if (!inFlowRef.current) decideLanding();
+  });
 
   const reset = useCallback(() => {
     inFlowRef.current = false;
@@ -135,6 +147,19 @@ export function CheckInScreen() {
     setStage('mood');
   }, []);
 
+  // Apply the mood-driven theme: a "high energy pleasant" check-in switches the
+  // app to the warm gold scheme; any other confirmed mood returns to botanical.
+  const applyMoodTheme = useCallback(
+    (q: MoodQuadrant | null) => {
+      if (q === 'HIGH_PLEASANT') {
+        setVariant('gold');
+      } else if (q) {
+        setVariant('botanical');
+      }
+    },
+    [setVariant],
+  );
+
   const handleConfirmMood = useCallback(async (mood: MoodOption) => {
     setSubmitting(true);
     setError(null);
@@ -142,13 +167,29 @@ export function CheckInScreen() {
       const result = await moodService.createCheckIn(mood.backendMood, mood.label);
       setLastCheckIn(result);
       setConfirmedQuadrant(mood.quadrant);
+      // Moves Check-in, Together and Desk onto the new mood's background.
+      moodBackgroundStore.setQuadrant(mood.quadrant);
+
+      // A high-pleasant check-in earns the daily gift — take them straight to
+      // it rather than pausing on the "Anchored" confirmation. Other quadrants
+      // still land on the confirmation with their own follow-on action.
+      //
+      // The gold theme is applied when they leave the gift for Home, not now:
+      // switching the theme remounts the navigator, which would throw away this
+      // navigation and drop them on the dashboard instead of the gift.
+      if (mood.quadrant === 'HIGH_PLEASANT') {
+        inFlowRef.current = false;
+        navigation.navigate('MoodGift', { applyTheme: 'gold' });
+        return;
+      }
+
       setStage('done');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your check-in.');
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [navigation]);
 
   const handleIDontKnow = useCallback(async () => {
     setSubmitting(true);
@@ -157,6 +198,8 @@ export function CheckInScreen() {
       const result = await moodService.createIDontKnow();
       setLastCheckIn(result);
       setConfirmedQuadrant(null);
+      // An "I don't know" check-in has no quadrant — back to neutral.
+      moodBackgroundStore.setQuadrant(null);
       setStage('done');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your check-in.');
@@ -180,44 +223,44 @@ export function CheckInScreen() {
 
   // ── Done ──
   if (stage === 'done') {
-    // Mood-driven theming: a "high energy pleasant" check-in switches the app
-    // to the warm gold scheme; any other confirmed mood returns to botanical.
-    // Applied on exit from the confirmation screen so switching the theme
-    // (which remounts the tree) doesn't interrupt the "Anchored" moment.
-    const applyMoodTheme = () => {
-      if (confirmedQuadrant === 'HIGH_PLEASANT') {
-        setVariant('gold');
-      } else if (confirmedQuadrant) {
-        setVariant('botanical');
-      }
-    };
-
+    // Theming is applied on exit from the confirmation screen so switching the
+    // theme (which remounts the tree) doesn't interrupt the "Anchored" moment.
+    // HIGH_PLEASANT never reaches this screen (it goes straight to the gift),
+    // so this covers the remaining quadrants.
     const goHome = () => {
-      applyMoodTheme();
+      applyMoodTheme(confirmedQuadrant);
       // Leaving the flow: next time the tab is focused, land on the summary.
       inFlowRef.current = false;
       navigation.getParent()?.navigate('Home');
     };
 
     // The primary action adapts to the mood quadrant the user just logged.
+    //
+    // Note: the follow-on screens (breathe / grounding / gift) live in this
+    // same stack, so we must NOT switch the theme here — doing so remounts the
+    // navigator and discards the navigation, landing the user on the dashboard.
+    // Instead we hand each screen the variant to apply when it exits to Home.
     const runAction = () => {
-      applyMoodTheme();
       // Any of these actions leaves the check-in flow, so allow the tab to land
       // on the "already checked in" summary the next time it's focused.
       inFlowRef.current = false;
+      const applyTheme = confirmedQuadrant === 'HIGH_PLEASANT' ? 'gold' : 'botanical';
       switch (confirmedQuadrant) {
+        case 'HIGH_PLEASANT':
+          // "Open gift" — reveal today's daily gift with the option to save it.
+          navigation.navigate('MoodGift', { applyTheme });
+          break;
         case 'HIGH_UNPLEASANT':
-          navigation.navigate('MoodBreathe');
+          navigation.navigate('MoodBreathe', { applyTheme });
           break;
         case 'LOW_UNPLEASANT':
-          navigation.navigate('MoodGrounding');
+          navigation.navigate('MoodGrounding', { applyTheme });
           break;
         case 'LOW_PLEASANT':
-          // Send a hug — opens the hidden Hug flow's compose screen.
+          // Send a hug — leaving this stack for the Hug flow, so applying the
+          // theme here is safe (the remount lands on the Hug screen).
+          applyMoodTheme(confirmedQuadrant);
           navigation.getParent()?.navigate('Hugs', { screen: 'NeedAHug' });
-          break;
-        case 'HIGH_PLEASANT':
-          navigation.navigate('MoodGift');
           break;
         default:
           // "I don't know" or unknown — just let them check in again.
@@ -233,7 +276,7 @@ export function CheckInScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.background} />
         <ImageBackground
-          source={doneImage}
+          source={backgroundImage}
           style={styles.doneBg}
           imageStyle={styles.doneBgImg}
           resizeMode="cover"
@@ -290,7 +333,7 @@ export function CheckInScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.background} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ImageBackground source={bgImage} style={styles.header} imageStyle={styles.headerImg} resizeMode="cover">
+          <ImageBackground source={backgroundImage} style={styles.header} imageStyle={styles.headerImg} resizeMode="cover">
             <View style={styles.headerOverlay}>
               <View style={styles.stepRow}>
                 <View style={styles.stepDot} />
@@ -351,7 +394,7 @@ export function CheckInScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={bgImage} style={styles.header} imageStyle={styles.headerImg} resizeMode="cover">
+        <ImageBackground source={backgroundImage} style={styles.header} imageStyle={styles.headerImg} resizeMode="cover">
           <View style={styles.headerOverlay}>
             <View style={styles.stepRow}>
               <View style={styles.stepDot} />

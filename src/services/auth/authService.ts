@@ -1,11 +1,13 @@
 /**
  * Auth service.
  *
- * Wraps the backend auth endpoints and manages the in-memory access token.
+ * Wraps the backend auth endpoints and manages the persisted tokens.
  *
  * Backend routes (see Amori.Api/Features/Auth + Users):
- *   POST /api/auth/register  -> AuthResponse { accessToken, user }
- *   POST /api/auth/login     -> AuthResponse { accessToken, user }
+ *   POST /api/auth/register  -> AuthResponse { accessToken, refreshToken, accessTokenExpiresAt, user }
+ *   POST /api/auth/login     -> AuthResponse { accessToken, refreshToken, accessTokenExpiresAt, user }
+ *   POST /api/auth/refresh   -> AuthResponse (rotates the refresh token)
+ *   POST /api/auth/logout    -> 204 (revokes the refresh token)
  *   GET  /api/users/me       -> UserResponse { id, name, email }   (requires Bearer token)
  */
 import { api, tokenStore } from '../api/client';
@@ -18,22 +20,22 @@ import type {
 
 export const authService = {
   /**
-   * Log in with email + password. Stores the returned access token
-   * so subsequent requests are authenticated.
+   * Log in with email + password. Stores the returned access + refresh tokens
+   * so subsequent requests are authenticated and the session can be renewed.
    */
   async login(request: LoginRequest): Promise<AuthResponse> {
     const result = await api.post<AuthResponse>('/api/auth/login', request);
-    tokenStore.set(result.accessToken);
+    tokenStore.setTokens(result.accessToken, result.refreshToken);
     return result;
   },
 
   /**
-   * Register a new account. Stores the returned access token
-   * so subsequent requests are authenticated.
+   * Register a new account. Stores the returned access + refresh tokens
+   * so subsequent requests are authenticated and the session can be renewed.
    */
   async register(request: RegisterRequest): Promise<AuthResponse> {
     const result = await api.post<AuthResponse>('/api/auth/register', request);
-    tokenStore.set(result.accessToken);
+    tokenStore.setTokens(result.accessToken, result.refreshToken);
     return result;
   },
 
@@ -45,11 +47,20 @@ export const authService = {
   },
 
   /**
-   * Clear the stored token from memory and disk. The session ends here — any
-   * subsequent authenticated request will fail until the user logs in again,
-   * and the user will not be restored on the next app launch.
+   * End the session. Best-effort revokes the refresh token on the server so it
+   * can't be used to renew the session, then clears both tokens from memory and
+   * disk. The user will not be restored on the next app launch.
    */
-  logout(): void {
+  async logout(): Promise<void> {
+    const refreshToken = tokenStore.getRefresh();
+    if (refreshToken) {
+      try {
+        await api.post('/api/auth/logout', { refreshToken });
+      } catch (err) {
+        // Network failure shouldn't block sign-out — clear locally regardless.
+        console.warn('Failed to revoke refresh token on logout:', err);
+      }
+    }
     tokenStore.clear();
   },
 };

@@ -15,7 +15,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
-import { IncidentScreenHeader } from '../components/IncidentScreenHeader';
+import {
+  KeyboardDoneAccessory,
+  KEYBOARD_DONE_ACCESSORY_ID,
+} from '../../../shared/components/inputs';
+import { AppHeader } from '../../../shared/components/header';
 import { EmptyState } from '../components/EmptyState';
 import { incidentService } from '../services/incidentService';
 import { friendlyError, formatRelativeDate } from '../utils/errorMessages';
@@ -67,16 +71,22 @@ export function IncidentLessonsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <IncidentScreenHeader
+      <AppHeader
         title="Lessons Learned"
         subtitle={lessons.length > 0 ? `${lessons.length} recorded` : undefined}
         onBack={() => navigation.goBack()}
+        showNotificationBell={false}
       />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.gold} size="large" /></View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.intro}>
               What did you both learn? Capturing lessons helps you grow together and avoid repeating the same patterns.
             </Text>
@@ -105,6 +115,7 @@ export function IncidentLessonsScreen() {
             placeholderTextColor={colors.neutralMuted}
             multiline
             maxLength={1000}
+            inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
           />
           <Pressable
             style={[styles.btn, (!draft.trim() || submitting) && styles.btnDisabled]}
@@ -117,6 +128,8 @@ export function IncidentLessonsScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <KeyboardDoneAccessory />
     </SafeAreaView>
   );
 }

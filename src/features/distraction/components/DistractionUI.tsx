@@ -13,23 +13,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-
 import { colors, spacing, typography } from '../../../shared/theme';
-
-export function BackIcon({ color = colors.neutral }: { color?: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M15 18l-6-6 6-6"
-        stroke={color}
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
+import { AppHeader } from '../../../shared/components/header';
 
 type ScreenHeaderProps = {
   eyebrow?: string;
@@ -37,25 +22,13 @@ type ScreenHeaderProps = {
   onBack: () => void;
 };
 
+/**
+ * Thin wrapper over the shared AppHeader so the distraction screens use the
+ * standard centered title + left back button. The old `eyebrow` prop maps to
+ * the header subtitle.
+ */
 export function ScreenHeader({ eyebrow, title, onBack }: ScreenHeaderProps) {
-  return (
-    <View style={styles.header}>
-      <Pressable
-        style={styles.backBtn}
-        onPress={onBack}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-        android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
-      >
-        <BackIcon />
-      </Pressable>
-      <View style={styles.headerText}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text style={styles.headerTitle}>{title}</Text>
-      </View>
-    </View>
-  );
+  return <AppHeader title={title} subtitle={eyebrow} onBack={onBack} />;
 }
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -111,22 +84,6 @@ export function Button({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerText: { flex: 1 },
-  eyebrow: { ...typography.label, color: colors.gold, fontSize: 10 },
-  headerTitle: { ...typography.headlineSm, color: colors.neutral },
   sectionLabel: {
     ...typography.label,
     color: colors.gold,

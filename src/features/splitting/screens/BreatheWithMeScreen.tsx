@@ -23,6 +23,7 @@ import {
 } from '../components';
 import { PARTNER_NAME } from '../utils/splittingData';
 import { EMPTY_FLOW_STATE } from '../types/splitting.types';
+import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'BreatheWithMe'>;
 type Rt = RouteProp<SplittingStackParamList, 'BreatheWithMe'>;
@@ -40,6 +41,11 @@ export function BreatheWithMeScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
   const flow = route.params?.flow ?? EMPTY_FLOW_STATE;
+
+  // Leaving after the Inward Check saves the grounding as history. The hook
+  // only fires when a need was chosen, so reaching here before the Inward Check
+  // (via "take a slow breath") won't prematurely save.
+  useSaveGroundingOnLeave(flow);
 
   const [cycle, setCycle] = useState(1);
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -100,7 +106,7 @@ export function BreatheWithMeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="De-escalation Pacing" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Breathe With Me" subtitle="De-escalation Pacing" onBack={() => navigation.goBack()} />
 
       <View style={styles.body}>
         <StatusPill label="Safe sanctuary" />

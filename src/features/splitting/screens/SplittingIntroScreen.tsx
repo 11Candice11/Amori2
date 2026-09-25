@@ -32,7 +32,7 @@ export function SplittingIntroScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SplittingHeader eyebrow="Splitting Anchor" onBack={() => navigation.goBack()} />
+      <SplittingHeader eyebrow="Splitting Anchor" subtitle="A gentle grounding flow" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <StatusPill label="Safe space protocol active" />
@@ -40,7 +40,7 @@ export function SplittingIntroScreen() {
         <View style={styles.hero}>
           <PulseCircle
             size={220}
-            durationMs={5000}
+            durationMs={7000}
             haptics
             centerContent={
               <View style={styles.heroBadge}>
@@ -67,6 +67,10 @@ export function SplittingIntroScreen() {
             label="Let's work through it"
             icon={<LeafIcon color={colors.ctaText} size={18} />}
             onPress={() => navigation.navigate('GroundingCheckpoint', { flow })}
+          />
+          <TextButton
+            label="View past grounding sessions"
+            onPress={() => navigation.navigate('SplittingHistory')}
           />
           <TextButton label="Not now" onPress={() => navigation.goBack()} />
         </View>

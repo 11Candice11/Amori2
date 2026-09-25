@@ -5,10 +5,10 @@
  * in parallel, degrading gracefully if any single call fails.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useDayChange } from '../../../hooks/useDayChange';
 import { api } from '../../../services/api/client';
 import { authService } from '../../../services/auth/authService';
 import { moodService } from '../../mood/services/moodService';
-import { settingsService } from '../../profile/services/settingsService';
 import { splittingService } from '../../splitting/services/splittingService';
 import type { RelationshipResponse } from '../../../services/api/types';
 import type { RhythmItem } from '../components/GentleRhythm';
@@ -34,12 +34,17 @@ export interface DashboardSpaceWindow {
   owner: 'self' | 'partner';
   /** ISO timestamp when the self-regulation window ends. */
   spaceEndsAt: string;
+  /**
+   * Id of the grounding session behind this window. Present for the user's own
+   * window (so it can be ended/extended); null for the partner's, which the
+   * current user can't control.
+   */
+  sessionId: string | null;
 }
 
 export interface DashboardData {
   userName: string;
   partnerName: string;
-  isPartnerOnline: boolean;
   relationshipDays: number;
   rhythmItems: RhythmItem[];
   hasMoodToday: boolean;
@@ -58,7 +63,6 @@ export interface DashboardData {
 const INITIAL: DashboardData = {
   userName: '',
   partnerName: '',
-  isPartnerOnline: false,
   relationshipDays: 0,
   rhythmItems: [],
   hasMoodToday: false,
@@ -100,7 +104,6 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
       relResult,
       moodResult,
       partnerMoodResult,
-      partnerStatusResult,
       partnerWindowResult,
       myWindowResult,
     ] = await Promise.allSettled([
@@ -108,7 +111,6 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
       api.get<RelationshipResponse>('/api/relationships/me'),
       moodService.getCurrent(),
       moodService.getPartnerCurrent(),
-      settingsService.getPartnerStatus(),
       splittingService.getPartnerActive(),
       splittingService.getMyActive(),
     ]);
@@ -148,12 +150,6 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
       };
     }
 
-    // Partner presence (gated server-side by the partner's "Share activity" pref)
-    let isPartnerOnline = false;
-    if (partnerStatusResult.status === 'fulfilled' && partnerStatusResult.value) {
-      isPartnerOnline = partnerStatusResult.value.isOnline;
-    }
-
     // Active self-regulation window — so BOTH people see the same countdown.
     // Prefer the user's OWN active window (the person who started the space);
     // otherwise fall back to the partner's. Only show windows that haven't
@@ -163,17 +159,19 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
       Boolean(iso) && Date.parse(iso as string) > now;
 
     let spaceWindow: DashboardSpaceWindow | null = null;
-    const myEndsAt =
-      myWindowResult.status === 'fulfilled' ? myWindowResult.value?.spaceEndsAt : null;
-    const partnerEndsAt =
-      partnerWindowResult.status === 'fulfilled'
-        ? partnerWindowResult.value?.spaceEndsAt
-        : null;
+    const myWindow =
+      myWindowResult.status === 'fulfilled' ? myWindowResult.value : null;
+    const partnerWindow =
+      partnerWindowResult.status === 'fulfilled' ? partnerWindowResult.value : null;
+    const myEndsAt = myWindow?.spaceEndsAt ?? null;
+    const partnerEndsAt = partnerWindow?.spaceEndsAt ?? null;
 
     if (isFuture(myEndsAt)) {
-      spaceWindow = { owner: 'self', spaceEndsAt: myEndsAt };
+      spaceWindow = { owner: 'self', spaceEndsAt: myEndsAt, sessionId: myWindow?.id ?? null };
     } else if (isFuture(partnerEndsAt)) {
-      spaceWindow = { owner: 'partner', spaceEndsAt: partnerEndsAt };
+      // The partner's window is privacy-safe (PartnerSplittingWindow); the
+      // current user can't end/extend it, so no session id is exposed.
+      spaceWindow = { owner: 'partner', spaceEndsAt: partnerEndsAt, sessionId: null };
     }
 
     const anyFailed =
@@ -182,7 +180,6 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
     setData({
       userName,
       partnerName,
-      isPartnerOnline,
       relationshipDays,
       rhythmItems: [],
       hasMoodToday,
@@ -195,6 +192,10 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // At local midnight yesterday's check-in stops counting as "today's", so
+  // reload to drop `hasMoodToday` and show a fresh "Check In" prompt.
+  useDayChange(load);
 
   return { ...data, refresh: load };
 }

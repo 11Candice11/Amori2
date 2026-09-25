@@ -2,6 +2,7 @@ using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Features.Hugs.DTOs;
+using Amori.Api.Features.Notifications;
 using Amori.Api.Features.Notifications.Services;
 using Amori.Api.Infrastructure.Relationships;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,7 @@ public sealed class HugService(
     IRelationshipAccessService relAccess,
     INotificationService notifications) : IHugService
 {
-    private const string NotificationType = "Hug";
+    private const string NotificationType = NotificationTypes.Hug;
     private static HugResponse Map(Hug h) => new()
     {
         Id = h.Id, RelationshipId = h.RelationshipId,
@@ -30,6 +31,16 @@ public sealed class HugService(
             ?? throw new NotFoundException("You are not a member of any relationship.");
         var partner = await relAccess.GetPartnerAsync(userId)
             ?? throw new ConflictException("Your relationship does not have a second partner yet.");
+
+        // Respect the recipient's "Allow hugs" permission. Defaults to allowed
+        // when they have no settings row yet.
+        var partnerAllowsHugs = await db.UserSettings
+            .Where(s => s.UserId == partner.Id)
+            .Select(s => (bool?)s.AllowHugs)
+            .FirstOrDefaultAsync(ct) ?? true;
+
+        if (!partnerAllowsHugs)
+            throw new ConflictException($"{partner.DisplayName} is not accepting hugs right now.");
 
         var whisper = string.IsNullOrWhiteSpace(request.Whisper) ? null : request.Whisper.Trim();
         var hug = new Hug { RelationshipId = rel.Id, SenderId = userId, RecipientId = partner.Id, Whisper = whisper };

@@ -14,4 +14,5 @@ public interface ITimelineService
     Task<TimelineEventResponse> UpdateAsync(Guid userId, Guid eventId, UpdateTimelineEventRequest request, CancellationToken ct = default);
     Task DeleteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
     Task<TimelineEventResponse> AddMediaAsync(Guid userId, Guid eventId, AddTimelineMediaRequest request, CancellationToken ct = default);
+    Task<TimelineEventResponse> RemoveMediaAsync(Guid userId, Guid eventId, string photoKey, CancellationToken ct = default);
 }
