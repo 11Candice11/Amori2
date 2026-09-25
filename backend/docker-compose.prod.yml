@@ -1,8 +1,20 @@
+# Shared logging policy. Docker's json-file driver is size-based only (no
+# native "delete after N days"), so we cap size here as a safety net that
+# prevents a log burst from filling the disk between cleanups. True 2-day
+# age-based deletion is enforced by the daily cron in scripts/prune-docker-logs.sh
+# (installed on the host) which truncates container logs older than 2 days.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"   # per file
+    max-file: "3"     # keep at most 3 rotated files per container
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: amori-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -27,6 +39,7 @@ services:
     image: amori-api:latest
     container_name: amori-api
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5001
