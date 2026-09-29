@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
@@ -35,6 +35,19 @@ function CalendarGlyph() {
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
       <Rect x={3} y={4.5} width={18} height={17} rx={3} stroke={colors.neutralMuted} strokeWidth={1.5} />
       <Path d="M3 9h18M8 2.5v4M16 2.5v4" stroke={colors.neutralMuted} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/** Header action glyph for the weekly reflection (a small calendar week). */
+function WeekGlyph({ size = 22 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={3} y={4.5} width={18} height={17} rx={3} stroke={colors.gold} strokeWidth={1.5} />
+      <Path d="M3 9h18M8 2.5v4M16 2.5v4" stroke={colors.gold} strokeWidth={1.5} strokeLinecap="round" />
+      <Circle cx={8} cy={14} r={1.2} fill={colors.gold} />
+      <Circle cx={12} cy={14} r={1.2} fill={colors.gold} />
+      <Circle cx={16} cy={14} r={1.2} fill={colors.gold} />
     </Svg>
   );
 }
@@ -202,6 +215,11 @@ export function VaultScreen() {
     setModalVisible(true);
   }, []);
 
+  const openWeeklyReflection = useCallback(() => {
+    // From the Vault, jump to the browsable list of saved reflections.
+    (navigation as { navigate: (name: string) => void }).navigate('WeeklyReflectionArchive');
+  }, [navigation]);
+
   const handleCloseModal = useCallback(() => {
     setModalVisible(false);
   }, []);
@@ -268,7 +286,22 @@ export function VaultScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <AppHeader title="Hearth Vault" onBack={() => navigation.goBack()} />
+      <AppHeader
+        title="Hearth Vault"
+        onBack={() => navigation.goBack()}
+        right={
+          <Pressable
+            onPress={openWeeklyReflection}
+            style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Open weekly reflection"
+            android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+          >
+            <WeekGlyph />
+          </Pressable>
+        }
+      />
 
       {loading && gifts.length === 0 ? (
         <View style={styles.loadingContainer}>
@@ -319,6 +352,12 @@ export function VaultScreen() {
 
 const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
+  headerAction: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',

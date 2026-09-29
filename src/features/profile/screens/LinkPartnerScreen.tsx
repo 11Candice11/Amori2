@@ -28,6 +28,7 @@ import { AppHeader } from '../../../shared/components/header';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { DateTimeField, toIsoDate } from '../../../shared/components/inputs';
 import { partnerLinkService } from '../services/partnerLinkService';
+import { supportProfileStore } from '../../supportProfile/services/supportProfileStore';
 import type {
   PartnerLinkRequestResponse,
   PartnerLinkStatusResponse,
@@ -123,6 +124,9 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
         await partnerLinkService.acceptRequest(request.id, normalized);
         setPendingAcceptId(null);
         setStartDate(null);
+        // The linked relationship just changed — drop any stale partner
+        // Support Profile so the next view fetches the new partner's.
+        supportProfileStore.invalidatePartner();
         await loadStatus();
         onLinked?.();
         Alert.alert(
@@ -172,6 +176,9 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
     setUnlinking(true);
     try {
       await partnerLinkService.unlink();
+      // No partner anymore — clear the cached partner Support Profile so it
+      // can't linger after unlinking.
+      supportProfileStore.invalidatePartner();
       await loadStatus();
       onLinked?.();
       Alert.alert('Unlinked', 'You are no longer linked with your partner.');

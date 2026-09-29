@@ -41,6 +41,9 @@ public sealed class NotificationService(
             NotificationTypes.PartnerActivity => settings.PartnerActivityNotifications,
             // A gift is a form of partner activity, so it shares that toggle.
             NotificationTypes.Gift => settings.PartnerActivityNotifications,
+            // Vision Board add/complete are partner activity too.
+            NotificationTypes.VisionBoardItemAdded => settings.PartnerActivityNotifications,
+            NotificationTypes.VisionBoardItemCompleted => settings.PartnerActivityNotifications,
             NotificationTypes.CheckInReminder => settings.CheckInReminders,
             NotificationTypes.DailyDigest => settings.DailyDigest,
             _ => true,

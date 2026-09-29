@@ -2,6 +2,7 @@ using Amori.Api.Data.Context;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -23,7 +24,27 @@ public sealed class AmoriWebApplicationFactory
         .Build();
 
     // Called by xUnit before any test in the class that uses this fixture.
-    public async Task InitializeAsync() => await _db.StartAsync();
+    public async Task InitializeAsync()
+    {
+        await _db.StartAsync();
+
+        // Program.cs builds its configuration from environment variables and
+        // validates Database:ConnectionString while the host is built (before
+        // the DbContext swap in ConfigureWebHost runs). The container's
+        // connection string isn't known until it's started, so publish it as an
+        // environment variable now — the double underscore maps to the
+        // "Database:ConnectionString" config key. The DbContext is still
+        // re-registered below to enable dynamic JSON.
+        Environment.SetEnvironmentVariable(
+            "Database__ConnectionString", _db.GetConnectionString());
+
+        // JWT settings are validated at host build too, and the checked-in
+        // appsettings ships an empty SecretKey (real secrets are injected from
+        // the environment in deployed environments). Supply a test signing key
+        // so token issuance/validation works during integration tests.
+        Environment.SetEnvironmentVariable(
+            "Jwt__SecretKey", "amori-integration-test-signing-key-please-change-32+chars");
+    }
 
     public new async Task DisposeAsync()
     {

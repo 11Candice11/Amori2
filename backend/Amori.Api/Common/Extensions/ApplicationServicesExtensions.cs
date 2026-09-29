@@ -7,6 +7,7 @@ using Amori.Api.Features.Emergency.Services;
 using Amori.Api.Features.Hugs.Services;
 using Amori.Api.Features.ImportantDates.Services;
 using Amori.Api.Features.Incidents.Services;
+using Amori.Api.Features.LetsChat.Services;
 using Amori.Api.Features.Memories.Services;
 using Amori.Api.Features.Messages.Services;
 using Amori.Api.Features.Mood.Services;
@@ -15,9 +16,11 @@ using Amori.Api.Features.RelationshipTickets.Services;
 using Amori.Api.Features.Relationships.Services;
 using Amori.Api.Features.Reminders.Services;
 using Amori.Api.Features.Splitting.Services;
+using Amori.Api.Features.SupportProfile.Services;
 using Amori.Api.Features.Timeline.Services;
 using Amori.Api.Features.Users.Services;
 using Amori.Api.Features.Vault.Services;
+using Amori.Api.Features.VisionBoard.Services;
 using Amori.Api.Features.VoiceNotes.Services;
 using Amori.Api.Features.Wishlist.Services;
 using Amori.Api.Infrastructure.Notifications;
@@ -52,6 +55,9 @@ public static class ApplicationServicesExtensions
         // ── Messages ──────────────────────────────────────────────────────────
         services.AddScoped<IMessageService, MessageService>();
 
+        // ── Let's Chat (guided templated messages) ────────────────────────────
+        services.AddScoped<IChatService, ChatService>();
+
         // ── Hugs ──────────────────────────────────────────────────────────────
         services.AddScoped<IHugService, HugService>();
 
@@ -60,6 +66,9 @@ public static class ApplicationServicesExtensions
 
         // ── Splitting ─────────────────────────────────────────────────────────
         services.AddScoped<ISplittingService, SplittingService>();
+
+        // ── Support Profile ("How to Know Me" / Support Preferences) ──────────
+        services.AddScoped<ISupportProfileService, SupportProfileService>();
 
         // ── Reminders ─────────────────────────────────────────────────────────
         services.AddScoped<IReminderService, ReminderService>();
@@ -78,6 +87,9 @@ public static class ApplicationServicesExtensions
 
         // ── BucketList ────────────────────────────────────────────────────────
         services.AddScoped<IBucketListService, BucketListService>();
+
+        // ── Vision Board ("Us") ───────────────────────────────────────────────
+        services.AddScoped<IVisionBoardService, VisionBoardService>();
 
         // ── Wishlist ──────────────────────────────────────────────────────────
         services.AddScoped<IWishlistService, WishlistService>();

@@ -10,6 +10,7 @@ import { authService } from '../services/auth/authService';
 import { notificationService } from '../services/notifications/notificationService';
 import { userSettingsStore } from '../shared/state/userSettingsStore';
 import { notificationStore } from '../shared/state/notificationStore';
+import { supportProfileStore } from '../features/supportProfile/services/supportProfileStore';
 import {
   configureForegroundBehavior,
   registerNotificationListeners,
@@ -89,6 +90,19 @@ function openGift() {
   navigationRef.navigate('Vault' as never);
 }
 
+/**
+ * Open a received "Let's Chat" message. Tapping a Let's Chat notification lands
+ * the recipient on the message so they can read it (which marks it read). The
+ * flow lives on the hidden "Chat" tab (a nested stack with no bottom-bar button).
+ */
+function openChat(conversationId: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Chat', {
+    screen: 'ChatReceived',
+    params: { conversationId },
+  } as never);
+}
+
 type AuthState = 'checking' | 'unauthenticated' | 'authenticated' | 'error';
 
 // Expose the logout callback app-wide without prop drilling
@@ -109,6 +123,9 @@ export default function App() {
     userSettingsStore.reset();
     // Drop cached notifications too, for the same reason.
     notificationStore.reset();
+    // Drop cached Support Preferences (own + partner) so the next user on this
+    // device can't inherit them, and no partner data leaks across accounts.
+    supportProfileStore.reset();
     try {
       // Best-effort: remove this device so the ex-user stops getting pushes.
       notificationService.deregisterDevice().finally(() => {
@@ -148,6 +165,12 @@ export default function App() {
           // This doubles as the token check and the initial settings load, so
           // preferences like vibration are honoured from the first screen on.
           userSettingsStore.set(await authService.getMe());
+          // Restore the persisted Support Profile so it's ready after a restart,
+          // then refresh it (and the partner view) from the network in the
+          // background — failures keep the cached copy.
+          void supportProfileStore.hydrate().then(() => {
+            void supportProfileStore.loadOwn(true);
+          });
           setAuthState('authenticated');
         } catch (authErr) {
           // Only sign the user out if the token is genuinely rejected (401/403).
@@ -182,6 +205,10 @@ export default function App() {
   const handleLoginSuccess = useCallback(() => {
     // Pull the new user's settings in before any screen needs to honour them.
     userSettingsStore.load(true);
+    // A fresh sign-in is a new session on this device: clear any residual
+    // Support Profile cache, then load this user's own profile.
+    supportProfileStore.reset();
+    void supportProfileStore.loadOwn(true);
     setAuthState('authenticated');
   }, []);
 
@@ -206,6 +233,7 @@ export default function App() {
         onOpenIncident: openIncident,
         onOpenPartnerLink: openPartnerLink,
         onOpenGift: openGift,
+        onOpenChat: openChat,
       });
       return unsubscribe;
     } catch (err) {

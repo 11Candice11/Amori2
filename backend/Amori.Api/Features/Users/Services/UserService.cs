@@ -2,6 +2,7 @@ using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Features.Users.DTOs;
+using Amori.Api.Infrastructure.Authentication;
 using Amori.Api.Infrastructure.Relationships;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,8 @@ namespace Amori.Api.Features.Users.Services;
 
 public sealed class UserService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IUserService
+    IRelationshipAccessService relAccess,
+    IPasswordHasher passwordHasher) : IUserService
 {
     // A partner is considered "online" if they were active within this window.
     private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(5);
@@ -90,6 +92,34 @@ public sealed class UserService(
             IsOnline = isOnline,
             LastActiveAt = sharesActivity ? partner.LastActiveAt : null,
         };
+    }
+
+    public async Task ChangePasswordAsync(
+        Guid userId, ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        ValidateChangePassword(request);
+
+        var user = await db.Users.FindAsync([userId], ct)
+            ?? throw new NotFoundException("User", userId);
+
+        // Verify the current password before allowing a change — a valid session
+        // alone isn't enough to reset the password.
+        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new UnauthorizedException("Current password is incorrect.");
+
+        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static void ValidateChangePassword(ChangePasswordRequest req)
+    {
+        var errors = new List<string>();
+        if (string.IsNullOrWhiteSpace(req.CurrentPassword)) errors.Add("Current password is required.");
+        if (string.IsNullOrWhiteSpace(req.NewPassword)) errors.Add("New password is required.");
+        else if (req.NewPassword.Length < 8) errors.Add("New password must be at least 8 characters.");
+        if (!string.IsNullOrEmpty(req.CurrentPassword) && req.CurrentPassword == req.NewPassword)
+            errors.Add("New password must be different from the current password.");
+        if (errors.Count > 0) throw new ValidationException(errors);
     }
 
     private static GetCurrentUserResponse ToResponse(User user, UserSettings settings) => new()

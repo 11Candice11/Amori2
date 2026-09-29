@@ -22,6 +22,15 @@ public static class NotificationTypes
     /// <summary>Your partner sent you a gift to your Hearth Vault.</summary>
     public const string Gift = "Gift";
 
+    /// <summary>Your partner sent you a guided "Let's Chat" message.</summary>
+    public const string LetsChat = "LetsChat";
+
+    /// <summary>Your partner added an item to the shared "Us" Vision Board.</summary>
+    public const string VisionBoardItemAdded = "VisionBoardItemAdded";
+
+    /// <summary>A shared Vision Board item was marked achieved.</summary>
+    public const string VisionBoardItemCompleted = "VisionBoardItemCompleted";
+
     /// <summary>Nudge to complete a daily mood check-in.</summary>
     public const string CheckInReminder = "CheckInReminder";
 

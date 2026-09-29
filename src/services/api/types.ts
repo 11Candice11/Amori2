@@ -88,6 +88,11 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 // ─── Relationships ────────────────────────────────────────────────────────────
 
 export interface RelationshipMemberResponse {

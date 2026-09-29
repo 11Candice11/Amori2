@@ -34,4 +34,15 @@ public sealed class UsersController(
     [ProducesResponseType(typeof(PartnerStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPartnerStatus(CancellationToken ct) =>
         Ok(await userService.GetPartnerStatusAsync(RequireUserId(), ct));
+
+    /// <summary>Change the signed-in user's password (verifies the current one).</summary>
+    [HttpPatch("me/password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request, CancellationToken ct)
+    {
+        await userService.ChangePasswordAsync(RequireUserId(), request, ct);
+        return NoContent();
+    }
 }

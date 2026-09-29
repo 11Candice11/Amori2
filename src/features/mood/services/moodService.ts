@@ -11,7 +11,7 @@
  */
 import { api } from '../../../services/api/client';
 import type { CheckInResponse } from '../../../services/api/types';
-import { BackendCheckIn, type BackendMoodType } from '../types/mood.types';
+import { BackendCheckIn, BackendMood, type BackendMoodType } from '../types/mood.types';
 
 export interface CreateCheckInPayload {
   checkInType: number;
@@ -43,10 +43,14 @@ export const moodService = {
   async createIDontKnow(): Promise<CheckInResponse> {
     const payload: CreateCheckInPayload = {
       checkInType: BackendCheckIn.AdHoc,
-      mood: 8, // Other
+      mood: BackendMood.Other, // 8
       intensity: 5,
       isSharedWithPartner: false,
-      feelings: null,
+      // Send a human-readable label rather than null. Every other check-in
+      // sends a non-null `feelings`, and the backend rejects an "Other" mood
+      // with no accompanying text — which made the "I don't know" option fail
+      // silently. This keeps the payload shape consistent.
+      feelings: "I don't know",
     };
     return api.post<CheckInResponse>('/api/moods/check-ins', payload);
   },

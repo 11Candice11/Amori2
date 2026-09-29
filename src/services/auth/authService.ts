@@ -13,6 +13,7 @@
 import { api, tokenStore } from '../api/client';
 import type {
   AuthResponse,
+  ChangePasswordRequest,
   LoginRequest,
   RegisterRequest,
   UserResponse,
@@ -44,6 +45,17 @@ export const authService = {
    */
   getMe(): Promise<UserResponse> {
     return api.get<UserResponse>('/api/users/me');
+  },
+
+  /**
+   * Change the signed-in user's password. Requires the current password for
+   * verification. Returns 204 on success; the backend rejects a wrong current
+   * password with a 401 (surfaced as an ApiError).
+   *
+   * Backend route: PATCH /api/users/me/password (authenticated).
+   */
+  async changePassword(request: ChangePasswordRequest): Promise<void> {
+    await api.patch('/api/users/me/password', request);
   },
 
   /**

@@ -6,6 +6,8 @@ import type { IncidentStackParamList } from './IncidentStackParamList';
 import type { TogetherStackParamList } from './TogetherStackParamList';
 import type { DistractionStackParamList } from './DistractionStackParamList';
 import type { TimelineStackParamList } from './TimelineStackParamList';
+import type { ChatStackParamList } from './ChatStackParamList';
+import type { SupportProfileStackParamList } from './SupportProfileStackParamList';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -49,6 +51,32 @@ export type MainTabParamList = {
    * Hidden from the bottom bar — reached from the header bell on the tab roots.
    */
   Notifications: undefined;
+  /**
+   * The "Let's Chat" guided-messaging flow (nested stack). Hidden from the
+   * bottom bar — reached from the dashboard "Let's Chat" action and from
+   * Let's Chat push notifications.
+   */
+  Chat: NavigatorScreenParams<ChatStackParamList> | undefined;
+  /**
+   * The Weekly Reflection — a Monday–Sunday retrospective of the user's own
+   * week. Hidden from the bottom bar — surfaced as a "This Week" card on the
+   * Sanctuary dashboard (every Sunday) and reachable any time from the Vault.
+   *
+   * `archivedWeekKey` (the Monday, "YYYY-MM-DD") opens a saved snapshot in
+   * read-only mode instead of the live, recomputed current week.
+   */
+  WeeklyReflection: { archivedWeekKey?: string } | undefined;
+  /**
+   * The browsable list of saved weekly reflections. Hidden from the bottom bar
+   * — reached from the Vault.
+   */
+  WeeklyReflectionArchive: undefined;
+  /**
+   * The Support Preferences / "How to Know Me" flow (nested stack). Hidden from
+   * the bottom bar — reached from Settings, and from contextual entry points in
+   * Splitting, Date planning, and Let's Chat that deep-link to a partner section.
+   */
+  SupportProfile: NavigatorScreenParams<SupportProfileStackParamList> | undefined;
 };
 
 /**

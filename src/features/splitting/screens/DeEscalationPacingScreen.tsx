@@ -32,6 +32,7 @@ import type { SpaceDuration } from '../types/splitting.types';
 import { EMPTY_FLOW_STATE, SPACE_DURATION_MINUTES } from '../types/splitting.types';
 import { useSplittingSession } from '../hooks/useSplittingSession';
 import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
+import { widgetBridge } from '../../../services/native/widgetBridge';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'DeEscalationPacing'>;
 type Rt = RouteProp<SplittingStackParamList, 'DeEscalationPacing'>;
@@ -78,6 +79,19 @@ export function DeEscalationPacingScreen() {
     // durable. Best-effort: if it fails we still continue with the local timer.
     if (flow.sessionId && spaceEndsAt != null) {
       await update(flow.sessionId, { spaceEndsAt: new Date(spaceEndsAt).toISOString() });
+    }
+
+    // Surface the countdown as a Live Activity (Lock Screen + Dynamic Island)
+    // so the person can watch their space window tick down without opening the
+    // app. Only for fixed durations — an open-ended window has nothing to count
+    // to. No-op on Android / iOS < 16.1.
+    if (spaceEndsAt != null) {
+      void widgetBridge.startSplittingActivity({
+        endsAt: spaceEndsAt,
+        startedAt: Date.now(),
+        owner: 'self',
+        partnerName: PARTNER_NAME,
+      });
     }
 
     navigation.navigate('GroundingActivities', {

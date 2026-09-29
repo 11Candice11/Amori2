@@ -23,6 +23,7 @@
  *   DELETE /api/wishlist/{id}              → 204
  */
 import { api } from '../../../services/api/client';
+import type { RelationshipResponse } from '../../../services/api/types';
 import {
   BUCKET_LIST_CATEGORY_VALUES,
   DATE_CATEGORY_VALUES,
@@ -38,6 +39,21 @@ import {
   type UpdateDateIdeaRequest,
   type WishlistItemResponse,
 } from '../types/together.types';
+import {
+  eventKey,
+  generateAnniversaryOccurrences,
+  occurrenceKey,
+} from '../utils/anniversaryEvents';
+
+/** Outcome of syncAnniversaryEvents — how many events were created/skipped. */
+export interface AnniversarySyncResult {
+  /** Newly created anniversary events. */
+  created: number;
+  /** Occurrences that already existed on the calendar and were left alone. */
+  skipped: number;
+  /** False when the relationship has no start date to anchor anniversaries to. */
+  hasStartDate: boolean;
+}
 
 export const togetherService = {
   // ── Calendar ──────────────────────────────────────────────────────────────
@@ -67,6 +83,76 @@ export const togetherService = {
   /** Delete a calendar event. Server allows only the creator to delete. */
   deleteCalendarEvent(eventId: string): Promise<void> {
     return api.delete<void>(`/api/calendar/events/${eventId}`);
+  },
+
+  /**
+   * Ensure the couple's upcoming anniversary/monthiversary reminders exist on
+   * the shared calendar.
+   *
+   * The calendar has no recurrence, so anniversaries are materialised as a
+   * batch of discrete, upcoming events. This reads the relationship start date
+   * (`/api/relationships/me`), generates the target occurrences (monthly while
+   * under a year together, otherwise yearly), and creates only the ones not
+   * already present — deduping by date+title, so it's safe to call repeatedly
+   * without producing duplicates (there is no server-side idempotency here).
+   *
+   * Each created event is a shared, all-day-ish 9am marker with a reminder
+   * enabled a day (1440 min) ahead.
+   *
+   * @returns the number of new events created (0 when everything already
+   *   exists, or when there is no start date to anchor to).
+   */
+  async syncAnniversaryEvents(): Promise<AnniversarySyncResult> {
+    const rel = await api.get<RelationshipResponse>('/api/relationships/me');
+    const startDate = rel?.startDate ?? null;
+
+    const occurrences = generateAnniversaryOccurrences(startDate);
+    if (occurrences.length === 0) {
+      return { created: 0, skipped: 0, hasStartDate: !!startDate };
+    }
+
+    // Fetch existing events for every month an occurrence lands in, so we can
+    // skip anniversaries that are already on the calendar.
+    const monthKeys = new Set(
+      occurrences.map((o) => o.eventDate.slice(0, 7)), // "YYYY-MM"
+    );
+    const existingByMonth = await Promise.all(
+      Array.from(monthKeys).map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        return this.getCalendarEvents(y, m).catch(
+          () => [] as CalendarEventResponse[],
+        );
+      }),
+    );
+    const existingKeys = new Set(
+      existingByMonth.flat().map((e) => eventKey(e)),
+    );
+
+    const missing = occurrences.filter((o) => !existingKeys.has(occurrenceKey(o)));
+
+    // Create sequentially to keep server load gentle and attribution stable.
+    let created = 0;
+    for (const occ of missing) {
+      await this.createCalendarEvent({
+        title: occ.title,
+        eventDate: occ.eventDate,
+        startTime: '09:00:00',
+        description:
+          occ.cadence === 'monthly'
+            ? 'Auto-added monthly anniversary reminder.'
+            : 'Auto-added anniversary reminder.',
+        reminderEnabled: true,
+        reminderMinutesBefore: 24 * 60,
+        isShared: true,
+      });
+      created += 1;
+    }
+
+    return {
+      created,
+      skipped: occurrences.length - missing.length,
+      hasStartDate: true,
+    };
   },
 
   // ── Important dates ─────────────────────────────────────────────────────────

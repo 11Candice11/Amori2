@@ -26,6 +26,9 @@ public sealed class AmoriDbContext(DbContextOptions<AmoriDbContext> options) : D
     // Messages
     public DbSet<Message> Messages => Set<Message>();
 
+    // Let's Chat (guided templated messages)
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
+
     // Voice Notes
     public DbSet<VoiceNote> VoiceNotes => Set<VoiceNote>();
 
@@ -63,6 +66,10 @@ public sealed class AmoriDbContext(DbContextOptions<AmoriDbContext> options) : D
 
     // Bucket List
     public DbSet<BucketListItem> BucketListItems => Set<BucketListItem>();
+
+    // Vision Board ("Us")
+    public DbSet<VisionBoardSection> VisionBoardSections => Set<VisionBoardSection>();
+    public DbSet<VisionBoardItem> VisionBoardItems => Set<VisionBoardItem>();
 
     // Vault (private per-user saved gifts)
     public DbSet<VaultGift> VaultGifts => Set<VaultGift>();
@@ -104,6 +111,9 @@ public sealed class AmoriDbContext(DbContextOptions<AmoriDbContext> options) : D
 
     // Relationship Invitations
     public DbSet<RelationshipInvitation> RelationshipInvitations => Set<RelationshipInvitation>();
+
+    // Support Profile ("How to Know Me" / Support Preferences)
+    public DbSet<SupportProfile> SupportProfiles => Set<SupportProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

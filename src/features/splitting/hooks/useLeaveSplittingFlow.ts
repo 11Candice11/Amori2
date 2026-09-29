@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { splittingService } from '../services/splittingService';
+import { widgetBridge } from '../../../services/native/widgetBridge';
 import { CLIMATE_TO_MOOD } from '../types/splitting.types';
 import type { SplittingAction, SplittingFlowState } from '../types/splitting.types';
 
@@ -42,6 +43,10 @@ async function completeGrounding(
   climate: SplittingFlowState['climate'],
   extraActions: SplittingAction[] = [],
 ): Promise<void> {
+  // The self-regulation window is ending, so retire its Live Activity. Marked
+  // finished (complete) rather than cancelled. No-op where unsupported.
+  void widgetBridge.endSplittingActivity(true);
+
   try {
     // Merge onto existing actions so earlier steps aren't clobbered — the
     // backend replaces the array rather than appending.

@@ -22,6 +22,15 @@
  * RelationshipTimeline → a chronological timeline of the couple's memories.
  * MemoryMap            → a fullscreen interactive map for a single memory's
  *                        location, with an "open in Maps app" action.
+ * VisionBoard          → the couple's shared "Us" Vision Board (GET
+ *                        /api/vision-board): everything they're building,
+ *                        dreaming and becoming together, on ordered shelves.
+ * VisionBoardItemDetail→ a single Vision Board item, with the completion flow
+ *                        and the optional "Add to Memories"/"Add to Timeline"
+ *                        follow-ups.
+ * AddVisionBoardItem   → compose a new Vision Board item, or edit an existing
+ *                        one when `itemId` is set. `sectionId` optionally
+ *                        pre-selects the shelf when opened from a section.
  */
 import type { CalendarEventResponse } from '../features/together/types/together.types';
 
@@ -34,6 +43,12 @@ export type TogetherStackParamList = {
   Wishlist: undefined;
   DateIdeas: undefined;
   Memories: undefined;
+  /**
+   * Monthly Memories ("Rediscovery Archive") — the current calendar month's
+   * memories across this and past years. `month` optionally pre-selects a month
+   * as "YYYY-MM"; omitted opens on the current month.
+   */
+  MonthlyMemories: { month?: string } | undefined;
   /** Compose a new memory, or edit an existing one when `memoryId` is set. */
   AddMemory: { memoryId?: string } | undefined;
   RelationshipTimeline: undefined;
@@ -43,4 +58,8 @@ export type TogetherStackParamList = {
     title: string;
     location: string | null;
   };
+  VisionBoard: undefined;
+  VisionBoardItemDetail: { itemId: string };
+  /** Compose a new Vision Board item, or edit an existing one when `itemId` is set. */
+  AddVisionBoardItem: { itemId?: string; sectionId?: string } | undefined;
 };

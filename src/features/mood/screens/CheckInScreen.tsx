@@ -217,6 +217,7 @@ export function CheckInScreen() {
         onIDontKnow={handleIDontKnow}
         onBack={reset}
         submitting={submitting}
+        error={error}
       />
     );
   }

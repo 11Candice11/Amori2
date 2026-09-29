@@ -129,6 +129,14 @@ type SharedCalendarCardProps = {
   onNextMonth?: () => void;
   onAddEvent?: () => void;
   onSelectDay?: (day: number) => void;
+  /**
+   * Populate the calendar with the couple's anniversary reminders (monthly
+   * while under a year together, otherwise yearly). When omitted, the link is
+   * hidden.
+   */
+  onAddAnniversaries?: () => void;
+  /** Whether an anniversary sync is currently in flight. */
+  addingAnniversaries?: boolean;
 };
 
 export function SharedCalendarCard({
@@ -141,6 +149,8 @@ export function SharedCalendarCard({
   onNextMonth,
   onAddEvent,
   onSelectDay,
+  onAddAnniversaries,
+  addingAnniversaries = false,
 }: SharedCalendarCardProps) {
   const cells = useMemo(() => buildCells(year, month), [year, month]);
   const eventMap = useMemo(
@@ -255,6 +265,29 @@ export function SharedCalendarCard({
           <Text style={styles.addBtnText}>Add Event</Text>
         </Pressable>
       </View>
+
+      {onAddAnniversaries ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.anniversaryBtn,
+            (pressed || addingAnniversaries) && styles.pressed,
+          ]}
+          onPress={onAddAnniversaries}
+          disabled={addingAnniversaries}
+          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          accessibilityRole="button"
+          accessibilityLabel="Add anniversary reminders to the calendar"
+        >
+          {addingAnniversaries ? (
+            <ActivityIndicator color={colors.gold} size="small" />
+          ) : (
+            <Text style={styles.anniversaryHeart}>♥</Text>
+          )}
+          <Text style={styles.anniversaryBtnText}>
+            {addingAnniversaries ? 'Adding…' : 'Add anniversary reminders'}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -402,5 +435,24 @@ const styles = StyleSheet.create({
     ...typography.bodySemiBold,
     color: colors.neutral,
     fontSize: 12,
+  },
+  anniversaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: 'rgba(197,163,101,0.10)',
+  },
+  anniversaryHeart: {
+    color: colors.gold,
+    fontSize: 13,
+  },
+  anniversaryBtnText: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 13,
   },
 });

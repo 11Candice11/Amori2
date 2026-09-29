@@ -121,11 +121,13 @@ type Props = {
   onBack: () => void;
   /** True while the API call is in-flight */
   submitting?: boolean;
+  /** Error message from a failed confirm / "I don't know" submission. */
+  error?: string | null;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, submitting = false }: Props) {
+export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, submitting = false, error = null }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const meta = QUADRANTS.find((q) => q.key === quadrant)!;
@@ -242,6 +244,9 @@ export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, s
 
       {/* ── Fixed footer — always visible, never scrolls away ── */}
       <View style={styles.footer}>
+        {/* Surface any submit / "I don't know" error so it isn't silent */}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
         {/* Confirm CTA */}
         <Pressable
           style={({ pressed }) => [
@@ -464,6 +469,12 @@ const styles = StyleSheet.create({
     color: colors.neutralSubtle,
     textAlign: 'center',
     paddingBottom: spacing.xs,
+  },
+  error: {
+    ...typography.bodySm,
+    color: '#B34040',
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   bottomPadding: {
     height: spacing.lg,

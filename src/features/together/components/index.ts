@@ -6,3 +6,6 @@ export { SharedCollections } from './SharedCollections';
 export type { CollectionTab } from './SharedCollections';
 export { PrivateRepositories } from './PrivateRepositories';
 export { MemoriesCard } from './MemoriesCard';
+export { VisionBoardCard } from './VisionBoardCard';
+export { TogetherTabs } from './TogetherTabs';
+export type { TogetherTabKey } from './TogetherTabs';

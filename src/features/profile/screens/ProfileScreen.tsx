@@ -15,7 +15,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
@@ -26,11 +27,13 @@ import { partnerLinkService } from '../services/partnerLinkService';
 import { settingsService } from '../services/settingsService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import { notificationStore } from '../../../shared/state/notificationStore';
+import { supportProfileStore } from '../../supportProfile/services/supportProfileStore';
 import { usePartnerLinkNotifications } from '../hooks/usePartnerLinkNotifications';
 import { logout } from '../../../app/App';
 import type { UserResponse, UpdateUserSettingsRequest } from '../../../services/api/types';
 import type { MainTabParamList } from '../../../navigation/types';
 import { LinkPartnerScreen } from './LinkPartnerScreen';
+import { ChangePasswordScreen } from './ChangePasswordScreen';
 
 function UserIcon() {
   return (
@@ -71,6 +74,20 @@ function ChevronIcon() {
   );
 }
 
+function LockIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"
+        stroke={colors.gold}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function SignOutIcon() {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
@@ -92,11 +109,13 @@ type Props = {
 
 export function ProfileScreen({ onLogout }: Props) {
   const route = useRoute<RouteProp<MainTabParamList, 'Profile'>>();
+  const navigation = useNavigation<NavigationProp<MainTabParamList>>();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLinked, setIsLinked] = useState<boolean | null>(null);
   const [partnerName, setPartnerName] = useState<string | null>(null);
   const [linkModalVisible, setLinkModalVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [savingSetting, setSavingSetting] = useState<keyof UpdateUserSettingsRequest | null>(null);
   // Picked once per mount so toggling a setting doesn't swap the image mid-scroll.
   const [backgroundImage] = useState(() => getSettingsBackground());
@@ -178,6 +197,9 @@ export function ProfileScreen({ onLogout }: Props) {
     // Drop the cached settings so the next user doesn't inherit them.
     userSettingsStore.reset();
     notificationStore.reset();
+    // Drop cached Support Preferences (own + partner) so nothing leaks to the
+    // next account on this device.
+    supportProfileStore.reset();
     // Use prop if provided (from navigator), otherwise fall back to global
     if (onLogout) {
       onLogout();
@@ -290,6 +312,52 @@ export function ProfileScreen({ onLogout }: Props) {
             <ChevronIcon />
           </Pressable>
         )}
+
+        {/* How to Know Me — the user's own Support Preferences handbook */}
+        <Text style={styles.sectionLabel}>SUPPORT PREFERENCES</Text>
+        <Pressable
+          style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+          onPress={() => navigation.navigate('SupportProfile', { screen: 'SupportProfileHome' })}
+          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          accessibilityRole="button"
+          accessibilityLabel="How to Know Me"
+        >
+          <View style={styles.linkIconCircle}>
+            <UserIcon />
+          </View>
+          <View style={styles.linkTextWrap}>
+            <Text style={styles.linkTitle}>How to Know Me</Text>
+            <Text style={styles.linkSubtitle}>
+              Share what helps, what to avoid, and the little things you love.
+            </Text>
+          </View>
+          <ChevronIcon />
+        </Pressable>
+
+        {/* Account */}
+        <Text style={styles.sectionLabel}>ACCOUNT</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.linkRow,
+            styles.accountRow,
+            pressed && styles.linkRowPressed,
+          ]}
+          onPress={() => setPasswordModalVisible(true)}
+          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          accessibilityRole="button"
+          accessibilityLabel="Change password"
+        >
+          <View style={styles.linkIconCircle}>
+            <LockIcon />
+          </View>
+          <View style={styles.linkTextWrap}>
+            <Text style={styles.linkTitle}>Change password</Text>
+            <Text style={styles.linkSubtitle}>
+              Update the password you use to sign in.
+            </Text>
+          </View>
+          <ChevronIcon />
+        </Pressable>
 
         {/* Privacy / sharing settings */}
         <Text style={styles.sectionLabel}>PRIVACY & SHARING</Text>
@@ -627,6 +695,11 @@ export function ProfileScreen({ onLogout }: Props) {
         onClose={() => setLinkModalVisible(false)}
         onLinked={handleLinked}
       />
+
+      <ChangePasswordScreen
+        visible={passwordModalVisible}
+        onClose={() => setPasswordModalVisible(false)}
+      />
       </SafeAreaView>
     </ImageBackground>
   );
@@ -717,6 +790,10 @@ const styles = StyleSheet.create({
   },
   linkRowPressed: {
     opacity: 0.75,
+  },
+  accountRow: {
+    // Section label already provides the spacing above this row.
+    marginTop: 0,
   },
   linkedRow: {
     flexDirection: 'row',

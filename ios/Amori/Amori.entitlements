@@ -9,5 +9,14 @@
          credentials and a paid-team entitlement are set up. To re-enable:
            <key>aps-environment</key><string>development</string>
          and build with a paid Apple Developer team. -->
+
+    <!-- App Group: shared container the main app writes partner-mood snapshots
+         into and the AmoriWidgets extension reads from. The SAME group must be
+         enabled on the widget extension target (see AmoriWidgets.entitlements).
+         App Groups are available to free/personal teams. -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+      <string>group.com.candice.amori</string>
+    </array>
   </dict>
 </plist>

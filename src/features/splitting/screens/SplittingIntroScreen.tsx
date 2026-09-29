@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SplittingStackParamList } from '../../../navigation/SplittingStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
+import { SupportPreferencesLink } from '../../supportProfile/components/SupportPreferencesLink';
 import {
   SplittingHeader,
   StatusPill,
@@ -73,6 +74,14 @@ export function SplittingIntroScreen() {
             onPress={() => navigation.navigate('SplittingHistory')}
           />
           <TextButton label="Not now" onPress={() => navigation.goBack()} />
+        </View>
+
+        <View style={{ marginTop: spacing.md }}>
+          <SupportPreferencesLink
+            label="See how they prefer to be supported"
+            focusSection="howToHelpMe"
+            hint="Their shared preferences — a gentle guide, not a script."
+          />
         </View>
 
         <View style={styles.footer}>

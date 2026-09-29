@@ -16,7 +16,15 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.candice.amori"
+      "bundleIdentifier": "com.candice.amori",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.candice.amori"
+        ]
+      },
+      "infoPlist": {
+        "NSSupportsLiveActivities": true
+      }
     },
     "android": {
       "adaptiveIcon": {

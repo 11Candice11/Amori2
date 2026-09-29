@@ -11,7 +11,7 @@
  * the API and refresh. The screen refetches on focus so items added on the
  * pushed compose/wishlist screens appear on return.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -38,8 +38,11 @@ import {
   SharedCalendarCard,
   SharedCollections,
   TogetherHeader,
+  TogetherTabs,
+  VisionBoardCard,
   countdownLabel,
   pickNextImportantDate,
+  type TogetherTabKey,
 } from '../components';
 import { useTogether } from '../hooks/useTogether';
 import { togetherService } from '../services/togetherService';
@@ -63,11 +66,19 @@ export function TogetherScreen() {
   const [savingBucket, setSavingBucket] = useState(false);
   const [savingTodo, setSavingTodo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [addingAnniversaries, setAddingAnniversaries] = useState(false);
   /** Id of a list row with an action (toggle/delete) in flight. */
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
   // Shared with Check-in and Desk — driven by today's mood check-in.
   const backgroundImage = useMoodBackground();
+
+  // Scroll-to-section support for the top tab strip. The tabs that own a screen
+  // navigate; the ones that live inline on the dashboard (Bucket List, Important
+  // Dates) scroll their card into view.
+  const scrollRef = useRef<ScrollView>(null);
+  const calendarY = useRef(0);
+  const collectionsY = useRef(0);
 
   // Refetch whenever the screen regains focus (e.g. after adding an event on
   // the pushed compose screen). The stack keeps this screen mounted.
@@ -183,6 +194,33 @@ export function TogetherScreen() {
     });
   }, [navigation, together.year, together.month]);
 
+  // Populate the shared calendar with the couple's upcoming anniversary
+  // reminders (monthly while under a year together, otherwise yearly). Safe to
+  // tap more than once — the service dedupes against events already present.
+  const handleAddAnniversaries = useCallback(async () => {
+    if (addingAnniversaries) return;
+    setAddingAnniversaries(true);
+    try {
+      const result = await togetherService.syncAnniversaryEvents();
+      if (!result.hasStartDate) {
+        showError('Add your relationship start date first.');
+      } else if (result.created > 0) {
+        showSuccess(
+          `Added ${result.created} anniversary ${
+            result.created === 1 ? 'reminder' : 'reminders'
+          }!`,
+        );
+        refresh();
+      } else {
+        showSuccess('Your anniversaries are already on the calendar.');
+      }
+    } catch {
+      showError('Sorry that failed :(');
+    } finally {
+      setAddingAnniversaries(false);
+    }
+  }, [addingAnniversaries, refresh]);
+
   // Tapping a day opens the day view (that day's events), from which the user
   // can add an event — the same shape as the iPhone calendar.
   const handleSelectDay = useCallback(
@@ -205,6 +243,37 @@ export function TogetherScreen() {
   const handleOpenMemories = useCallback(() => {
     navigation.navigate('Memories');
   }, [navigation]);
+
+  const handleOpenVisionBoard = useCallback(() => {
+    navigation.navigate('VisionBoard');
+  }, [navigation]);
+
+  // Top tab strip. Tabs with a dedicated screen navigate there; the inline
+  // dashboard sections (Calendar, Bucket List, Important Dates) scroll into view.
+  const handleTabSelect = useCallback(
+    (key: TogetherTabKey) => {
+      switch (key) {
+        case 'us':
+          navigation.navigate('VisionBoard');
+          break;
+        case 'dateIdeas':
+          navigation.navigate('DateIdeas');
+          break;
+        case 'wishlist':
+          navigation.navigate('Wishlist');
+          break;
+        case 'calendar':
+        case 'importantDates':
+          // The calendar card also carries the important-dates beacon.
+          scrollRef.current?.scrollTo({ y: Math.max(calendarY.current - 8, 0), animated: true });
+          break;
+        case 'bucketList':
+          scrollRef.current?.scrollTo({ y: Math.max(collectionsY.current - 8, 0), animated: true });
+          break;
+      }
+    },
+    [navigation],
+  );
 
   const handleOpenTimeline = useCallback(() => {
     // The milestone timeline is a sibling hidden stack (real /api/timeline),
@@ -241,7 +310,10 @@ export function TogetherScreen() {
 
       <AppHeader title="Together" bordered={false} style={styles.headerTransparent} />
 
+      <TogetherTabs activeKey="us" onSelect={handleTabSelect} />
+
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -256,31 +328,39 @@ export function TogetherScreen() {
           countdownTiming={countdownTiming}
         />
 
-        <SharedCalendarCard
-          year={together.year}
-          month={together.month}
-          events={together.calendarEvents}
-          importantDates={together.importantDates}
-          loading={together.calendarLoading}
-          onPrevMonth={handlePrevMonth}
-          onNextMonth={handleNextMonth}
-          onAddEvent={handleAddEvent}
-          onSelectDay={handleSelectDay}
-        />
+        <VisionBoardCard onOpen={handleOpenVisionBoard} />
 
-        <SharedCollections
-          bucketList={together.bucketList}
-          todoList={together.todoList}
-          loading={together.loading}
-          saving={savingBucket || savingTodo}
-          busyId={busyItemId}
-          onAddBucketItem={handleAddBucketItem}
-          onAddTodoItem={handleAddTodoItem}
-          onToggleBucketComplete={handleToggleComplete}
-          onToggleTodoComplete={handleToggleComplete}
-          onDeleteBucketItem={handleDeleteItem}
-          onDeleteTodoItem={handleDeleteItem}
-        />
+        <View onLayout={(e) => { calendarY.current = e.nativeEvent.layout.y; }}>
+          <SharedCalendarCard
+            year={together.year}
+            month={together.month}
+            events={together.calendarEvents}
+            importantDates={together.importantDates}
+            loading={together.calendarLoading}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onAddEvent={handleAddEvent}
+            onSelectDay={handleSelectDay}
+            onAddAnniversaries={handleAddAnniversaries}
+            addingAnniversaries={addingAnniversaries}
+          />
+        </View>
+
+        <View onLayout={(e) => { collectionsY.current = e.nativeEvent.layout.y; }}>
+          <SharedCollections
+            bucketList={together.bucketList}
+            todoList={together.todoList}
+            loading={together.loading}
+            saving={savingBucket || savingTodo}
+            busyId={busyItemId}
+            onAddBucketItem={handleAddBucketItem}
+            onAddTodoItem={handleAddTodoItem}
+            onToggleBucketComplete={handleToggleComplete}
+            onToggleTodoComplete={handleToggleComplete}
+            onDeleteBucketItem={handleDeleteItem}
+            onDeleteTodoItem={handleDeleteItem}
+          />
+        </View>
 
         <MemoriesCard
           onOpenMemories={handleOpenMemories}

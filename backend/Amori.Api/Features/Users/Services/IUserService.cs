@@ -14,4 +14,12 @@ public interface IUserService
 
     /// <summary>Get the partner's presence, honouring their "Share activity" preference.</summary>
     Task<PartnerStatusResponse> GetPartnerStatusAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Change the user's password after verifying their current one. Throws
+    /// <see cref="Common.Exceptions.UnauthorizedException"/> if the current
+    /// password is wrong, or <see cref="Common.Exceptions.ValidationException"/>
+    /// if the new password fails validation.
+    /// </summary>
+    Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken ct = default);
 }

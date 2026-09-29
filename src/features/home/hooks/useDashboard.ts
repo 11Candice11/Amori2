@@ -10,6 +10,7 @@ import { api } from '../../../services/api/client';
 import { authService } from '../../../services/auth/authService';
 import { moodService } from '../../mood/services/moodService';
 import { splittingService } from '../../splitting/services/splittingService';
+import { widgetBridge } from '../../../services/native/widgetBridge';
 import type { RelationshipResponse } from '../../../services/api/types';
 import type { RhythmItem } from '../components/GentleRhythm';
 
@@ -148,6 +149,19 @@ export function useDashboard(): DashboardData & { refresh: () => void } {
         feelings: pc.feelings,
         createdAt: pc.createdAt,
       };
+    }
+
+    // Mirror the partner's mood into the home-screen widget (iOS). Fire-and-
+    // forget — the bridge is a no-op where unsupported and never throws.
+    if (partnerMood) {
+      void widgetBridge.setPartnerMood({
+        mood: partnerMood.mood,
+        feelings: partnerMood.feelings,
+        partnerName,
+        updatedAt: partnerMood.createdAt,
+      });
+    } else {
+      void widgetBridge.clearPartnerMood();
     }
 
     // Active self-regulation window — so BOTH people see the same countdown.

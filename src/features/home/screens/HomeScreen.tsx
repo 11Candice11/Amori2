@@ -38,6 +38,7 @@ import { dailyGiftService } from '../services/dailyGiftService';
 import { vaultService } from '../../vault/services/vaultService';
 import type { DailyGift } from '../services/dailyGiftService';
 import { getDashboardBackground } from '../../../utils/backgroundImages';
+import { isSunday } from '../../weeklyReflection/utils/weekRange';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,10 @@ export function HomeScreen() {
     navigation.navigate('Desk', { screen: 'LogIncident' });
   }, [navigation]);
 
+  const handleLetsChat = useCallback(() => {
+    navigation.navigate('Chat', { screen: 'ChatHome' });
+  }, [navigation]);
+
   const handleSOS = useCallback(() => {
     // Navigate to Splitting (emergency) flow
     navigation.navigate('Splitting', { screen: 'SplittingIntro' } as never);
@@ -260,6 +265,21 @@ export function HomeScreen() {
   const handleViewVault = useCallback(() => {
     navigation.navigate('Vault');
   }, [navigation]);
+
+  const handleOpenMonthlyMemories = useCallback(() => {
+    // Monthly Memories lives in the Together stack; open it with the current
+    // month pre-selected (the screen defaults to "now" when month is omitted).
+    navigation.navigate('Together', { screen: 'MonthlyMemories' });
+  }, [navigation]);
+
+  const handleOpenWeeklyReflection = useCallback(() => {
+    navigation.navigate('WeeklyReflection');
+  }, [navigation]);
+
+  // The weekly reflection is surfaced on the dashboard every Sunday (it stays
+  // reachable any day from the Vault). Computed once per mount — a day rollover
+  // remounts the tree via the theme provider / re-focus refresh anyway.
+  const showWeeklyReflection = useMemo(() => isSunday(), []);
 
   const handleOpenNotifications = useCallback(() => {
     navigation.navigate('Notifications');
@@ -353,15 +373,21 @@ export function HomeScreen() {
             canControlSpaceWindow={Boolean(spaceSessionId)}
             onEndSpace={handleEndSpace}
             onExtendSpace={handleExtendSpace}
+            onReconnectHug={handleHug}
+            onReconnectCheckIn={handleCheckIn}
             hasMoodToday={dashboard.hasMoodToday}
             onCheckIn={handleCheckIn}
             onHug={handleHug}
             onDistraction={handleDistraction}
             onLogIncident={handleLogIncident}
+            onLetsChat={handleLetsChat}
             onSOS={handleSOS}
             onOpenArtifact={handleOpenArtifact}
             artifactOpened={artifactOpened}
             onViewVault={handleViewVault}
+            onOpenMonthlyMemories={handleOpenMonthlyMemories}
+            showWeeklyReflection={showWeeklyReflection}
+            onOpenWeeklyReflection={handleOpenWeeklyReflection}
             onOpenNotifications={handleOpenNotifications}
             cardNumber={dailyGift?.cardNumber ?? null}
           />

@@ -33,6 +33,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
+import { SupportPreferencesLink } from '../../supportProfile/components/SupportPreferencesLink';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { togetherService } from '../services/togetherService';
@@ -368,6 +369,15 @@ export function DateIdeasScreen() {
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
+            }
+            ListHeaderComponent={
+              <View style={{ marginBottom: spacing.md }}>
+                <SupportPreferencesLink
+                  label="Use their preferences"
+                  focusSection="favorites"
+                  hint="Favourite places, food, and date ideas your partner shared."
+                />
+              </View>
             }
             renderItem={({ item }) => (
               <Row

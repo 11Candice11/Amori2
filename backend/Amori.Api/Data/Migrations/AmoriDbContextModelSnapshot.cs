@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Enums;
+using Amori.Api.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -243,6 +244,81 @@ namespace Amori.Api.Data.Migrations
                         .HasDatabaseName("IX_calendar_events_relationship_id");
 
                     b.ToTable("calendar_events", (string)null);
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.ChatConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Dictionary<string, string>>("Answers")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("answers");
+
+                    b.Property<string>("ComposedMessage")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("composed_message");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsPrivate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_private");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid?>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<Guid>("RelationshipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relationship_id");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TemplateType")
+                        .HasColumnType("integer")
+                        .HasColumnName("template_type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientId")
+                        .HasDatabaseName("IX_chat_conversations_recipient_id");
+
+                    b.HasIndex("RelationshipId")
+                        .HasDatabaseName("IX_chat_conversations_relationship_id");
+
+                    b.HasIndex("SenderId")
+                        .HasDatabaseName("IX_chat_conversations_sender_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_chat_conversations_status");
+
+                    b.ToTable("chat_conversations", (string)null);
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.DateIdea", b =>
@@ -2139,6 +2215,69 @@ namespace Amori.Api.Data.Migrations
                     b.ToTable("splitting_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.SupportProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<BoundariesSection>("Boundaries")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("boundaries");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<FavoritesSection>("Favorites")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("favorites");
+
+                    b.Property<HowToHelpMeSection>("HowToHelpMe")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("how_to_help_me");
+
+                    b.Property<LittleThingsSection>("LittleThings")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("little_things");
+
+                    b.Property<ThingsToKnowSection>("ThingsToKnow")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("things_to_know");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<WhatILikeSection>("WhatILike")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("what_i_like");
+
+                    b.Property<WhoIAmSection>("WhoIAm")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("who_i_am");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_support_profiles_user_id");
+
+                    b.ToTable("support_profiles", (string)null);
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.Surprise", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2570,6 +2709,184 @@ namespace Amori.Api.Data.Migrations
                     b.ToTable("vault_gifts", (string)null);
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("Budget")
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("budget");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("CompletedNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("completed_note");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("ExternalReference")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("external_reference");
+
+                    b.Property<string>("ImageFileKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("image_file_key");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_completed");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_pinned");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<string>("LocationName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("location_name");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("RelationshipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relationship_id");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("section_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("TargetDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("target_date");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_vision_board_items_created_by_user_id");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("IX_vision_board_items_is_deleted");
+
+                    b.HasIndex("RelationshipId")
+                        .HasDatabaseName("IX_vision_board_items_relationship_id");
+
+                    b.HasIndex("SectionId")
+                        .HasDatabaseName("IX_vision_board_items_section_id");
+
+                    b.ToTable("vision_board_items", (string)null);
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CoverImageFileKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cover_image_file_key");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("RelationshipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relationship_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("IX_vision_board_sections_is_deleted");
+
+                    b.HasIndex("RelationshipId")
+                        .HasDatabaseName("IX_vision_board_sections_relationship_id");
+
+                    b.ToTable("vision_board_sections", (string)null);
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.VoiceNote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2857,6 +3174,32 @@ namespace Amori.Api.Data.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Relationship");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.ChatConversation", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Amori.Api.Domain.Entities.Relationship", "Relationship")
+                        .WithMany()
+                        .HasForeignKey("RelationshipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Amori.Api.Domain.Entities.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Relationship");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.DateIdea", b =>
@@ -3430,6 +3773,17 @@ namespace Amori.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.SupportProfile", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.Surprise", b =>
                 {
                     b.HasOne("Amori.Api.Domain.Entities.User", "CreatedBy")
@@ -3523,6 +3877,44 @@ namespace Amori.Api.Data.Migrations
                     b.Navigation("Memory");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardItem", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Amori.Api.Domain.Entities.Relationship", "Relationship")
+                        .WithMany()
+                        .HasForeignKey("RelationshipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Amori.Api.Domain.Entities.VisionBoardSection", "Section")
+                        .WithMany("Items")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Relationship");
+
+                    b.Navigation("Section");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardSection", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.Relationship", "Relationship")
+                        .WithMany()
+                        .HasForeignKey("RelationshipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Relationship");
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.VoiceNote", b =>
@@ -3665,6 +4057,11 @@ namespace Amori.Api.Data.Migrations
             modelBuilder.Entity("Amori.Api.Domain.Entities.User", b =>
                 {
                     b.Navigation("RelationshipMemberships");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardSection", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.WouldYouRatherQuestion", b =>

@@ -23,6 +23,7 @@ import { getCardImage } from '../../../utils/cardSelector';
 import { ActionImageIcon } from '../../../shared/components/icons/AppIcons';
 import { BellIcon } from '../../../shared/components/icons';
 import { useNotificationCount } from '../../../shared/state/notificationStore';
+import { MonthlyMemoriesWidget } from '../../memories/components/MonthlyMemoriesWidget';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,27 @@ function DashboardBell({ onPress }: { onPress?: () => void }) {
         </View>
       ) : null}
     </Pressable>
+  );
+}
+
+/** Speech-bubble glyph for the "Let's Chat" attunement card. Sized to sit
+ *  alongside the illustrated PNG action icons (40×40 framed). */
+function ChatIcon({ size = 40 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v7A2.5 2.5 0 0117.5 15H9l-4 4v-4H6.5A2.5 2.5 0 014 12.5z"
+        stroke={colors.gold}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8 8h8M8 11h5"
+        stroke={colors.gold}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
@@ -186,18 +208,42 @@ export type SanctuaryDashboardProps = {
   onEndSpace?: () => void;
   /** Extend the user's own space window by a fixed amount. */
   onExtendSpace?: () => void;
+  /**
+   * Send a gentle hug to the partner as a soft re-entry when the space window
+   * elapses. Falls back to the general "Send hug" action if not provided.
+   */
+  onReconnectHug?: () => void;
+  /**
+   * Start a short check-in as a soft re-entry when the space window elapses.
+   * Falls back to the general check-in action if not provided.
+   */
+  onReconnectCheckIn?: () => void;
   /** Whether the current user has checked in today. */
   hasMoodToday: boolean;
   onCheckIn: () => void;
   onHug: () => void;
   onDistraction: () => void;
   onLogIncident: () => void;
+  /** Open the guided "Let's Chat" flow. Optional so the dashboard degrades gracefully. */
+  onLetsChat?: () => void;
   onSOS: () => void;
   onOpenArtifact: () => void;
   /** Whether today's Daily Artifact has already been opened. */
   artifactOpened: boolean;
   /** Navigate to the Hearth Vault (shown after the artifact is opened). */
   onViewVault: () => void;
+  /**
+   * Open the Monthly Memories screen ("Rediscovery Archive" widget). Optional
+   * so the dashboard degrades gracefully if a caller hasn't wired it yet.
+   */
+  onOpenMonthlyMemories?: () => void;
+  /**
+   * Whether to surface the "This Week" weekly-reflection card. The dashboard
+   * shows it on Sundays (the reflection is always reachable from the Vault too).
+   */
+  showWeeklyReflection?: boolean;
+  /** Open the Weekly Reflection retrospective. */
+  onOpenWeeklyReflection?: () => void;
   /** Open the notifications inbox from the bell in the top bar. */
   onOpenNotifications?: () => void;
   /** The card number (1-10) to display for today's daily gift. null = still loading. */
@@ -232,15 +278,21 @@ export function SanctuaryDashboard({
   canControlSpaceWindow = false,
   onEndSpace,
   onExtendSpace,
+  onReconnectHug,
+  onReconnectCheckIn,
   hasMoodToday,
   onCheckIn,
   onHug,
   onDistraction,
   onLogIncident,
+  onLetsChat,
   onSOS,
   onOpenArtifact,
   artifactOpened,
   onViewVault,
+  onOpenMonthlyMemories,
+  showWeeklyReflection = false,
+  onOpenWeeklyReflection,
   onOpenNotifications,
   cardNumber,
 }: SanctuaryDashboardProps) {
@@ -292,6 +344,28 @@ export function SanctuaryDashboard({
 
   const dismissed = dismissedFor === spaceWindowMs;
 
+  // Soft re-entry state for the "Ready to reconnect?" prompt shown when the
+  // person's own space window elapses. Tracks whether they've sent a hug so the
+  // button can confirm gently. Reset whenever a new/extended window starts.
+  const [reconnectHugSent, setReconnectHugSent] = useState(false);
+  useEffect(() => {
+    setReconnectHugSent(false);
+  }, [spaceWindowMs]);
+
+  const handleReconnectHug = () => {
+    if (reconnectHugSent) return;
+    setReconnectHugSent(true);
+    (onReconnectHug ?? onHug)();
+  };
+
+  const handleReconnectCheckIn = () => {
+    (onReconnectCheckIn ?? onCheckIn)();
+  };
+
+  // Only the person taking the space is prompted to reconnect — the partner
+  // just sees that the space wrapped up, with no pressure to reach in.
+  const showReconnectPrompt = spaceWindow.finished && spaceWindowOwner === 'self';
+
   // The card is visible while the window is live, or for the grace period after
   // it finishes (until dismissed or the grace period lapses).
   const showSpaceCard =
@@ -339,6 +413,26 @@ export function SanctuaryDashboard({
         </View>
       </View>
 
+      {/* 3b ── This Week (weekly reflection) — surfaced on Sundays */}
+      {showWeeklyReflection ? (
+        <Pressable
+          style={({ pressed }) => [styles.weekCard, pressed && styles.pressed]}
+          onPress={onOpenWeeklyReflection}
+          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          accessibilityRole="button"
+          accessibilityLabel="View this week's reflection"
+        >
+          <View style={styles.weekCardIcon}>
+            <SparkleIcon />
+          </View>
+          <View style={styles.weekCardText}>
+            <Text style={styles.weekCardLabel}>THIS WEEK</Text>
+            <Text style={styles.weekCardTitle}>Your weekly reflection is ready</Text>
+          </View>
+          <ArrowIcon />
+        </Pressable>
+      ) : null}
+
       {/* 4 ── Partner state */}
       <View style={styles.partnerCard}>
         <View style={styles.partnerAvatar} />
@@ -371,15 +465,62 @@ export function SanctuaryDashboard({
             <Text style={styles.windowSub}>
               {spaceWindow.finished
                 ? spaceWindowOwner === 'self'
-                  ? 'Take all the time you need. Extend if you\u2019re not ready.'
+                  ? 'Ready to reconnect? There\u2019s no rush \u2014 reach in gently when it feels right.'
                   : 'Their quiet moment has wrapped up.'
                 : spaceWindowOwner === 'self'
                   ? 'Your quiet moment. There\u2019s no rush to come back.'
                   : 'Holding a quiet moment. You are their safe harbor.'}
             </Text>
 
-            {/* Once finished, the owner can extend the window in place. */}
-            {spaceWindow.finished && canControlSpaceWindow ? (
+            {/*
+              Once the person's OWN window elapses, gently prompt them to
+              reconnect with soft re-entry options — send a hug or a short
+              check-in — alongside the option to extend if they're not ready.
+            */}
+            {showReconnectPrompt ? (
+              <View style={styles.reconnectActions}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.reconnectBtn,
+                    styles.reconnectBtnPrimary,
+                    reconnectHugSent && styles.reconnectBtnSent,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={handleReconnectHug}
+                  disabled={reconnectHugSent}
+                  android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: reconnectHugSent }}
+                  accessibilityLabel={reconnectHugSent ? 'Hug sent' : 'Send a hug'}
+                >
+                  <Text style={styles.reconnectBtnText}>
+                    {reconnectHugSent ? 'HUG SENT \u2665' : 'SEND A HUG'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={({ pressed }) => [styles.reconnectBtn, pressed && styles.pressed]}
+                  onPress={handleReconnectCheckIn}
+                  android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share a short check-in"
+                >
+                  <Text style={styles.reconnectBtnText}>SHORT CHECK-IN</Text>
+                </Pressable>
+
+                {canControlSpaceWindow ? (
+                  <Pressable
+                    style={({ pressed }) => [styles.reconnectExtendBtn, pressed && styles.pressed]}
+                    onPress={onExtendSpace}
+                    android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Not yet, extend your space"
+                  >
+                    <Text style={styles.reconnectExtendText}>NOT YET</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : spaceWindow.finished && canControlSpaceWindow ? (
               <Pressable
                 style={({ pressed }) => [styles.windowExtendBtn, pressed && styles.pressed]}
                 onPress={onExtendSpace}
@@ -451,14 +592,28 @@ export function SanctuaryDashboard({
       </View>
       <View style={styles.attGrid}>
         <View style={styles.attRow}>
+          {onLetsChat ? (
+            <AttunementItem icon={<ChatIcon />} title="Let's Chat" onPress={onLetsChat} />
+          ) : null}
           <AttunementItem icon={<ActionImageIcon name="hug" />} title="Send hug" onPress={onHug} />
-          <AttunementItem icon={<ActionImageIcon name="distraction" />} title="Distraction" onPress={onDistraction} />
         </View>
         <View style={styles.attRow}>
+          <AttunementItem icon={<ActionImageIcon name="distraction" />} title="Distraction" onPress={onDistraction} />
           <AttunementItem icon={<ActionImageIcon name="incident" />} title="Log Incident" onPress={onLogIncident} />
-          <AttunementItem icon={<ActionImageIcon name="sos" />} title="S.O.S" onPress={onSOS} danger />
         </View>
       </View>
+
+      {/* S.O.S — emergency escalation, kept visually distinct in emergency red */}
+      <Pressable
+        style={({ pressed }) => [styles.sosButton, pressed && styles.pressed]}
+        onPress={onSOS}
+        android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
+        accessibilityRole="button"
+        accessibilityLabel="S.O.S"
+      >
+        <ActionImageIcon name="sos" />
+        <Text style={styles.sosButtonText}>S.O.S</Text>
+      </Pressable>
 
       {/* 7 ── Daily artifact */}
       <View style={styles.sectionHeader}>
@@ -527,6 +682,11 @@ export function SanctuaryDashboard({
           </Pressable>
         )}
       </View>
+
+      {/* 8 ── Monthly Memories (Rediscovery Archive) */}
+      {onOpenMonthlyMemories ? (
+        <MonthlyMemoriesWidget onOpen={onOpenMonthlyMemories} />
+      ) : null}
     </View>
   );
 }
@@ -633,6 +793,41 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
+  },
+
+  // This Week (weekly reflection) card
+  weekCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.md,
+  },
+  weekCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  weekCardText: { flex: 1 },
+  weekCardLabel: {
+    ...typography.label,
+    color: colors.gold,
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  weekCardTitle: {
+    ...typography.bodyMedium,
+    color: colors.neutral,
+    marginTop: 2,
   },
   statCol: {
     flex: 1,
@@ -747,6 +942,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.8,
   },
+
+  // "Ready to reconnect?" soft re-entry actions (shown when the person's own
+  // space window elapses).
+  reconnectActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  reconnectBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(197,163,101,0.14)',
+  },
+  reconnectBtnPrimary: {
+    backgroundColor: 'rgba(197,163,101,0.24)',
+  },
+  reconnectBtnSent: {
+    opacity: 0.7,
+  },
+  reconnectBtnText: {
+    ...typography.label,
+    color: colors.gold,
+    fontSize: 12,
+    letterSpacing: 0.8,
+  },
+  reconnectExtendBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  reconnectExtendText: {
+    ...typography.label,
+    color: colors.neutralMuted,
+    fontSize: 12,
+    letterSpacing: 0.8,
+  },
   windowLabel: {
     ...typography.label,
     color: colors.gold,
@@ -833,6 +1069,26 @@ const styles = StyleSheet.create({
     ...typography.bodySm,
     color: colors.gold,
     fontSize: 12,
+  },
+
+  // S.O.S — emergency escalation button, kept visually distinct in red.
+  sosButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.emergency,
+    borderRadius: 16,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  sosButtonText: {
+    ...typography.bodySemiBold,
+    // Fixed off-white so the label stays legible on the emergency red across
+    // every palette (some palettes use a dark `neutral`).
+    color: '#FDFCF0',
+    fontSize: 16,
+    letterSpacing: 1,
   },
 
   // Attunement grid

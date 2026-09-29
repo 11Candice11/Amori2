@@ -34,6 +34,12 @@ export interface PushHandlerCallbacks {
    * data.type === "Gift" and data.referenceId === <memoryId>.
    */
   onOpenGift?: () => void;
+  /**
+   * Called when the user taps a "Let's Chat" notification. Opens the received
+   * message so it can be read. Backend sends these with data.type === "LetsChat"
+   * and data.referenceId === <conversationId>.
+   */
+  onOpenChat?: (conversationId: string) => void;
 }
 
 /**
@@ -89,6 +95,13 @@ function isGift(data: NotificationData | undefined): boolean {
   return data.type === 'Gift';
 }
 
+function extractChatId(data: NotificationData | undefined): string | null {
+  if (!data) return null;
+  const type = typeof data.type === 'string' ? data.type : null;
+  const ref = typeof data.referenceId === 'string' ? data.referenceId : null;
+  return type === 'LetsChat' && ref ? ref : null;
+}
+
 /** Route a tapped notification's data payload to the right callback. */
 function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerCallbacks): void {
   const hugId = extractHugId(data);
@@ -107,6 +120,11 @@ function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerC
   }
   if (isGift(data)) {
     callbacks.onOpenGift?.();
+    return;
+  }
+  const chatId = extractChatId(data);
+  if (chatId) {
+    callbacks.onOpenChat?.(chatId);
   }
 }
 

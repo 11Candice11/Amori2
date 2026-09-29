@@ -46,6 +46,10 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <!-- Enables ActivityKit Live Activities (the splitting self-regulation
+         countdown on the Lock Screen and Dynamic Island). -->
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>NSCameraUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your camera</string>
     <key>NSMicrophoneUsageDescription</key>
