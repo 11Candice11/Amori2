@@ -19,7 +19,8 @@ public sealed class CalendarService(
         StartTime = e.StartTime, EndTime = e.EndTime, Location = e.Location,
         ReminderEnabled = e.ReminderEnabled, ReminderMinutesBefore = e.ReminderMinutesBefore,
         IsCompleted = e.IsCompleted, CompletedAt = e.CompletedAt,
-        IsShared = e.IsShared, CreatedAt = e.CreatedAt, UpdatedAt = e.UpdatedAt
+        IsShared = e.IsShared, Recurrence = e.Recurrence,
+        CreatedAt = e.CreatedAt, UpdatedAt = e.UpdatedAt
     };
 
     private async Task<(Guid relId, CalendarEvent ev)> LoadAsync(Guid userId, Guid eventId, CancellationToken ct)
@@ -70,7 +71,8 @@ public sealed class CalendarService(
             Title = request.Title.Trim(), Description = request.Description,
             EventDate = request.EventDate, StartTime = request.StartTime, EndTime = request.EndTime,
             Location = request.Location, ReminderEnabled = request.ReminderEnabled,
-            ReminderMinutesBefore = request.ReminderMinutesBefore, IsShared = request.IsShared
+            ReminderMinutesBefore = request.ReminderMinutesBefore, IsShared = request.IsShared,
+            Recurrence = request.Recurrence
         };
         db.CalendarEvents.Add(ev);
         await db.SaveChangesAsync(ct);
@@ -91,6 +93,7 @@ public sealed class CalendarService(
         if (request.ReminderEnabled.HasValue) ev.ReminderEnabled = request.ReminderEnabled.Value;
         if (request.ReminderMinutesBefore.HasValue) ev.ReminderMinutesBefore = request.ReminderMinutesBefore;
         if (request.IsShared.HasValue) ev.IsShared = request.IsShared.Value;
+        if (request.Recurrence.HasValue) ev.Recurrence = request.Recurrence.Value;
         await db.SaveChangesAsync(ct);
         return Map(ev);
     }

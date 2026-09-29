@@ -65,9 +65,13 @@ struct PartnerMoodWidgetView: View {
 
         VStack(alignment: .leading, spacing: family == .systemSmall ? 6 : 8) {
             HStack(spacing: 8) {
+                // Mood glyph sits in a tinted chip so the mood colour reads as
+                // an accent against the dark green background.
                 Image(systemName: display.glyph)
-                    .font(.system(size: family == .systemSmall ? 20 : 24, weight: .semibold))
+                    .font(.system(size: family == .systemSmall ? 16 : 20, weight: .semibold))
                     .foregroundStyle(display.color)
+                    .padding(family == .systemSmall ? 7 : 9)
+                    .background(display.color.opacity(0.18), in: Circle())
                 Spacer(minLength: 0)
             }
 
@@ -76,43 +80,55 @@ struct PartnerMoodWidgetView: View {
             Text(feeling)
                 .font(family == .systemSmall ? .headline : .title2)
                 .fontWeight(.semibold)
-                .foregroundStyle(.primary)
+                .foregroundStyle(AmoriPalette.neutral)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text("\(name) · \(MoodTheme.relativeCaption(fromISO: snapshot.updatedAt))")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AmoriPalette.neutralMuted)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(family == .systemSmall ? 12 : 16)
-        .containerBackground(for: .widget) {
-            LinearGradient(
-                colors: [display.color.opacity(0.22), display.color.opacity(0.06)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
+        .containerBackground(for: .widget) { botanicalBackground(accent: display.color) }
     }
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: "heart.text.square")
+            Image(systemName: "leaf.fill")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AmoriPalette.primaryLight)
             Spacer(minLength: 0)
             Text("No mood shared yet")
                 .font(.subheadline).fontWeight(.medium)
-                .foregroundStyle(.primary)
+                .foregroundStyle(AmoriPalette.neutral)
             Text("When your partner checks in, it shows here.")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AmoriPalette.neutralMuted)
                 .lineLimit(2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(12)
-        .containerBackground(for: .widget) { Color(white: 0.96) }
+        .containerBackground(for: .widget) { botanicalBackground(accent: AmoriPalette.primary) }
+    }
+
+    /// The app's dark botanical green background, with a faint mood-coloured
+    /// wash in the top-leading corner so each mood still tints the card subtly.
+    private func botanicalBackground(accent: Color) -> some View {
+        ZStack {
+            LinearGradient(
+                colors: [AmoriPalette.surfaceCard, AmoriPalette.background, AmoriPalette.secondary],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [accent.opacity(0.20), .clear],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 140
+            )
+        }
     }
 }
 

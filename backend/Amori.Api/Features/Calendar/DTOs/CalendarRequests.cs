@@ -1,3 +1,5 @@
+using Amori.Api.Domain.Enums;
+
 namespace Amori.Api.Features.Calendar.DTOs;
 
 public sealed class CreateCalendarEventRequest
@@ -11,6 +13,9 @@ public sealed class CreateCalendarEventRequest
     public bool ReminderEnabled { get; set; }
     public int? ReminderMinutesBefore { get; set; }
     public bool IsShared { get; set; } = true;
+
+    /// <summary>How often the event repeats. Defaults to None (a one-off).</summary>
+    public CalendarRecurrence Recurrence { get; set; } = CalendarRecurrence.None;
 }
 
 public sealed class UpdateCalendarEventRequest
@@ -24,4 +29,5 @@ public sealed class UpdateCalendarEventRequest
     public bool? ReminderEnabled { get; set; }
     public int? ReminderMinutesBefore { get; set; }
     public bool? IsShared { get; set; }
+    public CalendarRecurrence? Recurrence { get; set; }
 }

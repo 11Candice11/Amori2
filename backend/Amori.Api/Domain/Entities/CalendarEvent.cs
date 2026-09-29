@@ -1,3 +1,5 @@
+using Amori.Api.Domain.Enums;
+
 namespace Amori.Api.Domain.Entities;
 
 public sealed class CalendarEvent : BaseEntity
@@ -15,6 +17,9 @@ public sealed class CalendarEvent : BaseEntity
     public bool IsCompleted { get; set; }
     public DateTime? CompletedAt { get; set; }
     public bool IsShared { get; set; } = true;
+
+    /// <summary>How often the event repeats. Defaults to a one-off (None).</summary>
+    public CalendarRecurrence Recurrence { get; set; } = CalendarRecurrence.None;
 
     // Navigation
     public Relationship Relationship { get; set; } = null!;

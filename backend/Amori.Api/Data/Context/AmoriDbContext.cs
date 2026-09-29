@@ -74,6 +74,9 @@ public sealed class AmoriDbContext(DbContextOptions<AmoriDbContext> options) : D
     // Vault (private per-user saved gifts)
     public DbSet<VaultGift> VaultGifts => Set<VaultGift>();
 
+    // Weekly Reflection archives (private per-user kept weekly retrospectives)
+    public DbSet<WeeklyReflectionArchive> WeeklyReflectionArchives => Set<WeeklyReflectionArchive>();
+
     // Important Dates
     public DbSet<ImportantDate> ImportantDates => Set<ImportantDate>();
 

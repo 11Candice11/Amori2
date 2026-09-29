@@ -207,6 +207,10 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("location");
 
+                    b.Property<int>("Recurrence")
+                        .HasColumnType("integer")
+                        .HasColumnName("recurrence");
+
                     b.Property<Guid>("RelationshipId")
                         .HasColumnType("uuid")
                         .HasColumnName("relationship_id");
@@ -2952,6 +2956,55 @@ namespace Amori.Api.Data.Migrations
                     b.ToTable("voice_notes", (string)null);
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.WeeklyReflectionArchive", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("MoodDataPartial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("mood_data_partial");
+
+                    b.Property<string>("RangeLabel")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("range_label");
+
+                    b.Property<WeeklyReflectionSnapshot>("Snapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("WeekKey")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("week_key");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "WeekKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_weekly_reflection_archives_user_id_week_key");
+
+                    b.ToTable("weekly_reflection_archives", (string)null);
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.WishlistItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3932,6 +3985,17 @@ namespace Amori.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Relationship");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.WeeklyReflectionArchive", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

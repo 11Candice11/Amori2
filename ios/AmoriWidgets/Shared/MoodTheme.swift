@@ -9,6 +9,31 @@
 
 import SwiftUI
 
+/// Amori's botanical dark theme palette, mirrored from src/theme/colors.ts
+/// (darkPalette) so the widget matches the in-app dark green look.
+public enum AmoriPalette {
+    /// Near-black botanical green — app background / surface (#0A140F).
+    public static let background = Color(red: 0x0A / 255, green: 0x14 / 255, blue: 0x0F / 255)
+    /// Slightly lifted card surface (#111D16).
+    public static let surfaceCard = Color(red: 0x11 / 255, green: 0x1D / 255, blue: 0x16 / 255)
+    /// Deep brand green (#064E3B).
+    public static let primary = Color(red: 0x06 / 255, green: 0x4E / 255, blue: 0x3B / 255)
+    /// Darkest green (#022C22) — used for gradient depth.
+    public static let secondary = Color(red: 0x02 / 255, green: 0x2C / 255, blue: 0x22 / 255)
+    /// Soft sage green (#A7D2B6) — light primary accent.
+    public static let primaryLight = Color(red: 0xA7 / 255, green: 0xD2 / 255, blue: 0xB6 / 255)
+    /// Gold accent (#C5A365).
+    public static let gold = Color(red: 0xC5 / 255, green: 0xA3 / 255, blue: 0x65 / 255)
+    /// Warm off-white primary text (#FDFCF0).
+    public static let neutral = Color(red: 0xFD / 255, green: 0xFC / 255, blue: 0xF0 / 255)
+    /// Muted text (neutral @ 64%).
+    public static let neutralMuted = Color(red: 0xFD / 255, green: 0xFC / 255, blue: 0xF0 / 255).opacity(0.64)
+    /// Subtle text (neutral @ 38%).
+    public static let neutralSubtle = Color(red: 0xFD / 255, green: 0xFC / 255, blue: 0xF0 / 255).opacity(0.38)
+    /// Hairline border (neutral @ 8%).
+    public static let border = Color(red: 0xFD / 255, green: 0xFC / 255, blue: 0xF0 / 255).opacity(0.08)
+}
+
 public struct MoodDisplay {
     public let color: Color
     public let glyph: String

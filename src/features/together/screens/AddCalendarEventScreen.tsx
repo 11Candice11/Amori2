@@ -56,6 +56,13 @@ import {
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { togetherService } from '../services/togetherService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
+import {
+  CALENDAR_RECURRENCE_LABELS,
+  CALENDAR_RECURRENCE_ORDER,
+  CALENDAR_RECURRENCE_VALUES,
+  decodeCalendarRecurrence,
+  type CalendarRecurrence,
+} from '../types/together.types';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'AddCalendarEvent'>;
 type Route = NativeStackScreenProps<TogetherStackParamList, 'AddCalendarEvent'>['route'];
@@ -121,6 +128,9 @@ export function AddCalendarEventScreen() {
   const [description, setDescription] = useState(editingEvent?.description ?? '');
   const [reminderEnabled, setReminderEnabled] = useState(
     editingEvent?.reminderEnabled ?? false,
+  );
+  const [recurrence, setRecurrence] = useState<CalendarRecurrence>(
+    editingEvent ? decodeCalendarRecurrence(editingEvent.recurrence) : 'None',
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);

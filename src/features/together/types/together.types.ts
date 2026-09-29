@@ -14,6 +14,52 @@
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
 
+/**
+ * Backend CalendarRecurrence. The API serializes enums as their string names,
+ * so responses carry the name (e.g. "Weekly"); on write the API accepts either
+ * the name or the numeric value.
+ */
+export type CalendarRecurrence = 'None' | 'Weekly' | 'Monthly' | 'Yearly'; // 0 | 1 | 2 | 3
+
+export const CALENDAR_RECURRENCE_VALUES: Record<CalendarRecurrence, number> = {
+  None: 0,
+  Weekly: 1,
+  Monthly: 2,
+  Yearly: 3,
+};
+
+/** The options in display order for the repeat picker. */
+export const CALENDAR_RECURRENCE_ORDER: CalendarRecurrence[] = [
+  'None',
+  'Weekly',
+  'Monthly',
+  'Yearly',
+];
+
+/** Human-friendly labels for the repeat picker and event cards. */
+export const CALENDAR_RECURRENCE_LABELS: Record<CalendarRecurrence, string> = {
+  None: 'Does not repeat',
+  Weekly: 'Weekly',
+  Monthly: 'Monthly',
+  Yearly: 'Yearly',
+};
+
+/**
+ * Decode a `recurrence` value from an API response. Accepts the enum name (the
+ * common case), its integer, or a numeric string; falls back to None.
+ */
+export function decodeCalendarRecurrence(value: number | string): CalendarRecurrence {
+  if (typeof value === 'number') {
+    return CALENDAR_RECURRENCE_ORDER.find((r) => CALENDAR_RECURRENCE_VALUES[r] === value) ?? 'None';
+  }
+  if (value in CALENDAR_RECURRENCE_VALUES) return value as CalendarRecurrence;
+  const asNum = Number(value);
+  if (!Number.isNaN(asNum)) {
+    return CALENDAR_RECURRENCE_ORDER.find((r) => CALENDAR_RECURRENCE_VALUES[r] === asNum) ?? 'None';
+  }
+  return 'None';
+}
+
 export interface CalendarEventResponse {
   id: string;
   relationshipId: string;
@@ -32,6 +78,8 @@ export interface CalendarEventResponse {
   isCompleted: boolean;
   completedAt: string | null;
   isShared: boolean;
+  /** Serialized as the string enum name (e.g. "Weekly"). Decode with decodeCalendarRecurrence. */
+  recurrence: number | string;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -47,6 +95,8 @@ export interface CreateCalendarEventRequest {
   reminderEnabled?: boolean;
   reminderMinutesBefore?: number | null;
   isShared?: boolean;
+  /** Integer enum value or name (see CALENDAR_RECURRENCE_VALUES). */
+  recurrence?: number;
 }
 
 export interface UpdateCalendarEventRequest {
@@ -60,6 +110,7 @@ export interface UpdateCalendarEventRequest {
   reminderEnabled?: boolean | null;
   reminderMinutesBefore?: number | null;
   isShared?: boolean | null;
+  recurrence?: number | null;
 }
 
 // ─── Important dates ────────────────────────────────────────────────────────
@@ -81,6 +132,28 @@ export interface ImportantDateResponse {
   daysUntilNext: number | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+export interface CreateImportantDateRequest {
+  name: string;
+  /** "YYYY-MM-DD" */
+  date: string;
+  isRecurring?: boolean;
+  reminderEnabled?: boolean;
+  reminderDaysBefore?: number | null;
+  notes?: string | null;
+  imageKey?: string | null;
+}
+
+export interface UpdateImportantDateRequest {
+  name?: string | null;
+  /** "YYYY-MM-DD" */
+  date?: string | null;
+  isRecurring?: boolean | null;
+  reminderEnabled?: boolean | null;
+  reminderDaysBefore?: number | null;
+  notes?: string | null;
+  imageKey?: string | null;
 }
 
 // ─── Bucket list ──────────────────────────────────────────────────────────────

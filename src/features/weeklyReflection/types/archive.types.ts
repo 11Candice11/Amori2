@@ -27,7 +27,8 @@ export interface ArchivedReflection {
 
 /**
  * The reflection with its non-JSON-safe fields serialized. `DayMood.date` is a
- * Date at runtime; on disk it's an ISO string, rehydrated on read.
+ * Date at runtime; in transit and in the cache it's an ISO string, rehydrated
+ * on read. This shape matches the backend snapshot DTO field-for-field.
  */
 export type SerializedReflection = Omit<WeeklyReflection, 'days'> & {
   days: SerializedDayMood[];

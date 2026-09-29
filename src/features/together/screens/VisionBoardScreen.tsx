@@ -33,6 +33,7 @@ import { AppHeader } from '../../../shared/components/header';
 import { ApiError } from '../../../services/api/client';
 import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
+import { partnerLinkService } from '../../profile/services/partnerLinkService';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { visionBoardService } from '../services/visionBoardService';
 import {
@@ -122,11 +123,28 @@ export function VisionBoardScreen() {
       setBoard(result);
       setNotLinked(false);
     } catch (err) {
-      // A 404 means there's no relationship yet — that's an empty state, not an
-      // error banner. Everything else is a real, retryable failure.
+      // Only treat this as "not linked" when the partner-link status confirms it
+      // — a raw 404 can also mean the endpoint isn't reachable, and we must never
+      // tell a linked couple to link up. So resolve link state authoritatively
+      // (the same source the rest of the app trusts) before choosing the state.
       if (err instanceof ApiError && err.status === 404) {
-        setNotLinked(true);
-        setBoard(null);
+        try {
+          const status = await partnerLinkService.getStatus();
+          if (!status.isLinked) {
+            setNotLinked(true);
+            setBoard(null);
+          } else {
+            // Linked, but the board still 404'd — that's a real failure, not an
+            // empty state. Surface it with Retry rather than the link prompt.
+            setNotLinked(false);
+            setError('Could not load your Vision Board. Pull to refresh or try again.');
+          }
+        } catch {
+          // Couldn't confirm link status either — show a retryable error, never
+          // the misleading "link with your partner" message.
+          setNotLinked(false);
+          setError(err instanceof Error ? err.message : 'Could not load your Vision Board.');
+        }
       } else {
         setError(err instanceof Error ? err.message : 'Could not load your Vision Board.');
       }

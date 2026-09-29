@@ -1,16 +1,18 @@
 /**
- * weeklyReflectionArchive — persists snapshots of weekly reflections the user
- * chose to keep, so they can be re-opened later exactly as they were (rather
- * than recomputed live from the current data).
+ * weeklyReflectionArchive — the app's single entry point for kept weekly
+ * reflections. It is BACKEND-FIRST with an on-device cache/offline fallback:
  *
- * Storage: AsyncStorage, keyed PER USER — `@amori:weeklyReflection:archive:<userId>`.
- * Namespacing by the signed-in user's id avoids the cross-account leak the
- * retired device-wide vault suffered from (two people on one install must not
- * share archives). The caller passes the current user id (from authService.getMe).
+ *   - The durable, cross-device source of truth is the API
+ *     (weeklyReflectionApi → /api/weekly-reflections), scoped server-side to the
+ *     signed-in user.
+ *   - AsyncStorage mirrors the server per user
+ *     (`@amori:weeklyReflection:archive:<userId>`) so a kept reflection is still
+ *     viewable offline, and a save survives a dropped network to sync-on-read
+ *     later. Namespacing by user id avoids the cross-account leak the retired
+ *     device-wide vault suffered from.
  *
- * There's no backend endpoint for this yet, so archives live on-device. When a
- * `POST /api/weekly-reflections` (or similar) endpoint lands, this module is the
- * single seam to swap AsyncStorage for the API — the screen only talks to it.
+ * Screens talk only to this module; whether a read came from the server or the
+ * cache is deliberately invisible to them.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -19,6 +21,7 @@ import type {
   ArchivedReflection,
   SerializedReflection,
 } from '../types/archive.types';
+import { weeklyReflectionApi } from './weeklyReflectionApi';
 
 const KEY_PREFIX = '@amori:weeklyReflection:archive:';
 
@@ -49,7 +52,16 @@ function deserialize(stored: SerializedReflection): WeeklyReflection {
   };
 }
 
-async function readAll(userId: string | null): Promise<ArchivedReflection[]> {
+/** Newest week first — matches the server's ordering. */
+function sortNewestFirst(entries: ArchivedReflection[]): ArchivedReflection[] {
+  return [...entries].sort((a, b) =>
+    a.weekKey < b.weekKey ? 1 : a.weekKey > b.weekKey ? -1 : 0,
+  );
+}
+
+// ── Local cache (per user) ─────────────────────────────────────────────────
+
+async function readLocal(userId: string | null): Promise<ArchivedReflection[]> {
   try {
     const raw = await AsyncStorage.getItem(storageKey(userId));
     if (!raw) return [];
@@ -61,11 +73,28 @@ async function readAll(userId: string | null): Promise<ArchivedReflection[]> {
   }
 }
 
-async function writeAll(
+async function writeLocal(
   userId: string | null,
   entries: ArchivedReflection[],
 ): Promise<void> {
-  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(entries));
+  try {
+    await AsyncStorage.setItem(storageKey(userId), JSON.stringify(entries));
+  } catch {
+    // A failed cache write is non-fatal — the server still holds the truth.
+  }
+}
+
+/** Insert-or-replace an entry in the local cache by weekKey. */
+async function upsertLocal(
+  userId: string | null,
+  entry: ArchivedReflection,
+): Promise<void> {
+  const existing = await readLocal(userId);
+  const next = sortNewestFirst([
+    entry,
+    ...existing.filter((e) => e.weekKey !== entry.weekKey),
+  ]);
+  await writeLocal(userId, next);
 }
 
 export interface SaveArchiveInput {
@@ -77,15 +106,16 @@ export interface SaveArchiveInput {
 
 export const weeklyReflectionArchive = {
   /**
-   * Save (or overwrite) a week's snapshot. One entry per `weekKey`, so
-   * re-saving the same week refreshes it rather than duplicating. Returns the
-   * stored entry. Newest-first ordering is maintained on write.
+   * Save (or overwrite) a week's snapshot. Writes to the backend first (durable,
+   * cross-device), then mirrors into the local cache. If the network fails, the
+   * snapshot is still cached locally so it's viewable now and can reconcile with
+   * the server on a later online read. One entry per `weekKey`.
    */
   async save(
     userId: string | null,
     input: SaveArchiveInput,
   ): Promise<ArchivedReflection> {
-    const entry: ArchivedReflection = {
+    const localEntry: ArchivedReflection = {
       weekKey: input.weekKey,
       rangeLabel: input.rangeLabel,
       savedAt: new Date().toISOString(),
@@ -93,50 +123,72 @@ export const weeklyReflectionArchive = {
       reflection: serialize(input.reflection),
     };
 
-    const existing = await readAll(userId);
-    const withoutThisWeek = existing.filter((e) => e.weekKey !== entry.weekKey);
-    const next = [entry, ...withoutThisWeek].sort((a, b) =>
-      a.weekKey < b.weekKey ? 1 : a.weekKey > b.weekKey ? -1 : 0,
-    );
-
     try {
-      await writeAll(userId, next);
+      // The server assigns the authoritative savedAt; prefer what it returns.
+      const saved = await weeklyReflectionApi.save(localEntry);
+      await upsertLocal(userId, saved);
+      return saved;
     } catch {
-      // A failed write just means the snapshot won't persist; surface via the
-      // returned entry so the UI can still confirm the in-session save.
+      // Offline / server unavailable: keep it locally so the save isn't lost.
+      await upsertLocal(userId, localEntry);
+      return localEntry;
     }
-    return entry;
   },
 
-  /** All archived reflections for the user, newest week first. */
+  /**
+   * All archived reflections, newest week first. Reads the server when reachable
+   * (refreshing the local cache), and falls back to the cache when offline.
+   */
   async getAll(userId: string | null): Promise<ArchivedReflection[]> {
-    return readAll(userId);
+    try {
+      const remote = await weeklyReflectionApi.getAll();
+      await writeLocal(userId, sortNewestFirst(remote));
+      return remote;
+    } catch {
+      return readLocal(userId);
+    }
   },
 
-  /** A single archived snapshot by its week key, or null. */
+  /**
+   * A single archived snapshot by week key, or null. Prefers the server, refreshes
+   * the cache on hit, and falls back to the cache when the server is unreachable.
+   * A genuine "not found" (server reachable, no such week) resolves to null.
+   */
   async getByWeekKey(
     userId: string | null,
     key: string,
   ): Promise<ArchivedReflection | null> {
-    const all = await readAll(userId);
-    return all.find((e) => e.weekKey === key) ?? null;
+    try {
+      const remote = await weeklyReflectionApi.getByWeekKey(key);
+      await upsertLocal(userId, remote);
+      return remote;
+    } catch {
+      // Could be offline OR a 404. Fall back to the cache; if it isn't there
+      // either, treat it as not found.
+      const cached = await readLocal(userId);
+      return cached.find((e) => e.weekKey === key) ?? null;
+    }
   },
 
-  /** Whether a snapshot exists for the given week. */
+  /** Whether a snapshot exists locally for the given week (fast, cache-only). */
   async has(userId: string | null, key: string): Promise<boolean> {
-    const all = await readAll(userId);
+    const all = await readLocal(userId);
     return all.some((e) => e.weekKey === key);
   },
 
-  /** Remove a snapshot. No-op if it doesn't exist. */
+  /**
+   * Remove a snapshot from the backend and the local cache. A missing server
+   * row is treated as already-removed (still clears the cache).
+   */
   async remove(userId: string | null, key: string): Promise<void> {
-    const all = await readAll(userId);
-    const next = all.filter((e) => e.weekKey !== key);
     try {
-      await writeAll(userId, next);
+      await weeklyReflectionApi.remove(key);
     } catch {
-      // Ignore — deletion is best-effort.
+      // Ignore — either already gone on the server, or offline; we still drop
+      // it from the cache so the UI reflects the user's intent.
     }
+    const all = await readLocal(userId);
+    await writeLocal(userId, all.filter((e) => e.weekKey !== key));
   },
 
   /** Rehydrate a stored snapshot's reflection into a live view-model. */

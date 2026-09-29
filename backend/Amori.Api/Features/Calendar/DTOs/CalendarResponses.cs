@@ -1,3 +1,5 @@
+using Amori.Api.Domain.Enums;
+
 namespace Amori.Api.Features.Calendar.DTOs;
 
 public sealed class CalendarEventResponse
@@ -17,6 +19,9 @@ public sealed class CalendarEventResponse
     public bool IsCompleted { get; init; }
     public DateTime? CompletedAt { get; init; }
     public bool IsShared { get; init; }
+
+    /// <summary>Serialized as the string enum name (e.g. "Weekly").</summary>
+    public CalendarRecurrence Recurrence { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

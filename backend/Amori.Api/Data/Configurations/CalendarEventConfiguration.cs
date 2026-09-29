@@ -25,6 +25,7 @@ public sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Calend
         builder.Property(c => c.IsCompleted).HasColumnName("is_completed").IsRequired();
         builder.Property(c => c.CompletedAt).HasColumnName("completed_at");
         builder.Property(c => c.IsShared).HasColumnName("is_shared").IsRequired();
+        builder.Property(c => c.Recurrence).HasColumnName("recurrence").HasConversion<int>().IsRequired();
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at");
 

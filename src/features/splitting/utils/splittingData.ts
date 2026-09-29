@@ -14,6 +14,7 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
   { id: 'no-sleep', label: 'No sleep', group: 'physical' },
   { id: 'not-hydrated', label: 'Not hydrated', group: 'physical' },
   { id: 'hungry', label: 'Hungry', group: 'physical' },
+  { id: 'back-neck-pain', label: 'My back/neck hurts', group: 'physical' },
   { id: 'sensory', label: 'Sensory overload', group: 'physical' },
   // Emotional state
   { id: 'overwhelmed', label: 'Overwhelmed', group: 'emotional' },

@@ -160,6 +160,27 @@ export const togetherService = {
     return api.get<ImportantDateResponse[]>('/api/important-dates');
   },
 
+  getImportantDate(dateId: string): Promise<ImportantDateResponse> {
+    return api.get<ImportantDateResponse>(`/api/important-dates/${dateId}`);
+  },
+
+  createImportantDate(
+    payload: import('../types/together.types').CreateImportantDateRequest,
+  ): Promise<ImportantDateResponse> {
+    return api.post<ImportantDateResponse>('/api/important-dates', payload);
+  },
+
+  updateImportantDate(
+    dateId: string,
+    payload: import('../types/together.types').UpdateImportantDateRequest,
+  ): Promise<ImportantDateResponse> {
+    return api.patch<ImportantDateResponse>(`/api/important-dates/${dateId}`, payload);
+  },
+
+  deleteImportantDate(dateId: string): Promise<void> {
+    return api.delete<void>(`/api/important-dates/${dateId}`);
+  },
+
   // ── Bucket list ───────────────────────────────────────────────────────────
   getBucketList(): Promise<BucketListItemResponse[]> {
     return api.get<BucketListItemResponse[]>('/api/bucket-list');

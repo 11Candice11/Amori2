@@ -20,6 +20,7 @@ using Amori.Api.Features.SupportProfile.Services;
 using Amori.Api.Features.Timeline.Services;
 using Amori.Api.Features.Users.Services;
 using Amori.Api.Features.Vault.Services;
+using Amori.Api.Features.WeeklyReflection.Services;
 using Amori.Api.Features.VisionBoard.Services;
 using Amori.Api.Features.VoiceNotes.Services;
 using Amori.Api.Features.Wishlist.Services;
@@ -99,6 +100,9 @@ public static class ApplicationServicesExtensions
 
         // ── Vault ─────────────────────────────────────────────────────────────
         services.AddScoped<IVaultService, VaultService>();
+
+        // ── Weekly Reflection archive (private per-user kept retrospectives) ──
+        services.AddScoped<IWeeklyReflectionArchiveService, WeeklyReflectionArchiveService>();
 
         // ── Voice Notes ───────────────────────────────────────────────────────
         services.AddScoped<IVoiceNoteService, VoiceNoteService>();
