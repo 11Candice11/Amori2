@@ -42,6 +42,10 @@ export type TogetherStackParamList = {
     | undefined;
   Wishlist: undefined;
   DateIdeas: undefined;
+  /** The full shared calendar (month grid) as its own view. */
+  Calendar: undefined;
+  /** The couple's shared important dates (anniversaries, birthdays, milestones). */
+  ImportantDates: undefined;
   Memories: undefined;
   /**
    * Monthly Memories ("Rediscovery Archive") — the current calendar month's
@@ -49,6 +53,8 @@ export type TogetherStackParamList = {
    * as "YYYY-MM"; omitted opens on the current month.
    */
   MonthlyMemories: { month?: string } | undefined;
+  /** Month-at-a-glance: this month's memories + warmth stats (hugs sent/held). */
+  MonthlySnapshot: undefined;
   /** Compose a new memory, or edit an existing one when `memoryId` is set. */
   AddMemory: { memoryId?: string } | undefined;
   RelationshipTimeline: undefined;

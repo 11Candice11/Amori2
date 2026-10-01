@@ -22,6 +22,8 @@ import {
 import { AppHeader } from '../../../shared/components/header';
 import { EmptyState } from '../components/EmptyState';
 import { incidentService } from '../services/incidentService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { friendlyError, formatRelativeDate } from '../utils/errorMessages';
 import type { IncidentLesson } from '../types/incident.types';
 
@@ -60,10 +62,12 @@ export function IncidentLessonsScreen() {
     setError(null);
     try {
       await incidentService.addIncidentLesson(incidentId, draft.trim());
+      showSuccessOverlay('Lesson saved');
       setDraft('');
       await load();
     } catch (err) {
       setError(friendlyError(err));
+      showErrorOverlay("Couldn't save lesson");
     } finally {
       setSubmitting(false);
     }

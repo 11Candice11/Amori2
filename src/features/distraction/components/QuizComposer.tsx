@@ -13,6 +13,8 @@ import {
 } from '../../../shared/components/inputs';
 import { Button } from './DistractionUI';
 import { distractionService } from '../services/distractionService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 
 const MAX_OPTIONS = 4;
 
@@ -60,9 +62,11 @@ export function QuizComposer({
         correctAnswer: correct,
         options: cleaned,
       });
+      showSuccessOverlay('Question added');
       onCreated();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save the question.');
+      showErrorOverlay("Couldn't add question");
     } finally {
       setSaving(false);
     }

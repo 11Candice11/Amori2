@@ -5,7 +5,7 @@
  * and PATCHes just that section on save (partial update — untouched fields are
  * left alone server-side). Each field has its own Shared/Private toggle.
  */
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -30,6 +30,7 @@ import {
   SUPPORT_OPTIONS,
   BOUNDARY_CATEGORIES,
 } from '../constants';
+import { ApiError } from '../../../services/api/client';
 import { supportProfileService } from '../services/supportProfileService';
 import { supportProfileStore } from '../services/supportProfileStore';
 import { useOwnSupportProfile } from '../hooks/useSupportProfile';
@@ -67,8 +68,11 @@ export function SupportSectionEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
-  // Seed the draft once the profile is available.
-  useMemo(() => {
+  // Seed the draft once the profile is available. The profile loads async, so
+  // it starts null and arrives on a later render — a useEffect (not useMemo)
+  // is the correct place to derive local editable state from it, and it seeds
+  // exactly once (guarded by `seeded`).
+  useEffect(() => {
     if (!profile || seeded) return;
     const t: Record<string, TextField> = {};
     const l: Record<string, ListField> = {};
@@ -182,8 +186,18 @@ export function SupportSectionEditorScreen() {
 
       if (updated) supportProfileStore.setOwn(updated);
       navigation.goBack();
-    } catch {
-      Alert.alert('Could not save', 'Please check your connection and try again.');
+    } catch (err) {
+      // Surface a clearer reason. A 404/501 means the server doesn't have this
+      // feature yet (backend not deployed) — distinct from a real connection
+      // problem — so we don't tell the user to "check your connection" wrongly.
+      const status = err instanceof ApiError ? err.status : null;
+      const message =
+        status === 404 || status === 501
+          ? 'This feature isn’t available on the server yet. Please try again after the next update.'
+          : status != null
+            ? `Couldn’t save (server error ${status}). Please try again.`
+            : 'Please check your connection and try again.';
+      Alert.alert('Could not save', message);
     } finally {
       setSaving(false);
     }

@@ -24,6 +24,8 @@ import {
 } from '../../../shared/components/inputs';
 import { ScreenHeader, Button } from '../components/DistractionUI';
 import { distractionService } from '../services/distractionService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { useDistractionCentre } from '../hooks/useDistractionCentre';
 import type { WouldYouRatherQuestionResponse } from '../../../services/api/types';
 
@@ -58,6 +60,7 @@ export function WouldYouRatherScreen() {
         optionB: b,
       });
       setQuestions(qs => [...qs, created]);
+      showSuccessOverlay('Prompt added');
       setNewA('');
       setNewB('');
       setComposing(false);
@@ -66,6 +69,7 @@ export function WouldYouRatherScreen() {
       setComposerError(
         e instanceof Error ? e.message : 'Could not save the prompt.',
       );
+      showErrorOverlay("Couldn't add prompt");
     } finally {
       setSaving(false);
     }

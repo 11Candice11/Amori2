@@ -34,7 +34,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { authService } from '../../../services/auth/authService';
 import type { MainTabParamList } from '../../../navigation/types';
 
@@ -455,9 +456,9 @@ function LiveReflectionView() {
         moodDataPartial,
         reflection,
       });
-      showSuccess('Held in your Sanctuary');
+      showSuccessOverlay('Held in your Sanctuary');
     } catch {
-      showError('Could not save this reflection. Please try again.');
+      showErrorOverlay("Couldn't save reflection");
     } finally {
       setSaving(false);
     }

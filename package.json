@@ -31,6 +31,7 @@
     "expo-av": "~14.0.7",
     "expo-device": "~6.0.2",
     "expo-notifications": "^0.28.19",
+    "lottie-react-native": "6.7.0",
     "react": "18.2.0",
     "react-native": "0.74.7",
     "react-native-image-picker": "^8.2.1",

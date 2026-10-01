@@ -51,7 +51,8 @@ import {
   type RecordedVoiceNote,
 } from '../../memories/components/VoiceNoteRecorder';
 import { getCardImage } from '../../../utils/cardSelector';
-import { showSuccess } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { mediaService } from '../../../services/media/mediaService';
 import { memoriesService } from '../../memories/services/memoriesService';
 import { vaultService } from '../services/vaultService';
@@ -302,12 +303,13 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
           cardNumber: card,
         });
 
-        showSuccess(`Gift sent to ${result.recipientName} 🎁`);
+        showSuccessOverlay(`Gift sent to ${result.recipientName} 🎁`);
         resetForm();
         onSent?.();
         close();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not send the gift.');
+        showErrorOverlay("Couldn't send gift");
         setSending(false);
       }
     },

@@ -27,9 +27,12 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../../navigation/types';
 
 import { colors, spacing } from '../../../shared/theme';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { useDayChange } from '../../../hooks/useDayChange';
 import { SanctuaryDashboard } from '../components/SanctuaryDashboard';
+import { SupportProfileBanner } from '../../supportProfile/components/SupportProfileBanner';
 import { ArtifactRevealModal } from '../components/ArtifactRevealModal';
 import { useDashboard } from '../hooks/useDashboard';
 import { splittingService } from '../../splitting/services/splittingService';
@@ -311,12 +314,12 @@ export function HomeScreen() {
       // Only flip the dashboard card to "View vault" once the save is confirmed.
       setArtifactOpened(true);
       void artifactStore.markOpenedToday();
-      showSuccess('Saved!');
+      showSuccessOverlay('Saved to your vault');
     } catch (error) {
       // Leave the card in its unopened state so the user can retry — a failed
       // save must not make it look like a gift was kept.
       console.error('Failed to save gift to vault:', error);
-      showError('Sorry that failed :(');
+      showErrorOverlay("Couldn't save to your vault");
       throw error;
     }
   }, [dailyGift, savedMemoryIds]);
@@ -359,6 +362,10 @@ export function HomeScreen() {
           showsVerticalScrollIndicator={false}
           overScrollMode="never"
         >
+          {/* Onboarding nudge: shows Support Profile progress until all 7
+              sections are done, then hides itself. */}
+          <SupportProfileBanner />
+
           <SanctuaryDashboard
             userName={dashboard.userName}
             partnerName={dashboard.partnerName}

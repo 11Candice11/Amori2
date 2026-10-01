@@ -21,6 +21,8 @@ import {
 } from '../../../shared/components/inputs';
 import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { friendlyError } from '../utils/errorMessages';
 
 type Nav = NativeStackNavigationProp<IncidentStackParamList, 'IncidentReview'>;
@@ -47,9 +49,11 @@ export function IncidentReviewScreen() {
         whatCouldImprove: whatCouldImprove.trim() || undefined,
         futureAction: futureAction.trim() || undefined,
       });
+      showSuccessOverlay('Review saved');
       navigation.goBack();
     } catch (err) {
       setError(friendlyError(err));
+      showErrorOverlay("Couldn't save review");
     } finally {
       setSubmitting(false);
     }

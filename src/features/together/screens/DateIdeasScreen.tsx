@@ -35,6 +35,8 @@ import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { SupportPreferencesLink } from '../../supportProfile/components/SupportPreferencesLink';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { togetherService } from '../services/togetherService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
@@ -264,12 +266,12 @@ export function DateIdeasScreen() {
     setError(null);
     try {
       await togetherService.createDateIdea(trimmed);
-      showSuccess('Created!');
+      showSuccessOverlay('Date idea added');
       setNewIdea('');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add the date idea.');
-      showError('Sorry that failed :(');
+      showErrorOverlay("Couldn't add date idea");
     } finally {
       setSaving(false);
     }

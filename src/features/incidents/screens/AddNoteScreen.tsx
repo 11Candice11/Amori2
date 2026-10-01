@@ -20,6 +20,8 @@ import {
 } from '../../../shared/components/inputs';
 import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { friendlyError } from '../utils/errorMessages';
 
 type Nav = NativeStackNavigationProp<IncidentStackParamList, 'AddNote'>;
@@ -42,9 +44,11 @@ export function AddNoteScreen() {
     setError(null);
     try {
       await incidentService.addIncidentNote(incidentId, content.trim());
+      showSuccessOverlay('Note added');
       navigation.goBack();
     } catch (err) {
       setError(friendlyError(err));
+      showErrorOverlay("Couldn't add note");
     } finally {
       setSubmitting(false);
     }

@@ -27,6 +27,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
@@ -35,6 +36,7 @@ import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import { partnerLinkService } from '../../profile/services/partnerLinkService';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
+import type { MainTabParamList } from '../../../navigation/types';
 import { visionBoardService } from '../services/visionBoardService';
 import {
   VISION_BOARD_ITEM_TYPE_LABELS,
@@ -120,7 +122,14 @@ export function VisionBoardScreen() {
     setError(null);
     try {
       const result = await visionBoardService.getBoard();
-      setBoard(result);
+      // Harden against a partial payload: a response missing `items`/`sections`
+      // (or with them null) must never crash the render. Coerce to arrays so
+      // every downstream `.length`/`.map`/`.filter` is safe.
+      setBoard({
+        ...result,
+        items: result?.items ?? [],
+        sections: result?.sections ?? [],
+      });
       setNotLinked(false);
     } catch (err) {
       // Only treat this as "not linked" when the partner-link status confirms it
@@ -247,7 +256,7 @@ export function VisionBoardScreen() {
     );
   }
 
-  const boardIsEmpty = (board?.items.length ?? 0) === 0;
+  const boardIsEmpty = (board?.items?.length ?? 0) === 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -277,6 +286,53 @@ export function VisionBoardScreen() {
         >
           <Text style={styles.addBtnText}>+  Add to Our Vision</Text>
         </Pressable>
+
+        {/* Monthly snapshot — this month's memories + warmth stats. */}
+        <Pressable
+          style={({ pressed }) => [styles.snapshotBtn, pressed && styles.pressed]}
+          onPress={() => navigation.navigate('MonthlySnapshot')}
+          accessibilityRole="button"
+          accessibilityLabel="Open this month's snapshot"
+        >
+          <Text style={styles.snapshotIcon}>❋</Text>
+          <View style={styles.snapshotText}>
+            <Text style={styles.snapshotTitle}>Monthly snapshot</Text>
+            <Text style={styles.snapshotSub}>This month’s memories and warmth, together.</Text>
+          </View>
+          <Text style={styles.snapshotChevron}>›</Text>
+        </Pressable>
+
+        {/* Quick links to the couple's shared collections. */}
+        <View style={styles.quickRow}>
+          <Pressable
+            style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('Memories')}
+            accessibilityRole="button"
+            accessibilityLabel="Open memories"
+          >
+            <Text style={styles.quickChipText}>Memories</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('ImportantDates')}
+            accessibilityRole="button"
+            accessibilityLabel="Open important dates"
+          >
+            <Text style={styles.quickChipText}>Important Dates</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
+            onPress={() =>
+              navigation
+                .getParent<BottomTabNavigationProp<MainTabParamList>>()
+                ?.navigate('Timeline', { screen: 'TimelineHome' })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Open milestones"
+          >
+            <Text style={styles.quickChipText}>Milestones</Text>
+          </Pressable>
+        </View>
 
         {boardIsEmpty ? (
           <View style={styles.emptyBoard}>
@@ -385,6 +441,32 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   addBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 15 },
+
+  snapshotBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.gold,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  snapshotIcon: { color: colors.gold, fontSize: 22 },
+  snapshotText: { flex: 1 },
+  snapshotTitle: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 15 },
+  snapshotSub: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 2 },
+  snapshotChevron: { color: colors.gold, fontSize: 24 },
+
+  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
+  quickChip: {
+    backgroundColor: 'rgba(197,163,101,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  quickChipText: { ...typography.bodySm, color: colors.gold, fontSize: 13 },
 
   section: { marginBottom: spacing.lg },
   sectionHeaderRow: {

@@ -28,6 +28,8 @@ import { AppHeader } from '../../../shared/components/header';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { DateTimeField, toIsoDate } from '../../../shared/components/inputs';
 import { partnerLinkService } from '../services/partnerLinkService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { supportProfileStore } from '../../supportProfile/services/supportProfileStore';
 import type {
   PartnerLinkRequestResponse,
@@ -90,12 +92,9 @@ export function LinkPartnerScreen({ visible, onClose, onLinked }: Props) {
       await partnerLinkService.sendRequest(trimmed);
       setEmail('');
       await loadStatus();
-      Alert.alert(
-        'Request sent',
-        `We've sent a link request to ${trimmed}. They'll need to accept it from their account.`,
-      );
+      showSuccessOverlay('Link request sent');
     } catch (err) {
-      Alert.alert('Could not send request', messageFrom(err));
+      showErrorOverlay(messageFrom(err) || "Couldn't send link request");
     } finally {
       setSending(false);
     }

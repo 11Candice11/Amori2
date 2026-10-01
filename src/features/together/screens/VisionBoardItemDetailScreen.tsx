@@ -29,6 +29,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import { toIsoDate } from '../../../shared/components/inputs';
@@ -107,7 +109,13 @@ export function VisionBoardItemDetailScreen() {
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const runAction = useCallback(
-    async (fn: () => Promise<unknown>, failMsg: string) => {
+    async (
+      fn: () => Promise<unknown>,
+      failMsg: string,
+      // For create-like actions, show the centered failure overlay (the
+      // counterpart to their success overlay) instead of the top banner.
+      errorOverlayMessage?: string,
+    ) => {
       if (busy) return;
       setBusy(true);
       setError(null);
@@ -117,7 +125,11 @@ export function VisionBoardItemDetailScreen() {
       } catch (err) {
         const message = err instanceof Error ? err.message : failMsg;
         setError(message);
-        showError('Sorry that failed :(');
+        if (errorOverlayMessage) {
+          showErrorOverlay(errorOverlayMessage);
+        } else {
+          showError('Sorry that failed :(');
+        }
       } finally {
         setBusy(false);
       }
@@ -163,8 +175,8 @@ export function VisionBoardItemDetailScreen() {
     setCompleteModalOpen(false);
     runAction(async () => {
       await visionBoardService.completeItem(item.id, { completedNote: note || null });
-      showSuccess('We did it ❤');
-    }, 'Could not complete.');
+      showSuccessOverlay('We did it ❤');
+    }, 'Could not complete.', "Couldn't complete");
   }, [item, completeNote, runAction]);
 
   const handleUncomplete = useCallback(() => {
@@ -215,8 +227,8 @@ export function VisionBoardItemDetailScreen() {
                   // The memory was still created; the photo is a best-effort extra.
                 }
               }
-              showSuccess('Added to Memories');
-            }, 'Could not add to Memories.'),
+              showSuccessOverlay('Added to Memories');
+            }, 'Could not add to Memories.', "Couldn't add to Memories"),
         },
       ],
     );
@@ -247,8 +259,8 @@ export function VisionBoardItemDetailScreen() {
                 eventType: 'Custom',
                 photoKeys: item.imageFileKey ? [item.imageFileKey] : [],
               });
-              showSuccess('Added to Timeline');
-            }, 'Could not add to Timeline.'),
+              showSuccessOverlay('Added to Timeline');
+            }, 'Could not add to Timeline.', "Couldn't add to Timeline"),
         },
       ],
     );

@@ -20,6 +20,8 @@ import {
 } from '../../../shared/components/inputs';
 import { AppHeader } from '../../../shared/components/header';
 import { incidentService } from '../services/incidentService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { friendlyError } from '../utils/errorMessages';
 
 type Nav = NativeStackNavigationProp<IncidentStackParamList, 'AddResponse'>;
@@ -42,9 +44,11 @@ export function AddResponseScreen() {
     setError(null);
     try {
       await incidentService.addIncidentResponse(incidentId, message.trim());
+      showSuccessOverlay('Response added');
       navigation.goBack();
     } catch (err) {
       setError(friendlyError(err));
+      showErrorOverlay("Couldn't add response");
     } finally {
       setSubmitting(false);
     }

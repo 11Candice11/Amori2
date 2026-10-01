@@ -39,7 +39,10 @@ import type {
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
+import { ActionImageIcon } from '../../../shared/components/icons/AppIcons';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import {
   DateTimeField,
   addMinutes,
@@ -192,15 +195,15 @@ export function AddCalendarEventScreen() {
     try {
       if (editingEvent) {
         await togetherService.updateCalendarEvent(editingEvent.id, payload);
-        showSuccess('Saved!');
+        showSuccessOverlay('Event saved');
       } else {
         await togetherService.createCalendarEvent(payload);
-        showSuccess('Created!');
+        showSuccessOverlay('Event created');
       }
       navigation.goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the event.');
-      showError('Sorry that failed :(');
+      showErrorOverlay(editingEvent ? "Couldn't save event" : "Couldn't create event");
       setSaving(false);
     }
   }, [
@@ -325,7 +328,10 @@ export function AddCalendarEventScreen() {
             <Text style={styles.hint}>The end time has to be after the start time.</Text>
           ) : null}
 
-          <Text style={styles.label}>Location (optional)</Text>
+          <View style={styles.labelRow}>
+            <ActionImageIcon name="location" size={18} />
+            <Text style={styles.label}>Location (optional)</Text>
+          </View>
           <LocationPicker
             value={location}
             onChange={setLocation}
@@ -442,6 +448,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   field: {
     marginTop: spacing.md,
