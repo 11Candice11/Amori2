@@ -30,6 +30,8 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import type { MainTabParamList } from '../../../navigation/types';
 import {
@@ -107,11 +109,11 @@ export function TogetherScreen() {
       setSavingBucket(true);
       try {
         await togetherService.createBucketListItem(title);
-        showSuccess('Created!');
+        showSuccessOverlay('Added to your bucket list');
         refresh();
       } catch {
         // The input keeps the text on failure so the user can retry.
-        showError('Sorry that failed :(');
+        showErrorOverlay("Couldn't add to bucket list");
       } finally {
         setSavingBucket(false);
       }
@@ -124,11 +126,11 @@ export function TogetherScreen() {
       setSavingTodo(true);
       try {
         await togetherService.createTodoItem(title);
-        showSuccess('Created!');
+        showSuccessOverlay('To-do added');
         refresh();
       } catch {
         // The input keeps the text on failure so the user can retry.
-        showError('Sorry that failed :(');
+        showErrorOverlay("Couldn't add to-do");
       } finally {
         setSavingTodo(false);
       }
@@ -205,7 +207,7 @@ export function TogetherScreen() {
       if (!result.hasStartDate) {
         showError('Add your relationship start date first.');
       } else if (result.created > 0) {
-        showSuccess(
+        showSuccessOverlay(
           `Added ${result.created} anniversary ${
             result.created === 1 ? 'reminder' : 'reminders'
           }!`,
@@ -215,7 +217,7 @@ export function TogetherScreen() {
         showSuccess('Your anniversaries are already on the calendar.');
       }
     } catch {
-      showError('Sorry that failed :(');
+      showErrorOverlay("Couldn't add anniversaries");
     } finally {
       setAddingAnniversaries(false);
     }
@@ -263,9 +265,10 @@ export function TogetherScreen() {
           navigation.navigate('Wishlist');
           break;
         case 'calendar':
+          navigation.navigate('Calendar');
+          break;
         case 'importantDates':
-          // The calendar card also carries the important-dates beacon.
-          scrollRef.current?.scrollTo({ y: Math.max(calendarY.current - 8, 0), animated: true });
+          navigation.navigate('ImportantDates');
           break;
         case 'bucketList':
           scrollRef.current?.scrollTo({ y: Math.max(collectionsY.current - 8, 0), animated: true });

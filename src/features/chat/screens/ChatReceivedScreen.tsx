@@ -18,6 +18,8 @@ import type { ChatStackParamList } from '../../../navigation/ChatStackParamList'
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { showError, showSuccess } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { hugService } from '../../hugs/services/hugService';
 import { chatService } from '../services/chatService';
 import { CHAT_RESPONSE_SHORTCUTS, type ChatConversation } from '../types/chat.types';
@@ -79,9 +81,9 @@ export function ChatReceivedScreen() {
     setSendingHug(true);
     try {
       await hugService.sendHug(null);
-      showSuccess('Hug sent \u2764');
+      showSuccessOverlay('Hug sent \u2764');
     } catch {
-      showError('Could not send a hug right now.');
+      showErrorOverlay("Couldn't send a hug");
     } finally {
       setSendingHug(false);
     }

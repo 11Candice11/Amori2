@@ -17,7 +17,9 @@ import type {
 import type { ChatStackParamList } from '../../../navigation/ChatStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { showError, showSuccess } from '../../../shared/state/bannerStore';
+import { showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { chatService } from '../services/chatService';
 import { chatDraftStore } from '../services/chatDraftStore';
 import { TEMPLATE_TITLES } from '../utils/labels';
@@ -82,10 +84,10 @@ export function ChatPreviewScreen() {
     try {
       await chatService.update(serverId, { status: 'Private' });
       await chatDraftStore.remove(localDraftId);
-      showSuccess('Saved privately.');
+      showSuccessOverlay('Saved privately');
       navigation.navigate('ChatHome');
     } catch {
-      showError('Could not save privately. Please try again.');
+      showErrorOverlay("Couldn't save privately");
     }
   }, [serverId, localDraftId, navigation]);
 

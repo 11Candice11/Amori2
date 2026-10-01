@@ -35,7 +35,8 @@ import {
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import {
   DateTimeField,
   KeyboardDoneAccessory,
@@ -251,7 +252,7 @@ export function AddVisionBoardItemScreen() {
           notes: trimmedNotes ? trimmedNotes : null,
         };
         await visionBoardService.updateItem(editingId, payload);
-        showSuccess('Saved!');
+        showSuccessOverlay('Vision saved');
       } else {
         const payload: CreateVisionBoardItemRequest = {
           title: title.trim(),
@@ -268,12 +269,12 @@ export function AddVisionBoardItemScreen() {
           notes: trimmedNotes ? trimmedNotes : null,
         };
         await visionBoardService.createItem(payload);
-        showSuccess('Added to your vision!');
+        showSuccessOverlay('Added to your vision');
       }
       navigation.goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save. Please try again.');
-      showError('Sorry that failed :(');
+      showErrorOverlay(editingId ? "Couldn't save vision" : "Couldn't add to vision");
       // Stay on the screen with the draft intact so the user can retry.
     } finally {
       setSaving(false);

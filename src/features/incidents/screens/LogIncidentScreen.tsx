@@ -21,7 +21,8 @@ import {
   KEYBOARD_DONE_ACCESSORY_ID,
 } from '../../../shared/components/inputs';
 import { AppHeader } from '../../../shared/components/header';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { incidentService } from '../services/incidentService';
 import { authService } from '../../../services/auth/authService';
 import { settingsService } from '../../profile/services/settingsService';
@@ -131,7 +132,7 @@ export function LogIncidentScreen() {
       } catch (err) {
         // The incident was never created — this is the only truly fatal path.
         setError(friendlyError(err));
-        showError('Sorry that failed :(');
+        showErrorOverlay("Couldn't log incident");
         setSubmitting(false);
         return;
       }
@@ -155,7 +156,7 @@ export function LogIncidentScreen() {
       console.warn('Incident created but assignment failed:', err);
     }
 
-    showSuccess('Created!');
+    showSuccessOverlay('Incident logged');
     navigation.replace('IncidentDetail', { incidentId });
   }, [category, impact, urgency, title, description, subCategory, assigneeChoice, navigation]);
 

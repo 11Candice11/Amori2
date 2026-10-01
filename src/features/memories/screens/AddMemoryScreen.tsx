@@ -38,7 +38,8 @@ import {
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import {
   DateTimeField,
   KeyboardDoneAccessory,
@@ -528,11 +529,11 @@ export function AddMemoryScreen() {
         }
       }
 
-      showSuccess(isEditing ? 'Saved!' : 'Created!');
+      showSuccessOverlay(isEditing ? 'Memory saved' : 'Memory created');
       navigation.goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the memory.');
-      showError('Sorry that failed :(');
+      showErrorOverlay(isEditing ? "Couldn't save memory" : "Couldn't create memory");
       setSaving(false);
     }
   }, [

@@ -21,7 +21,6 @@ import { colors, spacing, typography } from '../../../shared/theme';
 import { useCountdown } from '../../splitting/hooks/useCountdown';
 import { getCardImage } from '../../../utils/cardSelector';
 import { ActionImageIcon } from '../../../shared/components/icons/AppIcons';
-import { BellIcon } from '../../../shared/components/icons';
 import { useNotificationCount } from '../../../shared/state/notificationStore';
 import { MonthlyMemoriesWidget } from '../../memories/components/MonthlyMemoriesWidget';
 
@@ -55,7 +54,7 @@ function DashboardBell({ onPress }: { onPress?: () => void }) {
       accessibilityLabel={hasUnread ? `Notifications, ${count} unread` : 'Notifications'}
       android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
     >
-      <BellIcon color={colors.gold} size={20} />
+      <ActionImageIcon name="notifications" size={22} />
       {hasUnread ? (
         <View style={styles.bellBadge}>
           <Text style={styles.bellBadgeText} numberOfLines={1}>
@@ -64,36 +63,6 @@ function DashboardBell({ onPress }: { onPress?: () => void }) {
         </View>
       ) : null}
     </Pressable>
-  );
-}
-
-/** Speech-bubble glyph for the "Let's Chat" attunement card. Sized to sit
- *  alongside the illustrated PNG action icons (40×40 framed). */
-function ChatIcon({ size = 40 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v7A2.5 2.5 0 0117.5 15H9l-4 4v-4H6.5A2.5 2.5 0 014 12.5z"
-        stroke={colors.gold}
-        strokeWidth={1.6}
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M8 8h8M8 11h5"
-        stroke={colors.gold}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Rect x={3} y={4.5} width={18} height={17} rx={3} stroke={colors.gold} strokeWidth={1.5} />
-      <Path d="M3 9h18M8 2.5v4M16 2.5v4" stroke={colors.gold} strokeWidth={1.5} strokeLinecap="round" />
-    </Svg>
   );
 }
 
@@ -385,6 +354,18 @@ export function SanctuaryDashboard({
         </View>
 
         <View style={styles.topBarRight}>
+          {/* S.O.S — subtle round emergency button; low-key so it's there when
+              needed without dominating the sanctuary. */}
+          <Pressable
+            style={({ pressed }) => [styles.sosButton, pressed && styles.pressed]}
+            onPress={onSOS}
+            hitSlop={8}
+            android_ripple={{ color: 'rgba(179,64,64,0.2)', borderless: true }}
+            accessibilityRole="button"
+            accessibilityLabel="S.O.S emergency"
+          >
+            <ActionImageIcon name="sos" size={20} />
+          </Pressable>
           <DashboardBell onPress={onOpenNotifications} />
           <View style={styles.avatarRing}>
             <View style={styles.avatarInner} />
@@ -581,7 +562,7 @@ export function SanctuaryDashboard({
           </Text>
         </View>
         <View style={styles.checkInIcon}>
-          <CalendarIcon />
+          <ActionImageIcon name="calendar" size={28} />
         </View>
       </Pressable>
 
@@ -593,7 +574,7 @@ export function SanctuaryDashboard({
       <View style={styles.attGrid}>
         <View style={styles.attRow}>
           {onLetsChat ? (
-            <AttunementItem icon={<ChatIcon />} title="Let's Chat" onPress={onLetsChat} />
+            <AttunementItem icon={<ActionImageIcon name="chat" />} title="Let's Chat" onPress={onLetsChat} />
           ) : null}
           <AttunementItem icon={<ActionImageIcon name="hug" />} title="Send hug" onPress={onHug} />
         </View>
@@ -602,18 +583,6 @@ export function SanctuaryDashboard({
           <AttunementItem icon={<ActionImageIcon name="incident" />} title="Log Incident" onPress={onLogIncident} />
         </View>
       </View>
-
-      {/* S.O.S — emergency escalation, kept visually distinct in emergency red */}
-      <Pressable
-        style={({ pressed }) => [styles.sosButton, pressed && styles.pressed]}
-        onPress={onSOS}
-        android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
-        accessibilityRole="button"
-        accessibilityLabel="S.O.S"
-      >
-        <ActionImageIcon name="sos" />
-        <Text style={styles.sosButtonText}>S.O.S</Text>
-      </Pressable>
 
       {/* 7 ── Daily artifact */}
       <View style={styles.sectionHeader}>
@@ -1071,24 +1040,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // S.O.S — emergency escalation button, kept visually distinct in red.
+  // S.O.S — subtle round emergency button in the top bar. Soft translucent
+  // emergency tint so it's discoverable without shouting for attention.
   sosButton: {
-    flexDirection: 'row',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.emergency,
-    borderRadius: 16,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  sosButtonText: {
-    ...typography.bodySemiBold,
-    // Fixed off-white so the label stays legible on the emergency red across
-    // every palette (some palettes use a dark `neutral`).
-    color: '#FDFCF0',
-    fontSize: 16,
-    letterSpacing: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(179,64,64,0.35)',
+    backgroundColor: colors.emergencyBg,
   },
 
   // Attunement grid

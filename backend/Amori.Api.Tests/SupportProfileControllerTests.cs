@@ -71,6 +71,32 @@ public sealed class SupportProfileControllerTests(AmoriWebApplicationFactory fac
     }
 
     [Fact]
+    public async Task UpdateWhoIAm_ThenFreshGet_PersistsTheValue()
+    {
+        // Mirrors the mobile editor's save flow: it PATCHes the WHOLE section with
+        // empty strings for untouched fields, then the value must survive a fresh
+        // GET /me (a new load, e.g. reopening the screen).
+        var client = await RegisterClientAsync(Email("persist"));
+
+        await client.PatchAsync("/api/support-profile/me/who-i-am",
+            Json(new
+            {
+                nickname = new { value = "Persisted", visibility = "Shared" },
+                selfDescription = new { value = "", visibility = "Shared" },
+                importantToMe = new { value = "", visibility = "Shared" },
+                whatMakesMeFeelLikeMyself = new { value = "", visibility = "Shared" },
+                whatImProudOf = new { value = "", visibility = "Shared" },
+                whatImWorkingToward = new { value = "", visibility = "Shared" },
+                whatIWishPeopleUnderstood = new { value = "", visibility = "Shared" },
+            }));
+
+        var fresh = await ReadJson(await client.GetAsync("/api/support-profile/me"));
+
+        Assert.Equal("Persisted",
+            fresh.GetProperty("whoIAm").GetProperty("nickname").GetProperty("value").GetString());
+    }
+
+    [Fact]
     public async Task Update_IsPartial_OmittedFieldsAreUntouched()
     {
         var client = await RegisterClientAsync(Email("partial"));

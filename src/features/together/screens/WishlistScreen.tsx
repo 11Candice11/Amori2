@@ -31,6 +31,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { togetherService } from '../services/togetherService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
@@ -220,12 +222,12 @@ export function WishlistScreen() {
     setError(null);
     try {
       await togetherService.createWishlistItem({ name: trimmed });
-      showSuccess('Created!');
+      showSuccessOverlay('Added to your wishlist');
       setNewItemName('');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add the item.');
-      showError('Sorry that failed :(');
+      showErrorOverlay("Couldn't add to wishlist");
     } finally {
       setSaving(false);
     }

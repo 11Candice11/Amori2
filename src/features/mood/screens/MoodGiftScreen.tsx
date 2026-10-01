@@ -14,7 +14,8 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, typography, useThemeMode } from '../../../shared/theme';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { AppHeader } from '../../../shared/components/header';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
@@ -73,10 +74,10 @@ export function MoodGiftScreen() {
         cardNumber: dailyGift.cardNumber,
       });
       setAlreadySaved(true);
-      showSuccess('Saved!');
+      showSuccessOverlay('Saved to your vault');
     } catch (error) {
       console.error('Failed to save gift to vault:', error);
-      showError('Sorry that failed :(');
+      showErrorOverlay("Couldn't save to your vault");
     }
   }, [dailyGift, alreadySaved]);
 

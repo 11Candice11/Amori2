@@ -36,6 +36,8 @@ import {
 import { colors, spacing, typography } from '../../../shared/theme';
 import { ScreenHeader, Button } from '../components/DistractionUI';
 import { distractionService } from '../services/distractionService';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { mediaService } from '../../../services/media/mediaService';
 import { useDistractionCentre } from '../hooks/useDistractionCentre';
 import type { HiddenObjectPuzzleResponse } from '../../../services/api/types';
@@ -559,9 +561,11 @@ function PuzzleCreator({
         targetX: target.x,
         targetY: target.y,
       });
+      showSuccessOverlay('Puzzle created');
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save the puzzle.');
+      showErrorOverlay("Couldn't create puzzle");
     } finally {
       setSaving(false);
     }

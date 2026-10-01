@@ -18,10 +18,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import type { SupportProfileStackParamList } from '../../../navigation/SupportProfileStackParamList';
+import type { MainTabParamList } from '../../../navigation/types';
 import { SECTIONS } from '../constants';
 import { useOwnSupportProfile } from '../hooks/useSupportProfile';
 import { calculateCompletion } from '../utils/completion';
@@ -116,9 +118,20 @@ export function SupportProfileHomeScreen() {
   const percentage = completion?.percentage ?? profile?.completion.percentage ?? 0;
   const completedSections = completion?.completedSections ?? profile?.completion.completedSections ?? 0;
 
+  // This screen is the root of the SupportProfile stack, reached by switching to
+  // a hidden tab from Settings — so there's nothing to pop within this stack.
+  // Back should return to the Settings tab we came from.
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.getParent<BottomTabNavigationProp<MainTabParamList>>()?.navigate('Profile');
+  }, [navigation]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="How to Know Me" onBack={() => navigation.goBack()} />
+      <AppHeader title="How to Know Me" onBack={handleBack} />
 
       {loading && !profile ? (
         <View style={styles.centered}>

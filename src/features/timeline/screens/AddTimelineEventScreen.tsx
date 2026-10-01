@@ -33,7 +33,8 @@ import {
 } from 'react-native-image-picker';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { showSuccess, showError } from '../../../shared/state/bannerStore';
+import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
+import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import {
   DateTimeField,
   KeyboardDoneAccessory,
@@ -301,11 +302,11 @@ export function AddTimelineEventScreen() {
         });
       }
 
-      showSuccess(isEditing ? 'Saved!' : 'Created!');
+      showSuccessOverlay(isEditing ? 'Milestone saved' : 'Milestone created');
       navigation.goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save this milestone.');
-      showError('Sorry that failed :(');
+      showErrorOverlay(isEditing ? "Couldn't save milestone" : "Couldn't create milestone");
       setSaving(false);
     }
   }, [

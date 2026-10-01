@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, StatusBar, View, StyleSheet, Text } from 'react-native';
+import { StatusBar, View, StyleSheet, Text } from 'react-native';
 
 import { MainTabNavigator } from '../navigation/MainTabNavigator';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
@@ -23,7 +23,8 @@ import {
   themeStore,
 } from '../shared/theme';
 import type { ThemePreference } from '../shared/theme';
-import { Banner } from '../shared/components/overlays';
+import { Banner, FeedbackOverlayHost } from '../shared/components/overlays';
+import { LoadingAnimation } from '../shared/components/screens';
 
 /**
  * StatusBar whose appearance follows the active theme. Rendered inside
@@ -247,7 +248,7 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.gold} size="large" />
+          <LoadingAnimation size={120} />
         </View>
       </SafeAreaProvider>
     );
@@ -297,6 +298,8 @@ export default function App() {
         </NavigationContainer>
         {/* App-wide feedback banner, overlaying every screen. */}
         <Banner />
+        {/* App-wide success/failure celebration, fired from create/save flows. */}
+        <FeedbackOverlayHost />
       </ThemeProvider>
     </SafeAreaProvider>
   );

@@ -14,7 +14,7 @@ import { Image, StyleSheet, type ImageSourcePropType } from 'react-native';
 
 /** Bottom-nav tab art, keyed by tab route name. */
 export const TAB_ICON_SOURCES = {
-  Home: require('../../../../images/icons/home.png'),
+  Home: require('../../../../images/icons/house.png'),
   CheckIn: require('../../../../images/icons/checkin.png'),
   Together: require('../../../../images/icons/together.png'),
   Desk: require('../../../../images/icons/desk.png'),
@@ -31,6 +31,11 @@ export const ACTION_ICON_SOURCES = {
   sos: require('../../../../images/icons/sos.png'),
   wishlist: require('../../../../images/icons/wishlist.png'),
   memories: require('../../../../images/icons/memories.png'),
+  chat: require('../../../../images/icons/lets_chat.png'),
+  calendar: require('../../../../images/icons/calendar.png'),
+  notifications: require('../../../../images/icons/notifications.png'),
+  location: require('../../../../images/icons/location.png'),
+  snapshot: require('../../../../images/icons/snapshot.png'),
 } satisfies Record<string, ImageSourcePropType>;
 
 export type ActionIconName = keyof typeof ACTION_ICON_SOURCES;
