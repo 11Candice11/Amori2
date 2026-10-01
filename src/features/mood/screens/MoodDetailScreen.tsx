@@ -18,24 +18,10 @@ import {
   quadrantFromCheckIn,
   type MoodQuadrant,
 } from '../types/mood.types';
+import { moodLabel } from '../../../utils/moodUtils';
+import { formatRelativeDate } from '../../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'MoodDetail'>;
-
-function moodLabel(mood: string, feelings: string | null): string {
-  return feelings?.trim() ? feelings : mood;
-}
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '';
-  const mins = Math.floor((Date.now() - then) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
 
 export function MoodDetailScreen() {
   const navigation = useNavigation<Nav>();
@@ -109,7 +95,7 @@ export function MoodDetailScreen() {
                     {moodLabel(dashboard.partnerMood.mood, dashboard.partnerMood.feelings)}
                   </Text>
                 </View>
-                <Text style={styles.timestamp}>{relativeTime(dashboard.partnerMood.createdAt)}</Text>
+                <Text style={styles.timestamp}>{formatRelativeDate(dashboard.partnerMood.createdAt)}</Text>
               </View>
               {(() => {
                 const pq = quadrantFromCheckIn(
@@ -142,7 +128,7 @@ export function MoodDetailScreen() {
             onPress={goHome}
             accessibilityRole="button"
             accessibilityLabel="Go home"
-            android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+            android_ripple={{ color: colors.goldTint12 }}
           >
             <Text style={styles.secondaryBtnText}>Go Home</Text>
           </Pressable>
@@ -180,12 +166,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: colors.goldTint12,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
+    borderColor: colors.goldTint25,
   },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gold },
   moodPillText: { ...typography.bodyMedium, color: colors.gold, fontSize: 13 },

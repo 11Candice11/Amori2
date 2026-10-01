@@ -18,6 +18,7 @@ import type { SavedGift } from '../types/vault.types';
 import { getCardImage } from '../../../utils/cardSelector';
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
 import { SendGiftModal } from '../components/SendGiftModal';
+import { formatRelativeDate, formatShortDate } from '../../../utils/dateUtils';
 
 function VaultGlyph({ size = 40 }: { size?: number }) {
   return (
@@ -66,56 +67,21 @@ function LocationGlyph() {
   );
 }
 
-/** Format a date as "Month Day, Year" (e.g. "Sep 21, 2026") */
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-/** Format relative time ago (e.g. "2 days ago", "3 weeks ago") */
-function timeAgo(iso: string): string {
-  const now = Date.now();
-  const then = Date.parse(iso);
-  const diffSec = Math.floor((now - then) / 1000);
-  
-  if (diffSec < 60) return 'just now';
-  
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  
-  const diffWeek = Math.floor(diffDay / 7);
-  if (diffWeek < 4) return `${diffWeek}w ago`;
-  
-  const diffMonth = Math.floor(diffDay / 30);
-  if (diffMonth < 12) return `${diffMonth}mo ago`;
-  
-  const diffYear = Math.floor(diffDay / 365);
-  return `${diffYear}y ago`;
-}
-
 type GiftCardProps = {
   gift: SavedGift;
   onPress: (gift: SavedGift) => void;
 };
 
 function GiftCard({ gift, onPress }: GiftCardProps) {
-  const memoryDate = formatDate(gift.memoryDateTime);
-  const savedTimeAgo = timeAgo(gift.savedAt);
+  const memoryDate = formatShortDate(gift.memoryDateTime);
+  const savedTimeAgo = formatRelativeDate(gift.savedAt);
   const cardImage = getCardImage(gift.cardNumber);
   
   return (
     <Pressable
       style={({ pressed }) => [styles.giftCard, pressed && styles.pressed]}
       onPress={() => onPress(gift)}
-      android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+      android_ripple={{ color: colors.goldTint12 }}
       accessibilityRole="button"
       accessibilityLabel={`Saved gift: ${gift.title}`}
     >
@@ -296,7 +262,7 @@ export function VaultScreen() {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Open weekly reflection"
-            android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+            android_ripple={{ color: colors.goldTint15, borderless: true }}
           >
             <WeekGlyph />
           </Pressable>

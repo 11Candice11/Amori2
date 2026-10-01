@@ -25,23 +25,9 @@ import { authService } from '../../../services/auth/authService';
 import { hugService } from '../services/hugService';
 import type { HugResponse } from '../../../services/api/types';
 import { HeartIcon, LeafIcon, WhisperIcon } from '../components/HugIcons';
+import { formatRelativeDate } from '../../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<HugStackParamList, 'HugsHistory'>;
-
-function formatRelative(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const diffMs = Date.now() - d.getTime();
-  const min = Math.floor(diffMs / 60000);
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min}m ago`;
-  const hrs = Math.floor(min / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-}
 
 export function HugsHistoryScreen() {
   const navigation = useNavigation<Nav>();
@@ -124,7 +110,7 @@ export function HugsHistoryScreen() {
                     <Text style={styles.hugDir}>
                       {sent ? `You sent ${hug.recipientName || 'a hug'}` : `${hug.senderName || 'Partner'} sent you`} a hug
                     </Text>
-                    <Text style={styles.hugTime}>{formatRelative(hug.createdAt)}</Text>
+                    <Text style={styles.hugTime}>{formatRelativeDate(hug.createdAt)}</Text>
                   </View>
 
                   {hug.whisper ? (
@@ -143,7 +129,7 @@ export function HugsHistoryScreen() {
                           style={styles.ackBtn}
                           onPress={() => acknowledge(hug.id)}
                           disabled={acking === hug.id}
-                          android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                          android_ripple={{ color: colors.goldTint15 }}
                         >
                           {acking === hug.id
                             ? <ActivityIndicator color={colors.gold} size="small" />
@@ -239,9 +225,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: colors.goldTint12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: colors.goldTint25,
   },
   ackBtnText: { ...typography.bodySm, color: colors.gold },
 });

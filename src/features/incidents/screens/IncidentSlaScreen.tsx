@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-n
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { SlaCard } from '../components/SlaCard';
 import { useIncidentSla } from '../hooks/useIncidentSla';
 import { formatDateTime } from '../utils/errorMessages';

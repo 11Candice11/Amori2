@@ -17,7 +17,7 @@ import { colors, spacing, typography } from '../../../shared/theme';
 import { useIncidentList } from '../hooks/useIncidentList';
 import { IncidentCard } from '../components/IncidentCard';
 import { AppHeader } from '../../../shared/components/header';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import type { IncidentFilter, IncidentStatus } from '../types/incident.types';
 
 type Nav = NativeStackNavigationProp<IncidentStackParamList, 'IncidentList'>;

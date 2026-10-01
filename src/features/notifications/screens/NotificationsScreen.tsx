@@ -32,22 +32,7 @@ import {
 } from '../../../shared/state/notificationStore';
 import type { NotificationResponse } from '../../../services/api/types';
 import { NotificationTypeIcon } from '../components/NotificationTypeIcon';
-
-/** Relative "time ago" label, matching the tone used in HugsHistory. */
-function formatRelative(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const diffMs = Date.now() - d.getTime();
-  const min = Math.floor(diffMs / 60000);
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min}m ago`;
-  const hrs = Math.floor(min / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-}
+import { formatRelativeDate } from '../../../utils/dateUtils';
 
 type Bucket = 'Today' | 'Yesterday' | 'Earlier';
 
@@ -121,7 +106,7 @@ export function NotificationsScreen() {
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Mark all notifications read"
-              android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+              android_ripple={{ color: colors.goldTint15, borderless: true }}
             >
               <Text style={styles.markAll}>Mark all read</Text>
             </Pressable>
@@ -167,7 +152,7 @@ export function NotificationsScreen() {
                       pressed && styles.rowPressed,
                     ]}
                     onPress={() => onPressItem(item)}
-                    android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+                    android_ripple={{ color: colors.goldTint12 }}
                     accessibilityRole="button"
                     accessibilityLabel={`${item.title}${item.isRead ? '' : ', unread'}`}
                   >
@@ -183,7 +168,7 @@ export function NotificationsScreen() {
                           {item.body}
                         </Text>
                       ) : null}
-                      <Text style={styles.rowTime}>{formatRelative(item.createdAt)}</Text>
+                      <Text style={styles.rowTime}>{formatRelativeDate(item.createdAt)}</Text>
                     </View>
                     {!item.isRead ? <View style={styles.unreadDot} /> : null}
                   </Pressable>
@@ -235,16 +220,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   rowUnread: {
-    borderColor: 'rgba(197,163,101,0.35)',
+    borderColor: colors.goldTint35,
   },
   rowPressed: { opacity: 0.75 },
   iconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: colors.goldTint08,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
+    borderColor: colors.goldTint25,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

@@ -1,10 +1,14 @@
 /**
  * EmptyState — centered placeholder for empty lists, errors, and
  * not-yet-populated sections. Optionally renders a call-to-action button.
+ *
+ * Promoted from features/incidents/components/EmptyState.tsx to shared so
+ * every feature can use the same component instead of rolling its own
+ * View + Text empty-state pattern.
  */
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../../../shared/theme';
+import { colors, spacing, typography } from '../theme';
 
 type Props = {
   icon?: string;

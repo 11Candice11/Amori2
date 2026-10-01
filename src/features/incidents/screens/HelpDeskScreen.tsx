@@ -18,7 +18,7 @@ import { useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 import { useHelpDesk } from '../hooks/useHelpDesk';
 import { isOpenIncidentStatus } from '../types/incident.types';
 import { IncidentCard } from '../components/IncidentCard';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { AppHeader } from '../../../shared/components/header';
 
 type Nav = NativeStackNavigationProp<IncidentStackParamList, 'HelpDesk'>;
