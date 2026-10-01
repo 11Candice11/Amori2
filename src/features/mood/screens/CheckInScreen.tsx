@@ -35,6 +35,7 @@ import { CheckInStep2Screen } from './CheckInStep2Screen';
 import type { CheckInResponse } from '../../../services/api/types';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 import { moodBackgroundStore, useMoodBackground } from '../../../shared/state/moodBackgroundStore';
+import { moodLabel } from '../../../utils/moodUtils';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'CheckInHome'>;
 
@@ -48,7 +49,7 @@ type Stage = 'loading' | 'already' | 'quadrant' | 'mood' | 'done';
 const QUADRANT_ACCENT: Record<MoodQuadrant, string> = {
   HIGH_PLEASANT: colors.gold,
   LOW_PLEASANT: colors.primaryLight,
-  HIGH_UNPLEASANT: '#B34040',
+  HIGH_UNPLEASANT: colors.emergency,
   LOW_UNPLEASANT: colors.neutralMuted,
 };
 
@@ -63,11 +64,6 @@ function isToday(iso: string | null | undefined): boolean {
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate()
   );
-}
-
-/** Prefer the human-readable feelings label, falling back to the mood enum name. */
-function moodLabel(mood: string, feelings: string | null): string {
-  return feelings?.trim() ? feelings : mood;
 }
 
 export function CheckInScreen() {
@@ -300,7 +296,7 @@ export function CheckInScreen() {
           <Pressable
             style={styles.doneSecondaryBtn}
             onPress={goHome}
-            android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+            android_ripple={{ color: colors.goldTint12 }}
             accessibilityRole="button"
             accessibilityLabel="Go Home"
           >
@@ -378,7 +374,7 @@ export function CheckInScreen() {
             <Pressable
               style={styles.secondaryBtn}
               onPress={() => navigation.navigate('MoodGrounding')}
-              android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+              android_ripple={{ color: colors.goldTint12 }}
               accessibilityRole="button"
               accessibilityLabel="Grounding exercises"
             >
@@ -418,7 +414,7 @@ export function CheckInScreen() {
               key={q.key}
               style={styles.quadrantCard}
               onPress={() => handleSelectQuadrant(q.key)}
-              android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+              android_ripple={{ color: colors.goldTint12 }}
               accessibilityRole="button"
               accessibilityLabel={`${q.label}, ${q.tagline}`}
             >
@@ -456,12 +452,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: colors.goldTint12,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
+    borderColor: colors.goldTint25,
   },
   moodDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gold },
   moodPillText: { ...typography.bodyMedium, color: colors.gold, fontSize: 13 },
@@ -535,7 +531,7 @@ const styles = StyleSheet.create({
 
   error: {
     ...typography.bodySm,
-    color: '#B34040',
+    color: colors.emergency,
     textAlign: 'center',
     marginTop: spacing.md,
     paddingHorizontal: spacing.md,

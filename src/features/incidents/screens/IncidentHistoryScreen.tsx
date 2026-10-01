@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-n
 import type { IncidentStackParamList } from '../../../navigation/IncidentStackParamList';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { useIncidentHistory } from '../hooks/useIncidentHistory';
 import { formatDateTime } from '../utils/errorMessages';
 import type { IncidentHistoryAction } from '../types/incident.types';

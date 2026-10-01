@@ -56,6 +56,15 @@ export type Palette = {
   tabInactive: string;
 
   border: string;
+
+  // Gold tint overlays — use these instead of hardcoding rgba(197,163,101,0.XX)
+  // or rgba(223,186,115,0.XX) throughout the codebase. Each name encodes the
+  // alpha as a two-digit percentage (e.g. goldTint08 = 8% opacity gold).
+  goldTint08: string;
+  goldTint12: string;
+  goldTint15: string;
+  goldTint25: string;
+  goldTint35: string;
 };
 
 // ─── Botanical dark palette (original / default theme) ──────────────────────────
@@ -93,6 +102,13 @@ export const darkPalette: Palette = {
   tabInactive: '#E0E0E0',
 
   border: 'rgba(253, 252, 240, 0.08)',
+
+  // Gold tint overlays
+  goldTint08: 'rgba(197,163,101,0.08)',
+  goldTint12: 'rgba(197,163,101,0.12)',
+  goldTint15: 'rgba(197,163,101,0.15)',
+  goldTint25: 'rgba(197,163,101,0.25)',
+  goldTint35: 'rgba(197,163,101,0.35)',
 };
 
 // ─── Botanical light palette ────────────────────────────────────────────────────
@@ -133,6 +149,13 @@ export const lightPalette: Palette = {
   tabInactive: 'rgba(10, 20, 15, 0.38)',
 
   border: 'rgba(10, 20, 15, 0.10)',
+
+  // Gold tint overlays
+  goldTint08: 'rgba(164,131,68,0.08)',
+  goldTint12: 'rgba(164,131,68,0.12)',
+  goldTint15: 'rgba(164,131,68,0.15)',
+  goldTint25: 'rgba(164,131,68,0.25)',
+  goldTint35: 'rgba(164,131,68,0.35)',
 };
 
 // ─── Gold dark palette ("high energy pleasant") ─────────────────────────────────
@@ -172,6 +195,13 @@ export const goldDarkPalette: Palette = {
   tabInactive: 'rgba(251, 243, 228, 0.42)',
 
   border: 'rgba(251, 243, 228, 0.08)',
+
+  // Gold tint overlays
+  goldTint08: 'rgba(223,186,115,0.08)',
+  goldTint12: 'rgba(223,186,115,0.12)',
+  goldTint15: 'rgba(223,186,115,0.15)',
+  goldTint25: 'rgba(223,186,115,0.25)',
+  goldTint35: 'rgba(223,186,115,0.35)',
 };
 
 // ─── Gold light palette ─────────────────────────────────────────────────────────
@@ -205,6 +235,13 @@ export const goldLightPalette: Palette = {
   tabInactive: 'rgba(13, 18, 14, 0.38)',
 
   border: 'rgba(13, 18, 14, 0.10)',
+
+  // Gold tint overlays
+  goldTint08: 'rgba(164,131,68,0.08)',
+  goldTint12: 'rgba(164,131,68,0.12)',
+  goldTint15: 'rgba(164,131,68,0.15)',
+  goldTint25: 'rgba(164,131,68,0.25)',
+  goldTint35: 'rgba(164,131,68,0.35)',
 };
 
 const palettes: Record<ThemeVariant, Record<ThemeMode, Palette>> = {

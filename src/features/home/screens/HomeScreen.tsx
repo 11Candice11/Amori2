@@ -42,6 +42,8 @@ import { vaultService } from '../../vault/services/vaultService';
 import type { DailyGift } from '../services/dailyGiftService';
 import { getDashboardBackground } from '../../../utils/backgroundImages';
 import { isSunday } from '../../weeklyReflection/utils/weekRange';
+import { moodLabel } from '../../../utils/moodUtils';
+import { formatRelativeDate } from '../../../utils/dateUtils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,46 +55,11 @@ function timeOfDayWord(): string {
   return 'Evening';
 }
 
-/** Map backend MoodType enum → friendly display label. */
-const MOOD_DISPLAY: Record<string, string> = {
-  Happy: 'Joyful & Bright',
-  Calm: 'Content & Grounded',
-  Anxious: 'Anxious',
-  Sad: 'Heavy & Sad',
-  Angry: 'Irritable',
-  Overwhelmed: 'Overwhelmed',
-  Numb: 'Numb & Distant',
-  Other: 'Something unnamed',
-};
-
-/** Friendly label for a stored mood — prefers the specific feelings text. */
-function moodLabel(
-  mood: { mood: string; feelings: string | null } | null,
-): string | null {
-  if (!mood) return null;
-  if (mood.feelings) return mood.feelings;
-  return MOOD_DISPLAY[mood.mood] ?? mood.mood;
-}
-
 /** Days until the next yearly anniversary given days-together. */
 function daysTillAnniversary(days: number): number {
   if (days <= 0) return 365;
   const intoYear = days % 365;
   return intoYear === 0 ? 0 : 365 - intoYear;
-}
-
-/** Compact relative time, e.g. "24m ago", "3h ago", "2d ago". */
-function relativeTimeAgo(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return null;
-  const diffMin = Math.max(0, Math.floor((Date.now() - then) / 60000));
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
 }
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -167,7 +134,7 @@ export function HomeScreen() {
   );
 
   const partnerUpdatedAgo = useMemo(
-    () => relativeTimeAgo(dashboard.partnerMood?.createdAt),
+    () => formatRelativeDate(dashboard.partnerMood?.createdAt) || null,
     [dashboard.partnerMood],
   );
 

@@ -19,7 +19,7 @@ import { AppHeader } from '../../../shared/components/header';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import { StatusBadge, PriorityBadge, CategoryBadge } from '../components/IncidentBadges';
 import { SlaCard } from '../components/SlaCard';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { useIncidentDetail } from '../hooks/useIncidentDetail';
 import { useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 import { useIncidentSla } from '../hooks/useIncidentSla';

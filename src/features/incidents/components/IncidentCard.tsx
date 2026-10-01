@@ -5,25 +5,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../../../shared/theme';
+import { formatRelativeDate } from '../../../utils/dateUtils';
 import { CategoryBadge, OverdueBadge, PriorityBadge, StatusBadge } from './IncidentBadges';
 import type { IncidentSummaryItem } from '../types/incident.types';
-
-function formatRelativeDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffH = Math.floor(diffMs / (1000 * 60 * 60));
-    if (diffH < 1) return 'Just now';
-    if (diffH < 24) return `${diffH}h ago`;
-    const diffD = Math.floor(diffH / 24);
-    if (diffD === 1) return 'Yesterday';
-    if (diffD < 7) return `${diffD}d ago`;
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
-}
 
 function formatDueDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -62,7 +46,7 @@ export function IncidentCard({ incident, onPress }: IncidentCardProps) {
     <Pressable
       style={styles.card}
       onPress={() => onPress(incident.id)}
-      android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
+      android_ripple={{ color: colors.goldTint08 }}
       accessibilityRole="button"
       accessibilityLabel={`Incident: ${incident.title}`}
     >
@@ -184,6 +168,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   dueOverdue: {
-    color: '#B34040',
+    color: colors.emergency,
   },
 });

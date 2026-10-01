@@ -20,7 +20,7 @@ import {
   KEYBOARD_DONE_ACCESSORY_ID,
 } from '../../../shared/components/inputs';
 import { AppHeader } from '../../../shared/components/header';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { incidentService } from '../services/incidentService';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
 import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
