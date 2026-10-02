@@ -104,6 +104,33 @@ function openChat(conversationId: string) {
   } as never);
 }
 
+/**
+ * Open a Vision Board item. Tapping a "VisionBoardItem" notification (partner
+ * shared or completed an item) lands the user on the item's detail screen.
+ * The Vision Board lives in the hidden "Together" tab.
+ */
+function openVisionBoardItem(itemId: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Together', {
+    screen: 'VisionBoardItemDetail',
+    params: { itemId },
+  } as never);
+}
+
+/**
+ * Open the CalendarDay view for a specific date. Tapping a "CalendarEvent"
+ * notification (partner created an event, or a reminder fired) lands the user
+ * on the day so they can see the event in context.
+ * eventDate must be "YYYY-MM-DD".
+ */
+function openCalendarEvent(eventDate: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Together', {
+    screen: 'CalendarDay',
+    params: { date: eventDate },
+  } as never);
+}
+
 type AuthState = 'checking' | 'unauthenticated' | 'authenticated' | 'error';
 
 // Expose the logout callback app-wide without prop drilling
@@ -235,6 +262,8 @@ export default function App() {
         onOpenPartnerLink: openPartnerLink,
         onOpenGift: openGift,
         onOpenChat: openChat,
+        onOpenVisionBoardItem: openVisionBoardItem,
+        onOpenCalendarEvent: openCalendarEvent,
       });
       return unsubscribe;
     } catch (err) {

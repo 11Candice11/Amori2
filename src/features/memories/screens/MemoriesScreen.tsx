@@ -16,6 +16,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -257,6 +258,7 @@ export function MemoriesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('All');
+  const [search, setSearch] = useState('');
   // The memory whose detail popup is open (null = closed).
   const [selected, setSelected] = useState<MemoryResponse | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -314,8 +316,17 @@ export function MemoriesScreen() {
   const visible = useMemo(() => {
     const filtered =
       filter === 'All' ? items : items.filter((m) => categoryOf(m) === filter);
-    return [...filtered].sort((a, b) => timeOf(b.memoryDateTime) - timeOf(a.memoryDateTime));
-  }, [items, filter]);
+    const q = search.trim().toLowerCase();
+    const searched = q
+      ? filtered.filter(
+          (m) =>
+            m.title.toLowerCase().includes(q) ||
+            categoryOf(m).toLowerCase().includes(q) ||
+            m.tags.some((t) => t.toLowerCase().includes(q)),
+        )
+      : filtered;
+    return [...searched].sort((a, b) => timeOf(b.memoryDateTime) - timeOf(a.memoryDateTime));
+  }, [items, filter, search]);
 
   // Group the visible memories by "Month Year" (newest month first).
   const groups = useMemo(() => {
@@ -452,6 +463,33 @@ export function MemoriesScreen() {
             )}
           </View>
 
+          {/* Search */}
+          <View style={styles.searchWrap}>
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search memories, categories, tags…"
+              placeholderTextColor={colors.neutralSubtle}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              accessibilityLabel="Search memories"
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {search.length > 0 ? (
+              <Pressable
+                onPress={() => setSearch('')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                style={styles.searchClear}
+              >
+                <Text style={styles.searchClearText}>✕</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
           {/* Category filter tabs */}
           <ScrollView
             horizontal
@@ -481,13 +519,17 @@ export function MemoriesScreen() {
           {groups.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Text style={styles.emptyText}>
-                {filter === 'All'
+                {search.trim()
+                  ? `No memories matching "${search.trim()}".`
+                  : filter === 'All'
                   ? 'No memories yet.'
                   : `No ${filter.toLowerCase()} memories yet.`}
               </Text>
-              <Pressable style={styles.retryBtn} onPress={goAdd}>
-                <Text style={styles.retryText}>Add your first</Text>
-              </Pressable>
+              {!search.trim() ? (
+                <Pressable style={styles.retryBtn} onPress={goAdd}>
+                  <Text style={styles.retryText}>Add your first</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             groups.map(([label, memories]) => (
@@ -611,6 +653,30 @@ const styles = StyleSheet.create({
     color: colors.neutralMuted,
     fontSize: 13,
     marginTop: 2,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    height: 42,
+    ...typography.body,
+    color: colors.neutral,
+    fontSize: 15,
+  },
+  searchClear: {
+    paddingLeft: spacing.sm,
+  },
+  searchClearText: {
+    color: colors.neutralSubtle,
+    fontSize: 14,
   },
   filterRow: {
     gap: spacing.sm,

@@ -7,6 +7,15 @@
  * these calls no-op instead of crashing. Callers can pass an `onOpenHug`
  * callback that runs when a "Hug" notification (sent by the backend with
  * data.type === "Hug" and data.referenceId === <hugId>) is tapped.
+ *
+ * Supported data.type values:
+ *   "Hug"               data.referenceId = hugId
+ *   "Incident"          data.referenceId = incidentId
+ *   "PartnerLinkRequest" data.referenceId = invitationId
+ *   "Gift"              data.referenceId = memoryId
+ *   "LetsChat"          data.referenceId = conversationId
+ *   "VisionBoardItem"   data.referenceId = itemId
+ *   "CalendarEvent"     data.referenceId = eventId, data.eventDate = "YYYY-MM-DD"
  */
 import { Platform } from 'react-native';
 
@@ -40,6 +49,20 @@ export interface PushHandlerCallbacks {
    * and data.referenceId === <conversationId>.
    */
   onOpenChat?: (conversationId: string) => void;
+  /**
+   * Called when the user taps a Vision Board item notification (partner shared
+   * or completed an item). Opens the item's detail screen. Backend sends these
+   * with data.type === "VisionBoardItem" and data.referenceId === <itemId>.
+   */
+  onOpenVisionBoardItem?: (itemId: string) => void;
+  /**
+   * Called when the user taps a calendar event notification (new event created
+   * by partner, reminder, etc.). Opens the CalendarDay view for the event's
+   * date. Backend sends these with data.type === "CalendarEvent",
+   * data.referenceId === <eventId>, and data.eventDate === "YYYY-MM-DD".
+   * If eventDate is absent the handler falls back to today's date.
+   */
+  onOpenCalendarEvent?: (eventDate: string) => void;
 }
 
 /**
@@ -102,6 +125,30 @@ function extractChatId(data: NotificationData | undefined): string | null {
   return type === 'LetsChat' && ref ? ref : null;
 }
 
+function extractVisionBoardItemId(data: NotificationData | undefined): string | null {
+  if (!data) return null;
+  const type = typeof data.type === 'string' ? data.type : null;
+  const ref = typeof data.referenceId === 'string' ? data.referenceId : null;
+  return type === 'VisionBoardItem' && ref ? ref : null;
+}
+
+/**
+ * Returns the event date ("YYYY-MM-DD") when the payload is a CalendarEvent
+ * notification, or null when it isn't. Falls back to today's date when the
+ * backend omits data.eventDate so the CalendarDay screen still opens.
+ */
+function extractCalendarEventDate(data: NotificationData | undefined): string | null {
+  if (!data) return null;
+  if (data.type !== 'CalendarEvent') return null;
+  if (typeof data.eventDate === 'string' && data.eventDate) return data.eventDate;
+  // Fallback: today in local time as "YYYY-MM-DD"
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /** Route a tapped notification's data payload to the right callback. */
 function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerCallbacks): void {
   const hugId = extractHugId(data);
@@ -125,6 +172,16 @@ function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerC
   const chatId = extractChatId(data);
   if (chatId) {
     callbacks.onOpenChat?.(chatId);
+    return;
+  }
+  const visionItemId = extractVisionBoardItemId(data);
+  if (visionItemId) {
+    callbacks.onOpenVisionBoardItem?.(visionItemId);
+    return;
+  }
+  const calendarEventDate = extractCalendarEventDate(data);
+  if (calendarEventDate) {
+    callbacks.onOpenCalendarEvent?.(calendarEventDate);
   }
 }
 

@@ -19,6 +19,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -155,6 +156,7 @@ export function TimelineScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   // The milestone whose detail popup is open (null = closed).
   const [selected, setSelected] = useState<TimelineEventResponse | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -188,10 +190,17 @@ export function TimelineScreen() {
   }, [load]);
 
   // Oldest → newest, so the story reads top to bottom.
-  const chronological = useMemo(
-    () => [...items].sort((a, b) => dayOf(a.eventDate) - dayOf(b.eventDate)),
-    [items],
-  );
+  const chronological = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? items.filter(
+          (e) =>
+            e.title.toLowerCase().includes(q) ||
+            TIMELINE_EVENT_LABELS[e.eventType].toLowerCase().includes(q),
+        )
+      : items;
+    return [...filtered].sort((a, b) => dayOf(a.eventDate) - dayOf(b.eventDate));
+  }, [items, search]);
 
   // Only the creator of a milestone may edit or delete it.
   const canModifySelected = useMemo(
@@ -265,14 +274,45 @@ export function TimelineScreen() {
             {items.length} {items.length === 1 ? 'milestone' : 'milestones'} on your journey.
           </Text>
 
+          {/* Search */}
+          <View style={styles.searchWrap}>
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search milestones or types…"
+              placeholderTextColor={colors.neutralSubtle}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              accessibilityLabel="Search timeline"
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {search.length > 0 ? (
+              <Pressable
+                onPress={() => setSearch('')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                style={styles.searchClear}
+              >
+                <Text style={styles.searchClearText}>✕</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
           {chronological.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Text style={styles.emptyText}>
-                Your story starts with the first milestone you add.
+                {search.trim()
+                  ? `No milestones matching "${search.trim()}".`
+                  : 'Your story starts with the first milestone you add.'}
               </Text>
-              <Pressable style={styles.retryBtn} onPress={goAdd}>
-                <Text style={styles.retryText}>Add your first</Text>
-              </Pressable>
+              {!search.trim() ? (
+                <Pressable style={styles.retryBtn} onPress={goAdd}>
+                  <Text style={styles.retryText}>Add your first</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             <View style={styles.timeline}>
@@ -334,6 +374,31 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl },
   pageTitle: { ...typography.headlineSm, color: colors.neutral, fontSize: 28 },
   subtitle: { ...typography.body, color: colors.neutralMuted, fontSize: 14, marginTop: 4, marginBottom: spacing.md },
+
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    height: 42,
+    ...typography.body,
+    color: colors.neutral,
+    fontSize: 15,
+  },
+  searchClear: {
+    paddingLeft: spacing.sm,
+  },
+  searchClearText: {
+    color: colors.neutralSubtle,
+    fontSize: 14,
+  },
 
   timeline: { marginTop: spacing.sm },
   item: { flexDirection: 'row' },
