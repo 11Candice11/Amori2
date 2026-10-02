@@ -67,11 +67,76 @@ export function NotificationsScreen() {
       if (!item.isRead) {
         void notificationStore.markRead(item.id);
       }
-      // A link-request notification is actionable — take the user to the Link
-      // Partner screen so they can accept or decline. The `openLink` nonce tells
-      // ProfileScreen to open the modal.
-      if (item.notificationType === 'PartnerLinkRequest') {
+
+      const type = item.notificationType ?? '';
+      const ref = item.referenceId ?? '';
+
+      // Hug notification → open the sent hug confirmation screen.
+      if (type === 'Hug' && ref) {
+        navigation.navigate('Hugs', {
+          screen: 'HugSent',
+          params: { hugId: ref, deliveryMs: 0 },
+        } as never);
+        return;
+      }
+
+      // Incident / care-ticket → open the detail screen on the Desk tab.
+      if (type === 'Incident' && ref) {
+        navigation.navigate('Desk', {
+          screen: 'IncidentDetail',
+          params: { incidentId: ref },
+        } as never);
+        return;
+      }
+
+      // A link-request notification → take the user to the Link Partner screen
+      // so they can accept or decline. The `openLink` nonce tells ProfileScreen
+      // to open the modal.
+      if (type === 'PartnerLinkRequest') {
         navigation.navigate('Profile', { openLink: Date.now() });
+        return;
+      }
+
+      // Gift received → open the Hearth Vault where the gift now lives.
+      if (type === 'Gift') {
+        navigation.navigate('Vault' as never);
+        return;
+      }
+
+      // Let's Chat message → open the received conversation.
+      if (type === 'LetsChat' && ref) {
+        navigation.navigate('Chat', {
+          screen: 'ChatReceived',
+          params: { conversationId: ref },
+        } as never);
+        return;
+      }
+
+      // Vision Board item (partner shared or completed) → open the item detail.
+      if (type === 'VisionBoardItem' && ref) {
+        navigation.navigate('Together', {
+          screen: 'VisionBoardItemDetail',
+          params: { itemId: ref },
+        } as never);
+        return;
+      }
+
+      // Calendar event (new event from partner, or reminder) → open the day view.
+      // referenceId may be an event id; if it looks like a date use it directly,
+      // otherwise open the Calendar so the user can find the event.
+      if (type === 'CalendarEvent') {
+        const isDateString = /^\d{4}-\d{2}-\d{2}$/.test(ref);
+        if (isDateString) {
+          navigation.navigate('Together', {
+            screen: 'CalendarDay',
+            params: { date: ref },
+          } as never);
+        } else {
+          navigation.navigate('Together', {
+            screen: 'Calendar',
+          } as never);
+        }
+        return;
       }
     },
     [navigation],

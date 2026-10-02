@@ -22,6 +22,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -115,6 +116,7 @@ export function VisionBoardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   /** True when the relationship is not linked (board 404). */
   const [notLinked, setNotLinked] = useState(false);
 
@@ -187,11 +189,22 @@ export function VisionBoardScreen() {
   }, [navigation]);
 
   const { activeBySection, completed, orderedSections } = useMemo(() => {
-    const items = board?.items ?? [];
+    const allItems = board?.items ?? [];
     const sections = [...(board?.sections ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
-    const active = items.filter((i) => !i.isCompleted);
-    const done = items.filter((i) => i.isCompleted);
+    const q = search.trim().toLowerCase();
+    const matchedItems = q
+      ? allItems.filter(
+          (i) =>
+            i.title.toLowerCase().includes(q) ||
+            VISION_BOARD_ITEM_TYPE_LABELS[decodeVisionBoardItemType(i.type)]
+              .toLowerCase()
+              .includes(q),
+        )
+      : allItems;
+
+    const active = matchedItems.filter((i) => !i.isCompleted);
+    const done = matchedItems.filter((i) => i.isCompleted);
 
     const grouped = new Map<string, VisionBoardItemResponse[]>();
     for (const item of active) {
@@ -201,11 +214,11 @@ export function VisionBoardScreen() {
     }
 
     return { activeBySection: grouped, completed: done, orderedSections: sections };
-  }, [board]);
+  }, [board, search]);
 
   const totalActive = useMemo(
-    () => (board?.items ?? []).filter((i) => !i.isCompleted).length,
-    [board],
+    () => [...activeBySection.values()].reduce((sum, arr) => sum + arr.length, 0),
+    [activeBySection],
   );
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -256,7 +269,7 @@ export function VisionBoardScreen() {
     );
   }
 
-  const boardIsEmpty = (board?.items?.length ?? 0) === 0;
+  const boardIsEmpty = totalActive === 0 && completed.length === 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -286,6 +299,33 @@ export function VisionBoardScreen() {
         >
           <Text style={styles.addBtnText}>+  Add to Our Vision</Text>
         </Pressable>
+
+        {/* Search */}
+        <View style={styles.searchWrap}>
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search by title or type…"
+            placeholderTextColor={colors.neutralSubtle}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            accessibilityLabel="Search vision board"
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {search.length > 0 ? (
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              style={styles.searchClear}
+            >
+              <Text style={styles.searchClearText}>✕</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         {/* Monthly snapshot — this month's memories + warmth stats. */}
         <Pressable
@@ -336,8 +376,12 @@ export function VisionBoardScreen() {
 
         {boardIsEmpty ? (
           <View style={styles.emptyBoard}>
-            <Text style={styles.emptyTitle}>Our story is still being written.</Text>
-            <Text style={styles.emptyBody}>Start with one little dream.</Text>
+            <Text style={styles.emptyTitle}>
+              {search.trim() ? `No results for "${search.trim()}".` : 'Our story is still being written.'}
+            </Text>
+            {!search.trim() ? (
+              <Text style={styles.emptyBody}>Start with one little dream.</Text>
+            ) : null}
           </View>
         ) : (
           <>
@@ -441,6 +485,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   addBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 15 },
+
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    height: 42,
+    ...typography.body,
+    color: colors.neutral,
+    fontSize: 15,
+  },
+  searchClear: {
+    paddingLeft: spacing.sm,
+  },
+  searchClearText: {
+    color: colors.neutralSubtle,
+    fontSize: 14,
+  },
 
   snapshotBtn: {
     flexDirection: 'row',

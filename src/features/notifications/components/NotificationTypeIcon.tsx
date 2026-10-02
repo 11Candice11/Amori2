@@ -125,6 +125,34 @@ function BellGlyph({ size }: { size: number }) {
   );
 }
 
+function StarGlyph({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+        stroke={ICON_COLOR}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function CalendarGlyph({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M8 2v3M16 2v3M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
+        stroke={ICON_COLOR}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function NotificationTypeIcon({ type, size = 22 }: Props) {
   const t = (type ?? '').toLowerCase();
 
@@ -133,6 +161,8 @@ export function NotificationTypeIcon({ type, size = 22 }: Props) {
   if (t.includes('unlink')) return <BrokenLinkGlyph size={size} />;
   if (t.includes('partnerlink') || t.includes('link')) return <LinkGlyph size={size} />;
   if (t.includes('emergency')) return <AlertGlyph size={size} />;
+  if (t.includes('vision')) return <StarGlyph size={size} />;
+  if (t.includes('calendar') || t.includes('event')) return <CalendarGlyph size={size} />;
 
   return <BellGlyph size={size} />;
 }
