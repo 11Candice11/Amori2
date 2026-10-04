@@ -36,7 +36,9 @@ export interface ShowSuccessOverlayOptions {
   durationMs?: number;
 }
 
-const DEFAULT_DURATION_MS = 2500;
+// Matches the actual length of success.json (6 s). The overlay auto-dismisses
+// via onAnimationFinish; this is only the fallback if that callback never fires.
+const DEFAULT_DURATION_MS = 6000;
 
 /**
  * Show the success overlay. Safe to call from anywhere (screens, services,

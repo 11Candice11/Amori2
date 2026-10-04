@@ -66,21 +66,26 @@ export interface PushHandlerCallbacks {
 }
 
 /**
- * True when the Expo native runtime is present.
+ * True when the Expo native modules are available on this platform.
  *
- * Every Expo module goes through expo-modules-core, which reads the native
- * runtime off `globalThis.expo`. That runtime only exists when the platform
- * project is wired up for Expo modules — iOS is (`use_expo_modules!` in the
- * Podfile), but Android is NOT (no `useExpoModules()` in settings.gradle and a
- * plain MainApplication without ApplicationLifecycleDispatcher). On Android the
- * import therefore fails with "Cannot read property 'NativeModule' of
- * undefined", which is a fatal error rather than a catchable require failure.
+ * We no longer rely on `globalThis.expo` because that symbol is only present
+ * in Expo Go and managed-workflow builds — it is NOT set in bare React Native
+ * apps (including EAS development builds), which caused this function to
+ * always return false on Android and silently skip push registration.
  *
- * Checking first keeps the notification layer a genuine no-op there, which is
- * what the rest of this module already assumes.
+ * Instead we do a cheap try/require of expo-modules-core. If the native layer
+ * is linked the require succeeds; if not it throws and we return false.
+ * This correctly returns true on both iOS and Android EAS development builds.
  */
 export function isExpoRuntimeAvailable(): boolean {
-  return typeof (globalThis as { expo?: unknown }).expo !== 'undefined';
+  try {
+    // expo-modules-core is the foundation every Expo module depends on.
+    // If it resolves without throwing, the native layer is wired up.
+    require('expo-modules-core');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Lazily load expo-notifications; returns null if not linked/available. */

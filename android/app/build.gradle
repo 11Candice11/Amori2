@@ -1,13 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-// Firebase Cloud Messaging: reads android/app/google-services.json.
-// Only applied when that file is present — FCM push isn't wired up yet, so a
-// missing file must not break release builds. Drop a real google-services.json
-// into android/app/ (from the Firebase console) to enable push.
-if (file("google-services.json").exists()) {
-    apply plugin: "com.google.gms.google-services"
-}
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -37,9 +30,15 @@ def rnVersion = getRNVersion()
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
+    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
     reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
     hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
     codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+
+    // Use Expo CLI to bundle the app, this ensures the Metro config
+    // works correctly with Expo projects.
+    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+    bundleCommand = "export:embed"
 
     /* Folders */
     //   The root of your project, i.e. where "package.json" lives. Default is '..'
@@ -116,13 +115,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "0.0.1"
-        // Google Maps API key for react-native-maps on Android. Set
-        // GOOGLE_MAPS_API_KEY in android/gradle.properties (kept out of git).
-        // iOS uses Apple Maps and needs no key.
-        manifestPlaceholders = [
-            googleMapsApiKey: (findProperty('GOOGLE_MAPS_API_KEY') ?: "")
-        ]
+        versionName "1.0.0"
     }
     signingConfigs {
         debug {

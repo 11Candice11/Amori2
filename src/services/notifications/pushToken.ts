@@ -111,8 +111,12 @@ async function getTokenFromModules(
     });
   }
 
-  const { data } = await Notifications.getExpoPushTokenAsync(
-    EXPO_PROJECT_ID ? { projectId: EXPO_PROJECT_ID } : undefined,
-  );
+  if (!EXPO_PROJECT_ID) {
+    console.warn('[Push] EXPO_PROJECT_ID is not set — cannot obtain Expo push token.');
+    return null;
+  }
+
+  const { data } = await Notifications.getExpoPushTokenAsync({ projectId: EXPO_PROJECT_ID });
+  console.log('[Push] Expo push token:', data);
   return data ?? null;
 }
