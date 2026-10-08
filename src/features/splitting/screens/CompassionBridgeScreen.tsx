@@ -73,10 +73,12 @@ export function CompassionBridgeScreen() {
         setDailyGift(gift);
 
         if (gift) {
-          // Check if this memory is already saved in the vault
+          // Check if this item is already saved in the vault
           const savedGifts = await vaultService.getAll();
-          const isAlreadySaved = savedGifts.some(
-            (savedGift) => savedGift.memoryId === gift.memory.id
+          const isAlreadySaved = savedGifts.some((savedGift) =>
+            gift.type === 'memory'
+              ? savedGift.memoryId === gift.memory?.id
+              : savedGift.visionId === gift.vision?.id
           );
           setGiftAlreadySaved(isAlreadySaved);
         }
@@ -126,10 +128,12 @@ export function CompassionBridgeScreen() {
     if (!dailyGift || giftAlreadySaved) return;
 
     try {
-      await vaultService.save({
-        memoryId: dailyGift.memory.id,
-        cardNumber: dailyGift.cardNumber,
-      });
+      const payload =
+        dailyGift.type === 'memory'
+          ? { memoryId: dailyGift.memory!.id, cardNumber: dailyGift.cardNumber }
+          : { visionId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
+
+      await vaultService.save(payload);
       setGiftAlreadySaved(true);
       showSuccess('Saved!');
     } catch (error) {

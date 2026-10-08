@@ -2,6 +2,8 @@ using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Infrastructure.Relationships;
+using Amori.Api.Features.Notifications;
+using Amori.Api.Features.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.Calendar.DTOs;
 
@@ -9,7 +11,8 @@ namespace Amori.Api.Features.Calendar.Services;
 
 public sealed class CalendarService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : ICalendarService
+    IRelationshipAccessService relAccess,
+    INotificationService notifications) : ICalendarService
 {
     private static CalendarEventResponse Map(CalendarEvent e) => new()
     {
@@ -77,7 +80,47 @@ public sealed class CalendarService(
         db.CalendarEvents.Add(ev);
         await db.SaveChangesAsync(ct);
         ev.CreatedBy = (await db.Users.FindAsync([userId], ct))!;
+
+        // Notify the partner that a new event was added
+        await NotifyPartnerAsync(userId, ev, ct);
+
         return Map(ev);
+    }
+
+    /// <summary>
+    /// Notify the partner that a new calendar event was added to the shared calendar.
+    /// Best-effort; does not throw if notification dispatch fails.
+    /// </summary>
+    private async Task NotifyPartnerAsync(Guid creatorId, CalendarEvent calendarEvent, CancellationToken ct = default)
+    {
+        try
+        {
+            // Find the partner (the other member of the relationship)
+            var partner = await db.RelationshipMembers
+                .Where(rm => rm.RelationshipId == calendarEvent.RelationshipId && rm.UserId != creatorId)
+                .Select(rm => rm.User)
+                .FirstOrDefaultAsync(ct);
+
+            if (partner == null)
+                return; // No partner yet
+
+            var creatorName = calendarEvent.CreatedBy?.DisplayName ?? "Your partner";
+            var dateStr = calendarEvent.EventDate.ToString("MMM d");
+            var body = $"{creatorName} added an event: {calendarEvent.Title}";
+
+            await notifications.CreateAsync(
+                partner.Id,
+                $"New calendar event 📅 ({dateStr})",
+                body,
+                notificationType: NotificationTypes.CalendarEventAdded,
+                referenceId: calendarEvent.Id.ToString(),
+                ct: ct);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw — notification failures shouldn't break event creation
+            System.Diagnostics.Debug.WriteLine($"Calendar event notification failed: {ex.Message}");
+        }
     }
 
     public async Task<CalendarEventResponse> UpdateAsync(Guid userId, Guid eventId, UpdateCalendarEventRequest request, CancellationToken ct = default)

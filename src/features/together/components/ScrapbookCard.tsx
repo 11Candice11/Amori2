@@ -1,7 +1,11 @@
 /**
  * ScrapbookCard — a vision board item styled as a scrapbook element
- * with realistic polaroid borders using image assets, decorative tape,
- * pins, and handwritten text.
+ * 
+ * Image Usage:
+ * - border: Frame around image (smaller, corners, on top)
+ * - stamp: Behind notes (light color, dark cursive text)
+ * - flower: Scattered decorations (mostly corners)
+ * - paperclip: Always on top of images (corners)
  */
 import React, { useMemo } from 'react';
 import {
@@ -25,14 +29,13 @@ import {
 type ScrapbookCardProps = {
   item: VisionBoardItemResponse;
   onPress: (item: VisionBoardItemResponse) => void;
-  /** Rotation angle in degrees for visual chaos */
   rotation?: number;
-  /** Show as a mini text note instead of polaroid */
   isNote?: boolean;
 };
 
-// Dynamic frame image sources - automatically pick from available borders
-const FRAME_IMAGES = {
+// Image sources — simple background (no border variants, just the text area)
+
+const FRAME_BORDERS = {
   border: require('../../../../images/vision_board/border.png'),
   border2: require('../../../../images/vision_board/border2.png'),
   border3: require('../../../../images/vision_board/border3.png'),
@@ -42,19 +45,66 @@ const FRAME_IMAGES = {
   border7: require('../../../../images/vision_board/border7.png'),
 } as const;
 
-const FRAME_STYLES = Object.keys(FRAME_IMAGES) as Array<keyof typeof FRAME_IMAGES>;
+const STAMPS = [
+  require('../../../../images/vision_board/stamp.png'),
+  require('../../../../images/vision_board/stamp2.png'),
+  require('../../../../images/vision_board/stamp3.png'),
+  require('../../../../images/vision_board/stamp4.png'),
+  require('../../../../images/vision_board/stamp5.png'),
+  require('../../../../images/vision_board/stamp6.png'),
+  require('../../../../images/vision_board/stamp7.png'),
+];
 
-function getFrameImage(itemId: string) {
-  // Deterministic frame selection based on item ID
+const FLOWERS = [
+  require('../../../../images/vision_board/flower.png'),
+  require('../../../../images/vision_board/flower2.png'),
+  require('../../../../images/vision_board/flower3.png'),
+  require('../../../../images/vision_board/flower4.png'),
+  require('../../../../images/vision_board/flower5.png'),
+  require('../../../../images/vision_board/flower6.png'),
+  require('../../../../images/vision_board/flower7.png'),
+  require('../../../../images/vision_board/flower8.png'),
+  require('../../../../images/vision_board/flower9.png'),
+  require('../../../../images/vision_board/flower10.png'),
+  require('../../../../images/vision_board/flower11.png'),
+  require('../../../../images/vision_board/flower12.png'),
+  require('../../../../images/vision_board/flower13.png'),
+  require('../../../../images/vision_board/flower14.png'),
+  require('../../../../images/vision_board/flower15.png'),
+];
+
+const PAPERCLIPS = [
+  require('../../../../images/vision_board/paperclip.png'),
+  require('../../../../images/vision_board/paperclip2.png'),
+];
+
+const FRAME_STYLES = Object.keys(FRAME_BORDERS) as Array<keyof typeof FRAME_BORDERS>;
+
+function getFrameBorder(itemId: string) {
   const seed = itemId.charCodeAt(0) + itemId.charCodeAt(itemId.length - 1);
   const styleIndex = seed % FRAME_STYLES.length;
-  return FRAME_IMAGES[FRAME_STYLES[styleIndex]];
+  return FRAME_BORDERS[FRAME_STYLES[styleIndex]];
+}
+
+function getStamp(itemId: string) {
+  const seed = itemId.charCodeAt(0);
+  return STAMPS[seed % STAMPS.length];
+}
+
+function getFlower(itemId: string, index: number) {
+  const seed = itemId.charCodeAt(0) + index;
+  return FLOWERS[seed % FLOWERS.length];
+}
+
+function getPaperclip(itemId: string, corner: number) {
+  const seed = itemId.charCodeAt(itemId.length - 1) + corner;
+  return PAPERCLIPS[seed % PAPERCLIPS.length];
 }
 
 export function ScrapbookCard({
   item,
   onPress,
-  rotation = Math.random() * 6 - 3, // Random rotation -3 to +3 degrees
+  rotation = Math.random() * 6 - 3,
   isNote = false,
 }: ScrapbookCardProps) {
   const imageUrl = resolveMediaUrl(item.imageUrl);
@@ -62,19 +112,9 @@ export function ScrapbookCard({
   const myId = userSettingsStore.get()?.id;
   const isCreatedByMe = myId && item.createdByUserId === myId;
 
-  // Tape positioning — top and bottom, slightly offset
-  const tapePositions = useMemo(() => {
-    const seed = item.id.charCodeAt(0);
-    return {
-      topLeft: (seed % 20) - 10,
-      topRight: ((seed * 3) % 20) - 10,
-      bottomLeft: ((seed * 7) % 20) - 10,
-      bottomRight: ((seed * 11) % 20) - 10,
-    };
-  }, [item.id]);
-
+  // Note style - uses stamp background with text
   if (isNote) {
-    // A small text note with informal styling
+    const stampImage = getStamp(item.id);
     return (
       <Pressable
         style={({ pressed }) => [
@@ -86,33 +126,35 @@ export function ScrapbookCard({
         accessibilityRole="button"
         accessibilityLabel={`Dream: ${item.title}`}
       >
-        {/* Pin at top */}
-        <View style={styles.pinIcon}>
-          <Text style={styles.pinText}>📌</Text>
+        {/* Stamp background behind text */}
+        <Image source={stampImage} style={styles.noteStamp} resizeMode="cover" />
+
+        {/* Text content on top */}
+        <View style={styles.noteContent}>
+          <Text style={styles.noteTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {item.description && (
+            <Text style={styles.noteDesc} numberOfLines={3}>
+              {item.description}
+            </Text>
+          )}
         </View>
 
-        {/* Text content */}
-        <Text style={styles.noteText}>{item.title}</Text>
-        {item.description && (
-          <Text style={styles.noteSmallText} numberOfLines={2}>
-            {item.description}
-          </Text>
-        )}
-
-        {/* Tiny tape accents */}
-        <View style={[styles.tapeTiny, styles.tapeTinyTL]} />
-        <View style={[styles.tapeTiny, styles.tapeTinyBR]} />
+        {/* Decorative flowers in corners */}
+        <Image source={getFlower(item.id, 0)} style={styles.flowerTL} resizeMode="contain" />
+        <Image source={getFlower(item.id, 1)} style={styles.flowerBR} resizeMode="contain" />
       </Pressable>
     );
   }
 
-  // Full polaroid-style card with image frame asset
-  const frameImage = getFrameImage(item.id);
+  // Vision item with image
+  const frameBorder = getFrameBorder(item.id);
 
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.polaroid,
+        styles.card,
         { transform: [{ rotate: `${rotation}deg` }] },
         pressed && styles.pressed,
       ]}
@@ -120,56 +162,64 @@ export function ScrapbookCard({
       accessibilityRole="button"
       accessibilityLabel={`Open ${item.title}`}
     >
-      {/* Frame background using real image asset */}
-      <ImageBackground
-        source={frameImage}
-        style={styles.frameContainer}
-        imageStyle={styles.frameImage}
-      >
-        {/* Image or placeholder inside frame */}
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.polaroidImage} resizeMode="cover" />
-        ) : (
-          <View style={styles.polaroidImagePlaceholder}>
-            <Text style={styles.placeholderText}>📷</Text>
-          </View>
-        )}
+      {/* Cream polaroid background */}
+      <View style={[styles.cardBG, { backgroundColor: '#fef9e7' }]}>
+        {/* Polaroid border with image */}
+        <View style={styles.polaroidBorder}>
+          {/* Image section */}
+          <View style={styles.imageContainer}>
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Text style={styles.placeholderText}>📷</Text>
+              </View>
+            )}
 
-        {/* Polaroid caption area */}
-        <View style={styles.polaroidCaption}>
-          <Text style={styles.polaroidTitle} numberOfLines={2}>
+            {/* Frame border - smaller, on top of image, in corners */}
+            <Image source={frameBorder} style={styles.frameBorderImage} resizeMode="contain" />
+
+            {/* Paperclips - top corners */}
+            <Image
+              source={getPaperclip(item.id, 0)}
+              style={styles.paperclipTL}
+              resizeMode="contain"
+            />
+            <Image
+              source={getPaperclip(item.id, 1)}
+              style={styles.paperclipTR}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+        {/* Text area (at bottom of cream polaroid) */}
+        <View style={styles.textArea}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
             {item.title}
           </Text>
 
-          {item.description ? (
-            <Text style={styles.polaroidDesc} numberOfLines={2}>
+          {item.description && (
+            <Text style={styles.cardDesc} numberOfLines={2}>
               {item.description}
             </Text>
-          ) : null}
+          )}
 
-          {/* Meta info */}
-          <View style={styles.polaroidMeta}>
-            <Text style={styles.polaroidType}>{typeLabel}</Text>
-            {isCreatedByMe ? (
-              <Text style={styles.polaroidOwner}>by me</Text>
-            ) : (
-              <Text style={styles.polaroidOwner}>by partner</Text>
-            )}
+          <View style={styles.cardMeta}>
+            <Text style={styles.cardType}>{typeLabel}</Text>
+            <Text style={styles.cardOwner}>{isCreatedByMe ? 'by me' : 'by partner'}</Text>
           </View>
 
-          {/* Completion note if applicable */}
           {item.isCompleted && item.completedNote && (
             <Text style={styles.completionNote}>✓ {item.completedNote}</Text>
           )}
         </View>
-      </ImageBackground>
+      </View>
 
-      {/* Pin indicator if pinned */}
-      {item.isPinned && (
-        <View style={styles.pinnedIndicator}>
-          <Text style={styles.pinnedText}>📌</Text>
-        </View>
-      )}
+      {/* Flower decorations - scattered around card */}
+      <Image source={getFlower(item.id, 0)} style={styles.flowerTopLeft} resizeMode="contain" />
+      <Image source={getFlower(item.id, 1)} style={styles.flowerTopRight} resizeMode="contain" />
+      <Image source={getFlower(item.id, 2)} style={styles.flowerBottomLeft} resizeMode="contain" />
     </Pressable>
   );
 }
@@ -179,12 +229,12 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
 
-  // ─── Polaroid ─────────────────────────────────────────────────────────────
-  polaroid: {
-    borderRadius: 8,
-    overflow: 'hidden',
+  // ─── Vision Card ───────────────────────────────────────────────────────────
+  card: {
     marginBottom: spacing.lg,
     marginHorizontal: spacing.sm,
+    borderRadius: 8,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 4 },
     shadowOpacity: 0.2,
@@ -192,35 +242,34 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  frameContainer: {
+  cardBG: {
     width: '100%',
-    height: 280,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    minHeight: 350,
   },
 
-  frameImage: {
-    resizeMode: 'stretch',
+  polaroidBorder: {
+    padding: spacing.md,
+    backgroundColor: '#fef9e7',
   },
 
-  polaroidImage: {
+  imageContainer: {
     width: '100%',
-    height: 140,
-    backgroundColor: colors.surface,
-    borderRadius: 4,
-    marginBottom: spacing.sm,
+    height: 200,
+    position: 'relative',
+    marginBottom: spacing.md,
   },
 
-  polaroidImagePlaceholder: {
+  image: {
     width: '100%',
-    height: 140,
+    height: '100%',
+  },
+
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#f0ede6',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
-    marginBottom: spacing.sm,
   },
 
   placeholderText: {
@@ -228,79 +277,121 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 
-  polaroidCaption: {
+  // Frame border - small, on top, in corners
+  frameBorderImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
-    paddingHorizontal: spacing.sm,
+    height: '100%',
   },
 
-  polaroidTitle: {
+  // Paperclips - top corners, always on top
+  paperclipTL: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    width: 40,
+    height: 40,
+    zIndex: 10,
+  },
+
+  paperclipTR: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 40,
+    height: 40,
+    zIndex: 10,
+  },
+
+  // Text area (bottom of card)
+  textArea: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+
+  cardTitle: {
     ...typography.bodySemiBold,
     color: '#2d2d2d',
-    fontSize: 14,
-    marginBottom: 3,
-  },
-
-  polaroidDesc: {
-    ...typography.bodySm,
-    color: '#555',
-    fontSize: 11,
-    marginBottom: 6,
+    fontSize: 15,
+    marginBottom: spacing.sm,
     fontStyle: 'italic',
   },
 
-  polaroidMeta: {
+  cardDesc: {
+    ...typography.bodySm,
+    color: '#2d2d2d',
+    fontSize: 12,
+    opacity: 0.8,
+    marginBottom: spacing.sm,
+    fontStyle: 'italic',
+  },
+
+  cardMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: spacing.sm,
   },
 
-  polaroidType: {
+  cardType: {
     ...typography.label,
-    color: colors.gold,
+    color: '#666',
     fontSize: 9,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
 
-  polaroidOwner: {
+  cardOwner: {
     ...typography.bodySm,
-    color: '#888',
+    color: '#666',
     fontSize: 10,
     fontStyle: 'italic',
+    opacity: 0.7,
   },
 
   completionNote: {
     ...typography.bodySm,
     color: '#4a7c59',
     fontSize: 11,
-    marginTop: 6,
+    marginTop: spacing.sm,
     fontStyle: 'italic',
   },
 
-  // ─── Pin ──────────────────────────────────────────────────────────────────
-  pinnedIndicator: {
+  // Flower decorations - scattered around card
+  flowerTopLeft: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
+    top: -15,
+    left: -15,
+    width: 50,
+    height: 50,
+    opacity: 0.6,
   },
 
-  pinnedText: {
-    fontSize: 20,
+  flowerTopRight: {
+    position: 'absolute',
+    top: -15,
+    right: -15,
+    width: 50,
+    height: 50,
+    opacity: 0.6,
   },
 
-  // ─── Note Card ────────────────────────────────────────────────────────────
+  flowerBottomLeft: {
+    position: 'absolute',
+    bottom: -15,
+    left: -15,
+    width: 50,
+    height: 50,
+    opacity: 0.6,
+  },
+
+  // ─── Note Card ─────────────────────────────────────────────────────────────
   noteCard: {
     backgroundColor: '#fef9e7',
     borderRadius: 4,
@@ -314,56 +405,62 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 3,
-    minHeight: 80,
-    justifyContent: 'space-between',
+    minHeight: 100,
+    position: 'relative',
+    overflow: 'hidden',
   },
 
-  pinIcon: {
+  noteStamp: {
     position: 'absolute',
-    top: -8,
-    left: 12,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.3,
+    zIndex: 0,
+  },
+
+  noteContent: {
+    position: 'relative',
+    zIndex: 1,
+    flex: 1,
     justifyContent: 'center',
   },
 
-  pinText: {
-    fontSize: 18,
-  },
-
-  noteText: {
+  noteTitle: {
     ...typography.bodySemiBold,
     color: '#2d2d2d',
-    fontSize: 14,
-    marginTop: 8,
-  },
-
-  noteSmallText: {
-    ...typography.bodySm,
-    color: '#666',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 15,
+    marginBottom: spacing.sm,
     fontStyle: 'italic',
   },
 
-  tapeTiny: {
+  noteDesc: {
+    ...typography.bodySm,
+    color: '#555',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+
+  flowerTL: {
     position: 'absolute',
-    width: 20,
-    height: 4,
-    backgroundColor: 'rgba(255, 192, 152, 0.5)',
-    borderRadius: 1,
+    top: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    opacity: 0.5,
+    zIndex: 2,
   },
 
-  tapeTinyTL: {
-    top: 6,
-    left: 6,
-    transform: [{ rotate: '-15deg' }],
-  },
-
-  tapeTinyBR: {
-    bottom: 6,
-    right: 6,
-    transform: [{ rotate: '15deg' }],
+  flowerBR: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    opacity: 0.5,
+    zIndex: 2,
   },
 });

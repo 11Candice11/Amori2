@@ -31,6 +31,18 @@ public static class NotificationTypes
     /// <summary>A shared Vision Board item was marked achieved.</summary>
     public const string VisionBoardItemCompleted = "VisionBoardItemCompleted";
 
+    /// <summary>Your partner added a new memory to your shared collection.</summary>
+    public const string MemoryAdded = "MemoryAdded";
+
+    /// <summary>Your partner added a calendar event to your shared calendar.</summary>
+    public const string CalendarEventAdded = "CalendarEventAdded";
+
+    /// <summary>Your partner added an item to your shared bucket list.</summary>
+    public const string BucketListItemAdded = "BucketListItemAdded";
+
+    /// <summary>Your partner added an item to your shared wishlist.</summary>
+    public const string WishlistItemAdded = "WishlistItemAdded";
+
     /// <summary>Nudge to complete a daily mood check-in.</summary>
     public const string CheckInReminder = "CheckInReminder";
 

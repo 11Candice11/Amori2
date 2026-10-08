@@ -91,7 +91,7 @@ export async function scheduleDailyCheckInReminder(timeStr: string): Promise<voi
       identifier: CHECKIN_REMINDER_ID,
       content: {
         title: 'Time for your check-in ✨',
-        body: 'Take a moment to reflect on how you're feeling today.',
+        body: "Take a moment to reflect on how you're feeling today.",
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.DEFAULT,
         ...(Platform.OS === 'android' && { channelId: 'reminders' }),

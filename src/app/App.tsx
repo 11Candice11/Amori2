@@ -15,6 +15,10 @@ import {
   configureForegroundBehavior,
   registerNotificationListeners,
 } from '../services/notifications/pushHandlers';
+import {
+  scheduleDailyCheckInReminder,
+  cancelDailyCheckInReminder,
+} from '../services/notifications/localReminderService';
 import type { MainTabParamList } from '../navigation/types';
 import {
   colors,
@@ -114,6 +118,18 @@ function openVisionBoardItem(itemId: string) {
   navigationRef.navigate('Together', {
     screen: 'VisionBoardItemDetail',
     params: { itemId },
+  } as never);
+}
+
+/**
+ * Open a memory that the partner just added. Tapping a "MemoryAdded"
+ * notification navigates to the Memories screen on the Together tab.
+ * The memory details can be viewed from the memories list.
+ */
+function openMemory(memoryId: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Together', {
+    screen: 'Memories',
   } as never);
 }
 
@@ -263,12 +279,36 @@ export default function App() {
         onOpenGift: openGift,
         onOpenChat: openChat,
         onOpenVisionBoardItem: openVisionBoardItem,
+        onOpenMemory: openMemory,
         onOpenCalendarEvent: openCalendarEvent,
       });
       return unsubscribe;
     } catch (err) {
       console.warn('Notification registration error:', err);
     }
+  }, [authState]);
+
+  // Schedule the daily check-in reminder when authenticated and settings are loaded.
+  useEffect(() => {
+    if (authState !== 'authenticated') return;
+
+    // Load settings if not already loaded, then schedule reminder if enabled.
+    userSettingsStore.load().then(() => {
+      const user = userSettingsStore.get();
+      if (user?.checkInReminders && user?.notificationsEnabled) {
+        const reminderTime = user.checkInReminderTime ?? '09:00';
+        scheduleDailyCheckInReminder(reminderTime).catch((err) => {
+          console.warn('Failed to schedule check-in reminder:', err);
+        });
+      } else {
+        // Cancel any existing reminder if the setting is disabled.
+        cancelDailyCheckInReminder().catch(() => {
+          // Ignore cancellation errors
+        });
+      }
+    }).catch((err) => {
+      console.warn('Failed to load user settings for reminder scheduling:', err);
+    });
   }, [authState]);
 
   // Wait until both the auth check and the persisted theme have resolved so we

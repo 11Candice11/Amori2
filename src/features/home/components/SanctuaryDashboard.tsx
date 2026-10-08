@@ -608,14 +608,13 @@ export function SanctuaryDashboard({
             style={styles.artifactArt} 
             resizeMode="cover"
           />
-          {!artifactOpened ? (
-            <>
-              <View style={styles.artifactArtDim} />
-              <View style={styles.artifactSparkle}>
-                <SparkleIcon />
-              </View>
-            </>
-          ) : null}
+          {artifactOpened ? (
+            <View style={styles.artifactArtDim} />
+          ) : (
+            <View style={styles.artifactSparkle}>
+              <SparkleIcon />
+            </View>
+          )}
         </View>
 
         <Text style={styles.artifactTitle}>Mystery Booster Pack</Text>

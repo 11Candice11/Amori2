@@ -1,5 +1,6 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const { mergeConfig } = require('@react-native/metro-config');
+const path = require('path');
 
 /**
  * Metro configuration
@@ -7,6 +8,19 @@ const { mergeConfig } = require('@react-native/metro-config');
  *
  * @type {import('metro-config').MetroConfig}
  */
-const config = {};
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+const projectRoot = __dirname;
+const defaultConfig = getDefaultConfig(projectRoot);
+
+const config = {
+  projectRoot,
+  watchFolders: [projectRoot],
+  resolver: {
+    assetExts: [
+      ...defaultConfig.resolver.assetExts,
+      'lottie',
+    ],
+  },
+};
+
+module.exports = mergeConfig(defaultConfig, config);

@@ -1470,6 +1470,8 @@ PODS:
     - React-utils (= 0.74.7)
   - RNCAsyncStorage (2.2.0):
     - React-Core
+  - RNDateTimePicker (8.2.0):
+    - React-Core
   - RNScreens (3.31.1):
     - DoubleConversion
     - glog
@@ -1576,6 +1578,7 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
+  - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
@@ -1739,6 +1742,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
+  RNDateTimePicker:
+    :path: "../node_modules/@react-native-community/datetimepicker"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNSVG:
@@ -1824,6 +1829,7 @@ SPEC CHECKSUMS:
   React-utils: 005eaf562b377922d8cf8a5e433046185e479796
   ReactCommon: 788c996e0ae30635a67c2567db2e21f459bcd632
   RNCAsyncStorage: b44e8a4e798c3e1f56bffccd0f591f674fb9198f
+  RNDateTimePicker: 818460dc31b0dc5ec58289003e27dd8d022fb79c
   RNScreens: a2d8a2555b4653d7a19706eb172f855657ac30d7
   RNSVG: 6d5ed33b6635ed6d6ecb50744dcf127580c39ed5
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d

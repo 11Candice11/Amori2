@@ -36,7 +36,7 @@ public sealed class VaultController(
     public async Task<IActionResult> GetGiftById(Guid giftId, CancellationToken ct) =>
         Ok(await vaultService.GetGiftByIdAsync(RequireUserId(), giftId, ct));
 
-    /// <summary>Save one of the relationship's memories to the caller's vault.</summary>
+    /// <summary>Save one of the relationship's memories or vision board items to the caller's vault.</summary>
     [HttpPost("gifts")]
     [ProducesResponseType(typeof(VaultGiftResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
@@ -47,7 +47,7 @@ public sealed class VaultController(
     }
 
     /// <summary>
-    /// Send one of the relationship's memories as a gift to the caller's
+    /// Send one of the relationship's memories or vision board items as a gift to the caller's
     /// partner. It lands in the partner's vault (not the caller's) and notifies
     /// them. Returns a confirmation rather than the gift, since the caller can't
     /// read the partner's private vault.

@@ -44,6 +44,12 @@ public sealed class NotificationService(
             // Vision Board add/complete are partner activity too.
             NotificationTypes.VisionBoardItemAdded => settings.PartnerActivityNotifications,
             NotificationTypes.VisionBoardItemCompleted => settings.PartnerActivityNotifications,
+            // Memory added is also partner activity.
+            NotificationTypes.MemoryAdded => settings.PartnerActivityNotifications,
+            // Calendar, bucket list, and wishlist items are also partner activity.
+            NotificationTypes.CalendarEventAdded => settings.PartnerActivityNotifications,
+            NotificationTypes.BucketListItemAdded => settings.PartnerActivityNotifications,
+            NotificationTypes.WishlistItemAdded => settings.PartnerActivityNotifications,
             NotificationTypes.CheckInReminder => settings.CheckInReminders,
             NotificationTypes.DailyDigest => settings.DailyDigest,
             _ => true,

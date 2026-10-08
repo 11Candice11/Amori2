@@ -9,13 +9,15 @@
  * data.type === "Hug" and data.referenceId === <hugId>) is tapped.
  *
  * Supported data.type values:
- *   "Hug"               data.referenceId = hugId
- *   "Incident"          data.referenceId = incidentId
- *   "PartnerLinkRequest" data.referenceId = invitationId
- *   "Gift"              data.referenceId = memoryId
- *   "LetsChat"          data.referenceId = conversationId
- *   "VisionBoardItem"   data.referenceId = itemId
- *   "CalendarEvent"     data.referenceId = eventId, data.eventDate = "YYYY-MM-DD"
+ *   "Hug"                      data.referenceId = hugId
+ *   "Incident"                 data.referenceId = incidentId
+ *   "PartnerLinkRequest"       data.referenceId = invitationId
+ *   "Gift"                     data.referenceId = memoryId
+ *   "LetsChat"                 data.referenceId = conversationId
+ *   "MemoryAdded"              data.referenceId = memoryId
+ *   "VisionBoardItemAdded"     data.referenceId = itemId
+ *   "VisionBoardItemCompleted" data.referenceId = itemId
+ *   "CalendarEvent"            data.referenceId = eventId, data.eventDate = "YYYY-MM-DD"
  */
 import { Platform } from 'react-native';
 
@@ -55,6 +57,12 @@ export interface PushHandlerCallbacks {
    * with data.type === "VisionBoardItem" and data.referenceId === <itemId>.
    */
   onOpenVisionBoardItem?: (itemId: string) => void;
+  /**
+   * Called when the user taps a memory notification (partner added a new memory).
+   * Opens the Memories screen with the specific memory in focus. Backend sends
+   * these with data.type === "MemoryAdded" and data.referenceId === <memoryId>.
+   */
+  onOpenMemory?: (memoryId: string) => void;
   /**
    * Called when the user taps a calendar event notification (new event created
    * by partner, reminder, etc.). Opens the CalendarDay view for the event's
@@ -136,7 +144,14 @@ function extractVisionBoardItemId(data: NotificationData | undefined): string | 
   if (!data) return null;
   const type = typeof data.type === 'string' ? data.type : null;
   const ref = typeof data.referenceId === 'string' ? data.referenceId : null;
-  return type === 'VisionBoardItem' && ref ? ref : null;
+  return (type === 'VisionBoardItemAdded' || type === 'VisionBoardItemCompleted') && ref ? ref : null;
+}
+
+function extractMemoryId(data: NotificationData | undefined): string | null {
+  if (!data) return null;
+  const type = typeof data.type === 'string' ? data.type : null;
+  const ref = typeof data.referenceId === 'string' ? data.referenceId : null;
+  return type === 'MemoryAdded' && ref ? ref : null;
 }
 
 /**
@@ -185,6 +200,11 @@ function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerC
   const visionItemId = extractVisionBoardItemId(data);
   if (visionItemId) {
     callbacks.onOpenVisionBoardItem?.(visionItemId);
+    return;
+  }
+  const memoryId = extractMemoryId(data);
+  if (memoryId) {
+    callbacks.onOpenMemory?.(memoryId);
     return;
   }
   const calendarEventDate = extractCalendarEventDate(data);

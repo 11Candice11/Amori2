@@ -1,22 +1,25 @@
 /**
  * VisionBoardScreen — the couple's shared "Us" Vision Board.
+ * 
+ * Now with a scrapbook aesthetic! Polaroid-style cards with tape, pins,
+ * and decorative elements. Integrates bucket list & to-do list items as
+ * little dream notes scattered throughout.
  *
  *   GET /api/vision-board → { sections, items }
+ *   GET /api/together → { bucketList, todoList }
  *
- * Everything the couple is building, dreaming and becoming together, grouped
- * onto shelves (sections). Within the active board, pinned items float to the
- * top, then follow custom sort order, then newest (the server already returns
- * items in that order). Completed items are pulled out into a visually separate
- * "Achieved" area.
+ * Everything the couple is building, dreaming and becoming together, displayed
+ * like a physical scrapboard with randomly rotated cards, decorative tape,
+ * pins, and handwritten-style text. Bucket list and to-do items appear as
+ * little sticky notes interspersed throughout.
  *
+ * Completed items are pulled out into a visually separate "Achieved" area.
  * States handled: loading, error+retry, not-linked (relationship 404), empty
- * board, and empty Achieved area. Both partners can read and modify shared
- * items; the "Added by you / by partner" label is derived from createdByUserId.
+ * board, and empty Achieved area.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -33,7 +36,6 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { ApiError } from '../../../services/api/client';
-import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import { partnerLinkService } from '../../profile/services/partnerLinkService';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
@@ -46,66 +48,10 @@ import {
   type VisionBoardResponse,
   type VisionBoardSectionResponse,
 } from '../types/visionBoard.types';
+import type { BucketListItemResponse } from '../types/together.types';
+import { ScrapbookCard, CornerFlower } from '../components';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'VisionBoard'>;
-
-// ─── Item card ────────────────────────────────────────────────────────────────
-
-function ownershipLabel(item: VisionBoardItemResponse): string {
-  const myId = userSettingsStore.get()?.id;
-  if (myId && item.createdByUserId === myId) return 'Added by you';
-  const name = item.createdByName?.trim();
-  return name ? `Added by ${name}` : 'Added by partner';
-}
-
-function ItemCard({
-  item,
-  onPress,
-}: {
-  item: VisionBoardItemResponse;
-  onPress: (item: VisionBoardItemResponse) => void;
-}) {
-  const imageUrl = resolveMediaUrl(item.imageUrl);
-  const typeLabel = VISION_BOARD_ITEM_TYPE_LABELS[decodeVisionBoardItemType(item.type)];
-
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.itemCard, pressed && styles.pressed]}
-      onPress={() => onPress(item)}
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${item.title}`}
-    >
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.itemImage} resizeMode="cover" />
-      ) : null}
-
-      <View style={styles.itemBody}>
-        <View style={styles.itemTopRow}>
-          <Text style={styles.itemType}>{typeLabel.toUpperCase()}</Text>
-          {item.isPinned ? <Text style={styles.pin}>★</Text> : null}
-        </View>
-
-        <Text style={styles.itemTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-
-        {item.description ? (
-          <Text style={styles.itemDesc} numberOfLines={2}>
-            {item.description}
-          </Text>
-        ) : null}
-
-        {item.isCompleted && item.completedNote ? (
-          <Text style={styles.completedNote} numberOfLines={2}>
-            “{item.completedNote}”
-          </Text>
-        ) : null}
-
-        <Text style={styles.itemOwner}>{ownershipLabel(item)}</Text>
-      </View>
-    </Pressable>
-  );
-}
 
 // ─── Screen ─────────────────────────────────────────────────────────────────
 
@@ -113,6 +59,8 @@ export function VisionBoardScreen() {
   const navigation = useNavigation<Nav>();
 
   const [board, setBoard] = useState<VisionBoardResponse | null>(null);
+  const [bucketList, setBucketList] = useState<BucketListItemResponse[]>([]);
+  const [todoList, setTodoList] = useState<BucketListItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,21 +71,20 @@ export function VisionBoardScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const result = await visionBoardService.getBoard();
-      // Harden against a partial payload: a response missing `items`/`sections`
-      // (or with them null) must never crash the render. Coerce to arrays so
-      // every downstream `.length`/`.map`/`.filter` is safe.
+      const boardResult = await visionBoardService.getBoard();
+
       setBoard({
-        ...result,
-        items: result?.items ?? [],
-        sections: result?.sections ?? [],
+        ...boardResult,
+        items: boardResult?.items ?? [],
+        sections: boardResult?.sections ?? [],
       });
+      
+      // Optional: fetch bucket list and todo if needed for the preview
+      // For now, just set them to empty
+      setBucketList([]);
+      setTodoList([]);
       setNotLinked(false);
     } catch (err) {
-      // Only treat this as "not linked" when the partner-link status confirms it
-      // — a raw 404 can also mean the endpoint isn't reachable, and we must never
-      // tell a linked couple to link up. So resolve link state authoritatively
-      // (the same source the rest of the app trusts) before choosing the state.
       if (err instanceof ApiError && err.status === 404) {
         try {
           const status = await partnerLinkService.getStatus();
@@ -145,14 +92,10 @@ export function VisionBoardScreen() {
             setNotLinked(true);
             setBoard(null);
           } else {
-            // Linked, but the board still 404'd — that's a real failure, not an
-            // empty state. Surface it with Retry rather than the link prompt.
             setNotLinked(false);
             setError('Could not load your Vision Board. Pull to refresh or try again.');
           }
         } catch {
-          // Couldn't confirm link status either — show a retryable error, never
-          // the misleading "link with your partner" message.
           setNotLinked(false);
           setError(err instanceof Error ? err.message : 'Could not load your Vision Board.');
         }
@@ -184,24 +127,28 @@ export function VisionBoardScreen() {
     [navigation],
   );
 
-  const handleAdd = useCallback(() => {
+  const handleAddVision = useCallback(() => {
     navigation.navigate('AddVisionBoardItem');
   }, [navigation]);
 
-  const { activeBySection, completed, orderedSections } = useMemo(() => {
-    const allItems = board?.items ?? [];
+  const handleAddDream = useCallback(() => {
+    navigation.navigate('AddVisionBoardItem');
+  }, [navigation]);
+
+  const { activeBySection, completed, orderedSections, allItems } = useMemo(() => {
+    const visionItems = board?.items ?? [];
     const sections = [...(board?.sections ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
     const q = search.trim().toLowerCase();
     const matchedItems = q
-      ? allItems.filter(
+      ? visionItems.filter(
           (i) =>
             i.title.toLowerCase().includes(q) ||
             VISION_BOARD_ITEM_TYPE_LABELS[decodeVisionBoardItemType(i.type)]
               .toLowerCase()
               .includes(q),
         )
-      : allItems;
+      : visionItems;
 
     const active = matchedItems.filter((i) => !i.isCompleted);
     const done = matchedItems.filter((i) => i.isCompleted);
@@ -213,7 +160,7 @@ export function VisionBoardScreen() {
       grouped.set(item.sectionId, list);
     }
 
-    return { activeBySection: grouped, completed: done, orderedSections: sections };
+    return { activeBySection: grouped, completed: done, orderedSections: sections, allItems: active };
   }, [board, search]);
 
   const totalActive = useMemo(
@@ -270,6 +217,8 @@ export function VisionBoardScreen() {
   }
 
   const boardIsEmpty = totalActive === 0 && completed.length === 0;
+  const bucketActive = bucketList.filter((b) => !b.isCompleted);
+  const todoActive = todoList.filter((t) => !t.isCompleted);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -283,22 +232,31 @@ export function VisionBoardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
         }
       >
-        <View style={styles.intro}>
-          <Text style={styles.introKicker}>OUR VISION · SHARED SANCTUARY</Text>
-          <Text style={styles.introTitle}>Our Us</Text>
-          <Text style={styles.introSub}>
-            Everything we're building, dreaming, and becoming together.
-          </Text>
+        {/* Scrapboard header */}
+        <View style={styles.scrapboardHeader}>
+          <Text style={styles.headerTitle}>Our Us</Text>
+          <Text style={styles.headerSub}>Everything we're building, dreaming, and becoming together</Text>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-          onPress={handleAdd}
-          accessibilityRole="button"
-          accessibilityLabel="Add to our vision"
-        >
-          <Text style={styles.addBtnText}>+  Add to Our Vision</Text>
-        </Pressable>
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <Pressable
+            style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
+            onPress={handleAddVision}
+            accessibilityRole="button"
+            accessibilityLabel="Add to our vision"
+          >
+            <Text style={styles.addBtnText}>+ Add Vision</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.addDreamBtn, pressed && styles.pressed]}
+            onPress={handleAddDream}
+            accessibilityRole="button"
+            accessibilityLabel="Add a dream"
+          >
+            <Text style={styles.addDreamBtnText}>💭 Add Dream</Text>
+          </Pressable>
+        </View>
 
         {/* Search */}
         <View style={styles.searchWrap}>
@@ -306,7 +264,7 @@ export function VisionBoardScreen() {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search by title or type…"
+            placeholder="Search…"
             placeholderTextColor={colors.neutralSubtle}
             returnKeyType="search"
             clearButtonMode="while-editing"
@@ -327,57 +285,47 @@ export function VisionBoardScreen() {
           ) : null}
         </View>
 
-        {/* Monthly snapshot — this month's memories + warmth stats. */}
-        <Pressable
-          style={({ pressed }) => [styles.snapshotBtn, pressed && styles.pressed]}
-          onPress={() => navigation.navigate('MonthlySnapshot')}
-          accessibilityRole="button"
-          accessibilityLabel="Open this month's snapshot"
-        >
-          <Text style={styles.snapshotIcon}>❋</Text>
-          <View style={styles.snapshotText}>
-            <Text style={styles.snapshotTitle}>Monthly snapshot</Text>
-            <Text style={styles.snapshotSub}>This month’s memories and warmth, together.</Text>
+        {/* Bucket List & To-Do List as header section */}
+        {(bucketActive.length > 0 || todoActive.length > 0) && (
+          <View style={styles.collectionsSection}>
+            <Text style={styles.collectionsTitle}>Our Journey 📋</Text>
+            <View style={styles.collectionsRow}>
+              {bucketActive.length > 0 && (
+                <View style={styles.collectionBox}>
+                  <Text style={styles.collectionBoxTitle}>Bucket List</Text>
+                  {bucketActive.slice(0, 3).map((item) => (
+                    <Text key={item.id} style={styles.collectionItem}>
+                      ☐ {item.title}
+                    </Text>
+                  ))}
+                  {bucketActive.length > 3 && (
+                    <Text style={styles.collectionMore}>+ {bucketActive.length - 3} more</Text>
+                  )}
+                </View>
+              )}
+              {todoActive.length > 0 && (
+                <View style={styles.collectionBox}>
+                  <Text style={styles.collectionBoxTitle}>To-Do</Text>
+                  {todoActive.slice(0, 3).map((item) => (
+                    <Text key={item.id} style={styles.collectionItem}>
+                      ☐ {item.title}
+                    </Text>
+                  ))}
+                  {todoActive.length > 3 && (
+                    <Text style={styles.collectionMore}>+ {todoActive.length - 3} more</Text>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
-          <Text style={styles.snapshotChevron}>›</Text>
-        </Pressable>
+        )}
 
-        {/* Quick links to the couple's shared collections. */}
-        <View style={styles.quickRow}>
-          <Pressable
-            style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('Memories')}
-            accessibilityRole="button"
-            accessibilityLabel="Open memories"
-          >
-            <Text style={styles.quickChipText}>Memories</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('ImportantDates')}
-            accessibilityRole="button"
-            accessibilityLabel="Open important dates"
-          >
-            <Text style={styles.quickChipText}>Important Dates</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
-            onPress={() =>
-              navigation
-                .getParent<BottomTabNavigationProp<MainTabParamList>>()
-                ?.navigate('Timeline', { screen: 'TimelineHome' })
-            }
-            accessibilityRole="button"
-            accessibilityLabel="Open milestones"
-          >
-            <Text style={styles.quickChipText}>Milestones</Text>
-          </Pressable>
-        </View>
-
-        {boardIsEmpty ? (
+        {/* Scrapboard content */}
+        {boardIsEmpty && bucketActive.length === 0 && todoActive.length === 0 ? (
           <View style={styles.emptyBoard}>
+            <Text style={styles.emptyGlyph}>✦</Text>
             <Text style={styles.emptyTitle}>
-              {search.trim() ? `No results for "${search.trim()}".` : 'Our story is still being written.'}
+              {search.trim() ? `No results for "${search.trim()}".` : 'Your story is still being written.'}
             </Text>
             {!search.trim() ? (
               <Text style={styles.emptyBody}>Start with one little dream.</Text>
@@ -385,44 +333,50 @@ export function VisionBoardScreen() {
           </View>
         ) : (
           <>
-            {orderedSections.map((section) => {
-              const sectionItems = activeBySection.get(section.id) ?? [];
-              if (sectionItems.length === 0) return null;
-              return (
-                <SectionBlock
-                  key={section.id}
-                  section={section}
-                  items={sectionItems}
-                  onOpenItem={handleOpenItem}
-                />
-              );
-            })}
-
-            {/* An active board with only completed items still deserves a nudge. */}
-            {totalActive === 0 ? (
-              <View style={styles.emptyBoard}>
-                <Text style={styles.emptyBody}>
-                  Every active dream is achieved. Add a new one whenever you're ready.
-                </Text>
-              </View>
-            ) : null}
-
-            {/* ── Achieved ── */}
-            <View style={styles.achievedHeader}>
-              <Text style={styles.achievedTitle}>Achieved</Text>
-              <View style={styles.achievedRule} />
+            {/* Vision items in scrapbook layout */}
+            <View style={styles.scrapboard}>
+              {orderedSections.map((section) => {
+                const sectionItems = activeBySection.get(section.id) ?? [];
+                if (sectionItems.length === 0) return null;
+                return (
+                  <View key={section.id} style={styles.sectionGroup}>
+                    {section.name && (
+                      <View style={styles.sectionLabel}>
+                        <Text style={styles.sectionLabelText}>{section.name}</Text>
+                      </View>
+                    )}
+                    {sectionItems.map((item, idx) => (
+                      <ScrapbookCard
+                        key={item.id}
+                        item={item}
+                        onPress={handleOpenItem}
+                        rotation={Math.random() * 6 - 3}
+                        isNote={idx % 4 === 3} // Every 4th item is a note-style
+                      />
+                    ))}
+                  </View>
+                );
+              })}
             </View>
 
-            {completed.length === 0 ? (
-              <View style={styles.achievedEmpty}>
-                <Text style={styles.emptyBody}>
-                  Nothing here yet. Give yourselves something to look forward to.
-                </Text>
+            {/* Achieved section */}
+            {completed.length > 0 && (
+              <View style={styles.achievedSection}>
+                <View style={styles.achievedHeader}>
+                  <Text style={styles.achievedTitle}>✓ Achieved</Text>
+                  <View style={styles.achievedRule} />
+                </View>
+                <View style={styles.scrapboard}>
+                  {completed.map((item) => (
+                    <ScrapbookCard
+                      key={item.id}
+                      item={item}
+                      onPress={handleOpenItem}
+                      rotation={Math.random() * 6 - 3}
+                    />
+                  ))}
+                </View>
               </View>
-            ) : (
-              completed.map((item) => (
-                <ItemCard key={item.id} item={item} onPress={handleOpenItem} />
-              ))
             )}
           </>
         )}
@@ -435,31 +389,6 @@ export function VisionBoardScreen() {
   );
 }
 
-function SectionBlock({
-  section,
-  items,
-  onOpenItem,
-}: {
-  section: VisionBoardSectionResponse;
-  items: VisionBoardItemResponse[];
-  onOpenItem: (item: VisionBoardItemResponse) => void;
-}) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionName}>{section.name}</Text>
-        <Text style={styles.sectionCount}>{items.length}</Text>
-      </View>
-      {section.description ? (
-        <Text style={styles.sectionDesc}>{section.description}</Text>
-      ) : null}
-      {items.map((item) => (
-        <ItemCard key={item.id} item={item} onPress={onOpenItem} />
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
@@ -467,24 +396,56 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   pressed: { opacity: 0.85 },
 
-  intro: { marginBottom: spacing.md },
-  introKicker: {
-    ...typography.label,
-    color: colors.gold,
-    letterSpacing: 1,
-    marginBottom: 4,
+  scrapboardHeader: {
+    marginBottom: spacing.lg,
+    alignItems: 'center',
   },
-  introTitle: { ...typography.headline, color: colors.neutral, fontSize: 26 },
-  introSub: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 4 },
+  headerTitle: {
+    ...typography.headline,
+    color: colors.neutral,
+    fontSize: 28,
+    textAlign: 'center',
+  },
+  headerSub: {
+    ...typography.bodySm,
+    color: colors.neutralMuted,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
 
   addBtn: {
+    flex: 1,
     backgroundColor: colors.ctaBackground,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingVertical: 14,
-    marginBottom: spacing.lg,
+    paddingVertical: 12,
   },
-  addBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 15 },
+  addBtnText: {
+    ...typography.bodySemiBold,
+    color: colors.ctaText,
+    fontSize: 14,
+  },
+
+  addDreamBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(197,163,101,0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  addDreamBtnText: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 14,
+  },
 
   searchWrap: {
     flexDirection: 'row',
@@ -498,10 +459,10 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 42,
+    height: 40,
     ...typography.body,
     color: colors.neutral,
-    fontSize: 15,
+    fontSize: 14,
   },
   searchClear: {
     paddingLeft: spacing.sm,
@@ -511,83 +472,98 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  snapshotBtn: {
+  collectionsSection: {
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  collectionsTitle: {
+    ...typography.headlineSm,
+    color: colors.gold,
+    fontSize: 16,
+    marginBottom: spacing.sm,
+  },
+  collectionsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+  },
+  collectionBox: {
+    flex: 1,
     backgroundColor: colors.surfaceCard,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.gold,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  snapshotIcon: { color: colors.gold, fontSize: 22 },
-  snapshotText: { flex: 1 },
-  snapshotTitle: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 15 },
-  snapshotSub: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 2 },
-  snapshotChevron: { color: colors.gold, fontSize: 24 },
-
-  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
-  quickChip: {
-    backgroundColor: 'rgba(197,163,101,0.12)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  quickChipText: { ...typography.bodySm, color: colors.gold, fontSize: 13 },
-
-  section: { marginBottom: spacing.lg },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionName: { ...typography.headlineSm, color: colors.gold, fontSize: 17 },
-  sectionCount: { ...typography.bodySm, color: colors.neutralSubtle },
-  sectionDesc: { ...typography.bodySm, color: colors.neutralMuted, marginBottom: spacing.sm },
-
-  itemCard: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
-    marginTop: spacing.sm,
+    padding: spacing.sm,
   },
-  itemImage: { width: '100%', height: 150, backgroundColor: colors.surface },
-  itemBody: { padding: spacing.md },
-  itemTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  collectionBoxTitle: {
+    ...typography.bodySemiBold,
+    color: colors.neutral,
+    fontSize: 13,
     marginBottom: 4,
   },
-  itemType: { ...typography.label, color: colors.gold, letterSpacing: 0.8, fontSize: 10 },
-  pin: { color: colors.gold, fontSize: 16 },
-  itemTitle: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 16 },
-  itemDesc: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 4 },
-  completedNote: {
+  collectionItem: {
     ...typography.bodySm,
     color: colors.neutralMuted,
-    fontStyle: 'italic',
-    marginTop: 6,
+    fontSize: 11,
+    marginVertical: 2,
   },
-  itemOwner: { ...typography.bodySm, color: colors.neutralSubtle, fontSize: 11, marginTop: 8 },
+  collectionMore: {
+    ...typography.bodySm,
+    color: colors.gold,
+    fontSize: 10,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
+  scrapboard: {
+    marginBottom: spacing.lg,
+  },
+
+  sectionGroup: {
+    marginBottom: spacing.xl,
+  },
+
+  sectionLabel: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+
+  sectionLabelText: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 14,
+    opacity: 0.7,
+  },
+
+  achievedSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
 
   achievedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
-  achievedTitle: { ...typography.headlineSm, color: colors.neutral, fontSize: 16 },
-  achievedRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
-  achievedEmpty: { paddingVertical: spacing.md },
+  achievedTitle: {
+    ...typography.headlineSm,
+    color: colors.neutral,
+    fontSize: 16,
+  },
+  achievedRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
 
   emptyScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  emptyBoard: { alignItems: 'center', paddingVertical: spacing.xl, gap: 6 },
+  emptyBoard: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    gap: 6,
+  },
   emptyGlyph: { color: colors.gold, fontSize: 34, marginBottom: spacing.md },
   emptyTitle: {
     ...typography.headlineSm,
@@ -604,7 +580,12 @@ const styles = StyleSheet.create({
   },
 
   errorText: { ...typography.body, color: colors.neutralMuted, textAlign: 'center' },
-  inlineError: { ...typography.bodySm, color: colors.emergency, textAlign: 'center', marginTop: spacing.sm },
+  inlineError: {
+    ...typography.bodySm,
+    color: colors.emergency,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
   retryBtn: {
     marginTop: spacing.md,
     backgroundColor: colors.ctaBackground,

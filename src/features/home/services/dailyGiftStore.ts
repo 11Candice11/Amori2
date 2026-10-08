@@ -1,16 +1,16 @@
 /**
- * dailyGiftStore — pins which memory + card is "today's gift" for the calendar day.
+ * dailyGiftStore — pins which memory or vision + card is "today's gift" for the calendar day.
  *
  * The daily gift is meant to be stable for the whole day: whatever card the user
  * first sees (on the Sanctuary dashboard or via a High-Pleasant check-in) must be
  * the exact same gift everywhere else that day, and the exact card that lands in
  * their vault when they save it.
  *
- * dailyGiftService derives the gift with a date seed, but that derivation runs
- * against the *current* memory list — if a memory is added/removed or the backend
- * returns a different order, the same seed maps to a different memory and the gift
- * silently changes. To make the pick durable we persist the chosen memoryId +
- * cardNumber keyed by the calendar day, and read it back instead of re-rolling.
+ * dailyGiftService derives the gift randomly from memories and vision board items,
+ * but that derivation runs against the *current* list — if an item is added/removed
+ * or the backend returns a different order, the pick could silently change. To make
+ * the pick durable we persist the chosen itemId + type + cardNumber keyed by the
+ * calendar day, and read it back instead of re-rolling.
  *
  * Uses AsyncStorage with an in-memory cache for performance, mirroring artifactStore.
  */
@@ -29,8 +29,12 @@ const HISTORY_LIMIT = 5;
 export type StoredGiftSelection = {
   /** The local calendar day (YYYY-MM-DD) the selection was pinned. */
   date: string;
-  /** The chosen memory's id. */
-  memoryId: string;
+  /** The type of gift - memory or vision. */
+  type: 'memory' | 'vision';
+  /** The chosen memory's id (present when type === 'memory'). */
+  memoryId?: string;
+  /** The chosen vision board item's id (present when type === 'vision'). */
+  visionId?: string;
   /** The chosen card design (1-10). */
   cardNumber: number;
 };
@@ -74,9 +78,18 @@ export const dailyGiftStore = {
   },
 
   /** Pin today's gift selection so every viewing returns the same gift. */
-  async setTodaysSelection(memoryId: string, cardNumber: number): Promise<void> {
+  async setTodaysSelection(
+    itemId: string,
+    cardNumber: number,
+    type: 'memory' | 'vision',
+  ): Promise<void> {
     try {
-      const state: StoredGiftSelection = { date: todayKey(), memoryId, cardNumber };
+      const state: StoredGiftSelection = {
+        date: todayKey(),
+        type,
+        cardNumber,
+        ...(type === 'memory' ? { memoryId: itemId } : { visionId: itemId }),
+      };
       const serialized = JSON.stringify(state);
       memoryCache[CACHE_KEY] = serialized;
       await AsyncStorage.setItem(CACHE_KEY, serialized);

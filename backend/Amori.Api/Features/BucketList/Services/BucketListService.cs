@@ -2,6 +2,8 @@ using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Infrastructure.Relationships;
+using Amori.Api.Features.Notifications;
+using Amori.Api.Features.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.BucketList.DTOs;
 
@@ -9,7 +11,8 @@ namespace Amori.Api.Features.BucketList.Services;
 
 public sealed class BucketListService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IBucketListService
+    IRelationshipAccessService relAccess,
+    INotificationService notifications) : IBucketListService
 {
     private static BucketListItemResponse Map(BucketListItem b) => new()
     {
@@ -65,7 +68,46 @@ public sealed class BucketListService(
         db.BucketListItems.Add(item);
         await db.SaveChangesAsync(ct);
         item.AddedBy = (await db.Users.FindAsync([userId], ct))!;
+
+        // Notify the partner that a new item was added
+        await NotifyPartnerAsync(userId, item, ct);
+
         return Map(item);
+    }
+
+    /// <summary>
+    /// Notify the partner that a new bucket list item was added to the shared list.
+    /// Best-effort; does not throw if notification dispatch fails.
+    /// </summary>
+    private async Task NotifyPartnerAsync(Guid creatorId, BucketListItem item, CancellationToken ct = default)
+    {
+        try
+        {
+            // Find the partner (the other member of the relationship)
+            var partner = await db.RelationshipMembers
+                .Where(rm => rm.RelationshipId == item.RelationshipId && rm.UserId != creatorId)
+                .Select(rm => rm.User)
+                .FirstOrDefaultAsync(ct);
+
+            if (partner == null)
+                return; // No partner yet
+
+            var creatorName = item.AddedBy?.DisplayName ?? "Your partner";
+            var body = $"{creatorName} added to the bucket list: {item.Title}";
+
+            await notifications.CreateAsync(
+                partner.Id,
+                "New bucket list item 🪣",
+                body,
+                notificationType: NotificationTypes.BucketListItemAdded,
+                referenceId: item.Id.ToString(),
+                ct: ct);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw — notification failures shouldn't break item creation
+            System.Diagnostics.Debug.WriteLine($"Bucket list notification failed: {ex.Message}");
+        }
     }
 
     public async Task<BucketListItemResponse> UpdateAsync(Guid userId, Guid itemId, UpdateBucketListItemRequest request, CancellationToken ct = default)

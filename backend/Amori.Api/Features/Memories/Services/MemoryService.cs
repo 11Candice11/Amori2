@@ -3,6 +3,8 @@ using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Infrastructure.Relationships;
 using Amori.Api.Infrastructure.Storage;
+using Amori.Api.Features.Notifications;
+using Amori.Api.Features.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.Memories.DTOs;
 
@@ -11,7 +13,8 @@ namespace Amori.Api.Features.Memories.Services;
 public sealed class MemoryService(
     AmoriDbContext db,
     IRelationshipAccessService relAccess,
-    IFileStorageService storage) : IMemoryService
+    IFileStorageService storage,
+    INotificationService notifications) : IMemoryService
 {
     private MemoryResponse Map(Memory m) => new()
     {
@@ -83,7 +86,46 @@ public sealed class MemoryService(
         db.Memories.Add(memory);
         await db.SaveChangesAsync(ct);
         memory.CreatedBy = (await db.Users.FindAsync([userId], ct))!;
+
+        // Notify the partner that a new memory was added
+        await NotifyPartnerAsync(userId, memory, ct);
+
         return Map(memory);
+    }
+
+    /// <summary>
+    /// Notify the partner that a new memory was added to the shared collection.
+    /// Best-effort; does not throw if notification dispatch fails.
+    /// </summary>
+    private async Task NotifyPartnerAsync(Guid creatorId, Memory memory, CancellationToken ct = default)
+    {
+        try
+        {
+            // Find the partner (the other member of the relationship)
+            var partner = await db.RelationshipMembers
+                .Where(rm => rm.RelationshipId == memory.RelationshipId && rm.UserId != creatorId)
+                .Select(rm => rm.User)
+                .FirstOrDefaultAsync(ct);
+
+            if (partner == null)
+                return; // No partner yet
+
+            var creatorName = memory.CreatedBy?.DisplayName ?? "Your partner";
+            var body = $"{creatorName} added a memory: {memory.Title}";
+
+            await notifications.CreateAsync(
+                partner.Id,
+                "New memory saved 💭",
+                body,
+                notificationType: NotificationTypes.MemoryAdded,
+                referenceId: memory.Id.ToString(),
+                ct: ct);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw — notification failures shouldn't break memory creation
+            System.Diagnostics.Debug.WriteLine($"Memory notification failed: {ex.Message}");
+        }
     }
 
     public async Task<MemoryResponse> UpdateAsync(Guid userId, Guid memoryId, UpdateMemoryRequest request, CancellationToken ct = default)

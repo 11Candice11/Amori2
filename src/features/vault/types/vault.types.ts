@@ -20,28 +20,30 @@ export interface SavedGift {
    * only ever returns entries belonging to the authenticated user.
    */
   userId: string;
-  /** The original memory ID this gift references */
-  memoryId: string;
-  /** Memory title */
+  /** The original memory ID this gift references (null if this is a vision gift) */
+  memoryId: string | null;
+  /** The original vision board item ID this gift references (null if this is a memory gift) */
+  visionId: string | null;
+  /** Memory or vision title */
   title: string;
-  /** Memory description/body text */
+  /** Memory or vision description/body text */
   description: string | null;
-  /** ISO 8601 date when this memory occurred */
-  memoryDateTime: string;
-  /** Location where memory took place */
+  /** ISO 8601 date when this memory occurred or vision target date (null for visions without target) */
+  memoryDateTime: string | null;
+  /** Location where memory took place or vision location */
   location: string | null;
-  /** Coordinates of the memory's location, when one was pinned. */
+  /** Coordinates of the memory's or vision's location, when one was pinned. */
   latitude: number | null;
   longitude: number | null;
   /** ISO 8601 timestamp when this was saved to the vault */
   savedAt: string;
-  /** The person who created the original memory */
+  /** The person who created the original memory or vision */
   createdByName: string;
   /** The card number (1-10) associated with this gift */
   cardNumber: number;
   /**
    * The memory's media (photos, voice note, links), so the vault reveal can show
-   * the same rich content the memory does.
+   * the same rich content the memory does. Empty for vision gifts.
    */
   media: MemoryMediaResponse[];
 }
@@ -50,11 +52,16 @@ export interface SavedGift {
  * Request payload for saving a gift to the vault.
  *
  * Only the reference is sent — the server reads the title, description, date
- * and location from the memory itself, so the client can't save content the
+ * and location from the memory or vision itself, so the client can't save content the
  * user isn't entitled to.
+ *
+ * Exactly one of memoryId or visionId must be provided.
  */
 export interface SaveGiftRequest {
-  memoryId: string;
+  /** The memory ID to save (omit if saving a vision) */
+  memoryId?: string;
+  /** The vision board item ID to save (omit if saving a memory) */
+  visionId?: string;
   /** The card number (1-10) the gift was revealed in. */
   cardNumber: number;
 }
