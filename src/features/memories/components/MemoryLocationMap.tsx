@@ -27,6 +27,11 @@ export function MemoryLocationMap({
   label,
   height = 160,
 }: MemoryLocationMapProps) {
+  // Safety check for valid coordinates
+  if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+    return null;
+  }
+
   return (
     <View style={[styles.wrap, { height }]}>
       <MapView
@@ -41,6 +46,9 @@ export function MemoryLocationMap({
           longitude,
           latitudeDelta: 0.02,
           longitudeDelta: 0.02,
+        }}
+        onError={(error) => {
+          console.warn('MapView error:', error);
         }}
       >
         <Marker coordinate={{ latitude, longitude }} />

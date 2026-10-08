@@ -74,17 +74,20 @@ export function MemoryMediaView({
   locationLabel,
   photoHeight = 220,
 }: MemoryMediaViewProps) {
+  // Safety check: ensure media is an array
+  const safeMedia = Array.isArray(media) ? media : [];
+  
   // Photos and videos share one swipeable gallery, in their original order.
-  const visualItems: GalleryItem[] = media
+  const visualItems: GalleryItem[] = safeMedia
     .filter((m) => isVisualMedia(m.mediaType) && !!m.url)
     .map((m) => ({
       uri: resolveMediaUrl(m.url),
       kind: isVideoMedia(m.mediaType) ? ('video' as const) : ('photo' as const),
     }));
 
-  const voiceNotes = media.filter((m) => isVoiceNoteMedia(m.mediaType) && !!m.url);
-  const links = media.filter((m) => isLinkMedia(m.mediaType) && !!m.url);
-  const hasCoords = latitude != null && longitude != null;
+  const voiceNotes = safeMedia.filter((m) => isVoiceNoteMedia(m.mediaType) && !!m.url);
+  const links = safeMedia.filter((m) => isLinkMedia(m.mediaType) && !!m.url);
+  const hasCoords = latitude != null && longitude != null && !isNaN(latitude) && !isNaN(longitude);
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(() => {});

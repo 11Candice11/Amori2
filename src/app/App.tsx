@@ -84,11 +84,11 @@ function openPartnerLink() {
 
 /**
  * Open the Hearth Vault. Tapping a "gift received" notification lands the
- * recipient on their vault, where the gift their partner sent now lives.
+ * recipient on their vault and opens the specific gift that was received.
  */
-function openGift() {
+function openGift(giftId: string) {
   if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Vault' as never);
+  navigationRef.navigate('Vault', { giftId } as never);
 }
 
 /**

@@ -8,7 +8,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
@@ -19,6 +19,7 @@ import { getCardImage } from '../../../utils/cardSelector';
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
 import { SendGiftModal } from '../components/SendGiftModal';
 import { formatRelativeDate, formatShortDate } from '../../../utils/dateUtils';
+import type { RootStackParamList } from '../../../navigation/types';
 
 function VaultGlyph({ size = 40 }: { size?: number }) {
   return (
@@ -136,6 +137,7 @@ function GiftCard({ gift, onPress }: GiftCardProps) {
 
 export function VaultScreen() {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<RootStackParamList, 'Vault'>>();
   const [gifts, setGifts] = useState<SavedGift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +170,18 @@ export function VaultScreen() {
   useEffect(() => {
     loadGifts();
   }, [loadGifts]);
+
+  // When navigated from a notification with a giftId, open that gift automatically
+  useEffect(() => {
+    const giftId = route.params?.giftId;
+    if (!giftId || gifts.length === 0) return;
+
+    const gift = gifts.find(g => g.id === giftId);
+    if (gift) {
+      setSelectedGift(gift);
+      setModalVisible(true);
+    }
+  }, [route.params?.giftId, gifts]);
 
   // Refresh when screen comes into focus (e.g., after saving a new gift)
   useFocusEffect(
@@ -298,7 +312,7 @@ export function VaultScreen() {
         <ArtifactRevealModal
           visible={modalVisible}
           onClose={handleCloseModal}
-          badge={`SAVED · ${timeAgo(selectedGift.savedAt).toUpperCase()}`}
+          badge={`SAVED · ${formatRelativeDate(selectedGift.savedAt).toUpperCase()}`}
           title={selectedGift.title}
           body={selectedGift.description || undefined}
           cardNumber={selectedGift.cardNumber}

@@ -39,8 +39,9 @@ export type MainTabParamList = {
   /**
    * Hearth Vault of saved surprises. Hidden from the bottom bar — reached from
    * the dashboard "View vault" action after the Daily Artifact is opened.
+   * Can optionally open to a specific gift when navigated from a notification.
    */
-  Vault: undefined;
+  Vault: { giftId?: string } | undefined;
   /**
    * The relationship milestone timeline (nested stack). Hidden from the bottom
    * bar — reached from the Together dashboard.

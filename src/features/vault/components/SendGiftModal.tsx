@@ -5,16 +5,12 @@
  * The card spins up (via the shared FlipRevealModal); its back face is a
  * scrollable compose form: title, date, location, an image, a link, a note,
  * and a voice note. On send it:
- *   1. creates a relationship Memory (both partners can see relationship
- *      memories, and it can surface as a daily gift),
- *   2. uploads + attaches the image / voice note, and attaches the link,
- *   3. saves the memory to the sender's vault as a gift.
+ *   1. Creates a gift-only memory (NOT added to the regular memories feed)
+ *   2. Uploads and attaches the image / voice note / link
+ *   3. Sends the gift directly to the partner's vault with a notification
  *
- * NOTE on delivery: the app's memories are shared across the relationship, so a
- * gift created here is visible to the partner through the normal memory/daily-
- * gift flow. A private "only my partner can open this" delivery would need the
- * (currently unwired) Surprise backend feature; this uses what works end-to-end
- * today.
+ * This uses the dedicated /api/vault/gifts/create endpoint, which creates
+ * and sends the gift in one operation without polluting the memories feed.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -54,8 +50,8 @@ import { getCardImage } from '../../../utils/cardSelector';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
 import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { mediaService } from '../../../services/media/mediaService';
-import { memoriesService } from '../../memories/services/memoriesService';
 import { vaultService } from '../services/vaultService';
+import type { CreateGiftMediaRequest } from '../types/vault.types';
 import {
   MEMORY_CATEGORY_VALUES,
   MEMORY_MEDIA_TYPE_VALUES,
@@ -261,18 +257,11 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
       setError(null);
 
       try {
-        const memory = await memoriesService.create({
-          title: title.trim(),
-          category: MEMORY_CATEGORY_VALUES.Celebration,
-          memoryDateTime: giftAt.toISOString(),
-          location: location?.location.trim() || null,
-          latitude: location?.latitude ?? null,
-          longitude: location?.longitude ?? null,
-          description: note.trim() || null,
-        });
+        // Build media array with all attachments
+        const media: CreateGiftMediaRequest[] = [];
 
         if (image?.fileKey) {
-          await memoriesService.addMedia(memory.id, {
+          media.push({
             fileKey: image.fileKey,
             mediaType:
               image.kind === 'video'
@@ -280,27 +269,34 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
                 : MEMORY_MEDIA_TYPE_VALUES.Photo,
           });
         }
+
         if (voiceNote?.fileKey) {
-          await memoriesService.addMedia(memory.id, {
+          media.push({
             fileKey: voiceNote.fileKey,
             mediaType: MEMORY_MEDIA_TYPE_VALUES.VoiceNote,
             durationSeconds: voiceNote.durationSeconds,
           });
         }
+
         if (link) {
-          await memoriesService.addMedia(memory.id, {
+          media.push({
             fileKey: link,
             mediaType: MEMORY_MEDIA_TYPE_VALUES.Link,
             title: linkTitle.trim() || null,
           });
         }
 
-        // Deliver the gift to the PARTNER's vault (not the sender's) and notify
-        // them. The sender can't read the partner's vault, so we only get a
-        // confirmation back — surface who it went to.
-        const result = await vaultService.sendToPartner({
-          memoryId: memory.id,
+        // Create and send the gift in one operation (doesn't create a regular memory)
+        const result = await vaultService.createAndSend({
+          title: title.trim(),
+          category: MEMORY_CATEGORY_VALUES.Celebration,
+          memoryDateTime: giftAt.toISOString(),
+          location: location?.location.trim() || null,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          description: note.trim() || null,
           cardNumber: card,
+          media: media.length > 0 ? media : undefined,
         });
 
         showSuccessOverlay(`Gift sent to ${result.recipientName} 🎁`);

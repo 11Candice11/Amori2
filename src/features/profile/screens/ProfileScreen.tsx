@@ -21,6 +21,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
+import { TimePicker } from '../../../shared/components/TimePicker';
 import { getSettingsBackground } from '../../../utils/backgroundImages';
 import { authService } from '../../../services/auth/authService';
 import { partnerLinkService } from '../services/partnerLinkService';
@@ -34,6 +35,10 @@ import type { UserResponse, UpdateUserSettingsRequest } from '../../../services/
 import type { MainTabParamList } from '../../../navigation/types';
 import { LinkPartnerScreen } from './LinkPartnerScreen';
 import { ChangePasswordScreen } from './ChangePasswordScreen';
+import {
+  scheduleDailyCheckInReminder,
+  cancelDailyCheckInReminder,
+} from '../../../services/notifications/localReminderService';
 
 function UserIcon() {
   return (
@@ -139,6 +144,20 @@ export function ProfileScreen({ onLogout }: Props) {
       setUser(prev => (prev ? { ...prev, [key]: value } : prev));
       userSettingsStore.merge({ [key]: value });
       setSavingSetting(key);
+      
+      // Special handling for checkInReminders: schedule or cancel local notification
+      if (key === 'checkInReminders') {
+        if (value && user?.checkInReminderTime) {
+          scheduleDailyCheckInReminder(user.checkInReminderTime).catch(() => {
+            // Silently fail — notification permission might not be granted yet
+          });
+        } else {
+          cancelDailyCheckInReminder().catch(() => {
+            // Ignore cancellation errors
+          });
+        }
+      }
+      
       settingsService
         .update({ [key]: value })
         .then(fresh => {
@@ -152,11 +171,42 @@ export function ProfileScreen({ onLogout }: Props) {
         })
         .finally(() => setSavingSetting(null));
     },
-    [],
+    [user?.checkInReminderTime],
   );
 
   const { unreadRequestCount, refresh: refreshNotifications, markSeen } =
     usePartnerLinkNotifications();
+
+  const handleReminderTimeChange = useCallback(
+    (timeStr: string) => {
+      setUser(prev => (prev ? { ...prev, checkInReminderTime: timeStr } : prev));
+      userSettingsStore.merge({ checkInReminderTime: timeStr });
+      
+      // Immediately reschedule the reminder with the new time if reminders are enabled
+      if (user?.checkInReminders) {
+        scheduleDailyCheckInReminder(timeStr).catch(() => {
+          // Silently fail — notification permission might not be granted yet
+        });
+      }
+      
+      settingsService
+        .update({ checkInReminderTime: timeStr })
+        .then(fresh => {
+          setUser(fresh);
+          userSettingsStore.set(fresh);
+        })
+        .catch(() => {
+          // Revert on failure
+          setUser(prev => 
+            prev ? { ...prev, checkInReminderTime: user?.checkInReminderTime ?? '09:00' } : prev
+          );
+          userSettingsStore.merge({ 
+            checkInReminderTime: user?.checkInReminderTime ?? '09:00' 
+          });
+        });
+    },
+    [user?.checkInReminders, user?.checkInReminderTime],
+  );
 
   const refreshLinkStatus = useCallback(() => {
     partnerLinkService.getStatus()
@@ -604,6 +654,26 @@ export function ProfileScreen({ onLogout }: Props) {
             />
           </View>
 
+          {/* Reminder time picker — shown only when reminders are enabled */}
+          {user?.checkInReminders && user?.notificationsEnabled && (
+            <>
+              <View style={styles.settingDivider} />
+              <View style={styles.reminderTimeRow}>
+                <View style={styles.settingTextWrap}>
+                  <Text style={styles.settingTitle}>Reminder time</Text>
+                  <Text style={styles.settingSubtitle}>
+                    Choose when you'd like to receive your daily reminder.
+                  </Text>
+                </View>
+                <TimePicker
+                  value={user?.checkInReminderTime ?? '09:00'}
+                  onChange={handleReminderTimeChange}
+                  disabled={loading || !user}
+                />
+              </View>
+            </>
+          )}
+
           <View style={styles.settingDivider} />
 
           <View style={styles.settingRow}>
@@ -870,6 +940,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.md,
+  },
+  reminderTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingLeft: spacing.md,
+    backgroundColor: 'rgba(197,163,101,0.04)',
   },
   settingTextWrap: {
     flex: 1,

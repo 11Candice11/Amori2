@@ -39,10 +39,10 @@ export interface PushHandlerCallbacks {
   onOpenPartnerLink?: () => void;
   /**
    * Called when the user taps a "gift received" notification. Opens their
-   * Hearth Vault, where the gift now lives. Backend sends these with
-   * data.type === "Gift" and data.referenceId === <memoryId>.
+   * Hearth Vault and navigates to the specific gift. Backend sends these with
+   * data.type === "Gift" and data.referenceId === <giftId>.
    */
-  onOpenGift?: () => void;
+  onOpenGift?: (giftId: string) => void;
   /**
    * Called when the user taps a "Let's Chat" notification. Opens the received
    * message so it can be read. Backend sends these with data.type === "LetsChat"
@@ -118,9 +118,11 @@ function isPartnerLinkRequest(data: NotificationData | undefined): boolean {
   return data.type === 'PartnerLinkRequest';
 }
 
-function isGift(data: NotificationData | undefined): boolean {
-  if (!data) return false;
-  return data.type === 'Gift';
+function extractGiftId(data: NotificationData | undefined): string | null {
+  if (!data) return null;
+  const type = typeof data.type === 'string' ? data.type : null;
+  const ref = typeof data.referenceId === 'string' ? data.referenceId : null;
+  return type === 'Gift' && ref ? ref : null;
 }
 
 function extractChatId(data: NotificationData | undefined): string | null {
@@ -170,8 +172,9 @@ function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerC
     callbacks.onOpenPartnerLink?.();
     return;
   }
-  if (isGift(data)) {
-    callbacks.onOpenGift?.();
+  const giftId = extractGiftId(data);
+  if (giftId) {
+    callbacks.onOpenGift?.(giftId);
     return;
   }
   const chatId = extractChatId(data);

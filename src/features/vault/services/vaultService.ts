@@ -15,7 +15,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { api } from '../../../services/api/client';
-import type { SavedGift, SaveGiftRequest, SendGiftResult } from '../types/vault.types';
+import type { 
+  SavedGift, 
+  SaveGiftRequest, 
+  SendGiftResult,
+  CreateGiftRequest,
+} from '../types/vault.types';
 
 /** Keys used by the retired on-device vault, removed on first access. */
 const RETIRED_VAULT_KEY_PREFIX = '@amori:vault:saved_gifts';
@@ -69,6 +74,15 @@ export const vaultService = {
    */
   sendToPartner(payload: SaveGiftRequest): Promise<SendGiftResult> {
     return api.post<SendGiftResult>('/api/vault/gifts/send', payload);
+  },
+
+  /**
+   * Create and send a gift to your partner in one operation. This creates a
+   * gift-only memory (not added to the regular memories feed) and delivers it
+   * directly to the partner's vault with a notification.
+   */
+  createAndSend(payload: CreateGiftRequest): Promise<SendGiftResult> {
+    return api.post<SendGiftResult>('/api/vault/gifts/create', payload);
   },
 
   /** Remove a saved gift from the vault. */

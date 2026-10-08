@@ -32,6 +32,8 @@ export interface UserResponse {
   emergencyNotifications: boolean;
   /** Notifications: receive reminders to complete check-ins. */
   checkInReminders: boolean;
+  /** Notifications: daily check-in reminder time in 24-hour format "HH:MM". */
+  checkInReminderTime: string;
   /** Notifications: get notified when partner is active. */
   partnerActivityNotifications: boolean;
   /** Notifications: receive a daily digest of activities. */
@@ -55,6 +57,7 @@ export interface UpdateUserSettingsRequest {
   hugNotifications?: boolean;
   emergencyNotifications?: boolean;
   checkInReminders?: boolean;
+  checkInReminderTime?: string;
   partnerActivityNotifications?: boolean;
   dailyDigest?: boolean;
   soundEnabled?: boolean;

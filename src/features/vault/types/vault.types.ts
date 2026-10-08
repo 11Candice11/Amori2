@@ -60,12 +60,56 @@ export interface SaveGiftRequest {
 }
 
 /**
+ * Request payload for creating and sending a gift in one operation.
+ * This creates a gift-only memory (not added to the regular memories feed)
+ * and sends it directly to the partner's vault.
+ */
+export interface CreateGiftRequest {
+  /** Gift title */
+  title: string;
+  /** Gift description/note */
+  description?: string | null;
+  /** Memory category (integer enum value) */
+  category: number;
+  /** ISO 8601 date-time when this gift/memory occurred */
+  memoryDateTime: string;
+  /** Location where memory took place */
+  location?: string | null;
+  /** Latitude of location */
+  latitude?: number | null;
+  /** Longitude of location */
+  longitude?: number | null;
+  /** The card number (1-10) the gift is wrapped in */
+  cardNumber: number;
+  /** Media attachments (photos, videos, voice notes, links) */
+  media?: CreateGiftMediaRequest[];
+}
+
+/**
+ * Media attachment for a gift being created.
+ */
+export interface CreateGiftMediaRequest {
+  /** For Photo/Video/VoiceNote: storage key from media upload. For Link: the URL. */
+  fileKey: string;
+  /** Integer enum value for media type (Photo=1, VoiceNote=2, Link=3, Video=4) */
+  mediaType: number;
+  /** For VoiceNote: recording length in seconds */
+  durationSeconds?: number | null;
+  /** Optional label — link title or voice note caption */
+  title?: string | null;
+  /** Optional preview image URL for links */
+  thumbnailUrl?: string | null;
+}
+
+/**
  * Confirmation returned after sending a gift to your partner. Their vault is
  * private, so you get an acknowledgement (who it went to) rather than the saved
  * gift itself.
  */
 export interface SendGiftResult {
   memoryId: string;
+  /** The ID of the gift entry in the recipient's vault */
+  giftId: string;
   /** Display name of the partner the gift was delivered to. */
   recipientName: string;
 }
