@@ -23,6 +23,11 @@ type SettingKey = {
   [K in keyof UserResponse]: UserResponse[K] extends boolean ? K : never;
 }[keyof UserResponse];
 
+/** String setting keys like checkInReminderTime. */
+type StringSettingKey = {
+  [K in keyof UserResponse]: UserResponse[K] extends string ? K : never;
+}[keyof UserResponse];
+
 /** null until /api/users/me resolves. */
 let current: UserResponse | null = null;
 let hasLoaded = false;
@@ -46,6 +51,15 @@ export const userSettingsStore = {
    */
   isEnabled(key: SettingKey): boolean {
     return current?.[key] ?? true;
+  },
+
+  /**
+   * Read a string setting. Returns the provided default when the user hasn't
+   * loaded or when the value is not set.
+   */
+  getString(key: StringSettingKey, defaultValue: string): string {
+    const value = current?.[key];
+    return typeof value === 'string' ? value : defaultValue;
   },
 
   /** Replace the cached user — call this with any fresh UserResponse. */
@@ -119,6 +133,24 @@ export function useUserSetting(key: SettingKey): boolean {
     userSettingsStore.load();
     return unsubscribe;
   }, [key]);
+
+  return value;
+}
+
+/**
+ * Subscribe a component to a string setting. Triggers the one-time load on
+ * first mount and re-renders when the value changes.
+ */
+export function useUserStringSetting(key: StringSettingKey, defaultValue: string): string {
+  const [value, setValue] = useState(() => userSettingsStore.getString(key, defaultValue));
+
+  useEffect(() => {
+    const unsubscribe = userSettingsStore.subscribe(() => {
+      setValue(userSettingsStore.getString(key, defaultValue));
+    });
+    userSettingsStore.load();
+    return unsubscribe;
+  }, [key, defaultValue]);
 
   return value;
 }

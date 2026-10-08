@@ -1,168 +1,48 @@
 /**
- * NotificationTypeIcon — picks a glyph for a notification based on its
- * `notificationType`. Unknown/absent types fall back to a generic bell so the
- * row still reads cleanly.
+ * NotificationTypeIcon — picks an illustrated PNG icon for a notification
+ * based on its `notificationType`. Unknown/absent types fall back to the
+ * generic notifications icon so the row still reads cleanly.
  *
- * Uses the app's hand-rolled react-native-svg icon convention.
+ * Uses the same richly rendered gold-on-botanical PNGs as the rest of the app
+ * (bottom nav, dashboard cards, etc.) rather than hand-rolled SVG glyphs.
  */
 import React from 'react';
-import Svg, { Path, Circle } from 'react-native-svg';
-
-import { colors } from '../../../shared/theme';
+import { Image, type ImageSourcePropType } from 'react-native';
 
 type Props = {
   type: string | null;
   size?: number;
 };
 
-const ICON_COLOR = colors.gold;
+function iconFor(type: string): ImageSourcePropType {
+  const t = type.toLowerCase();
 
-function HeartGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 20s-7-4.35-7-9.5A3.5 3.5 0 0112 6.5 3.5 3.5 0 0119 10.5c0 5.15-7 9.5-7 9.5z"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
+  if (t.includes('hug'))                           return require('../../../../images/icons/hug.png');
+  if (t.includes('reminder'))                      return require('../../../../images/icons/notifications.png');
+  if (t.includes('emergency') || t.includes('sos')) return require('../../../../images/icons/sos.png');
+  if (t.includes('partnerlink') || t.includes('link')) return require('../../../../images/icons/profile.png');
+  if (t.includes('incident'))                      return require('../../../../images/icons/log_incident.png');
+  if (t.includes('gift') || t.includes('vault'))   return require('../../../../images/icons/memories.png');
+  if (t.includes('letschat') || t.includes('chat')) return require('../../../../images/icons/lets_chat.png');
+  if (t.includes('vision'))                        return require('../../../../images/icons/together.png');
+  if (t.includes('calendar') || t.includes('event')) return require('../../../../images/icons/calendar.png');
+  if (t.includes('checkin') || t.includes('mood')) return require('../../../../images/icons/checkin.png');
+  if (t.includes('memory') || t.includes('memories')) return require('../../../../images/icons/memories.png');
+  if (t.includes('wishlist'))                      return require('../../../../images/icons/wishlist.png');
+  if (t.includes('snapshot'))                      return require('../../../../images/icons/snapshot.png');
+  if (t.includes('together'))                      return require('../../../../images/icons/together.png');
+
+  return require('../../../../images/icons/notifications.png');
 }
 
-function ClockGlyph({ size }: { size: number }) {
+export function NotificationTypeIcon({ type, size = 26 }: Props) {
+  const source = iconFor(type ?? '');
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={8} stroke={ICON_COLOR} strokeWidth={1.6} />
-      <Path
-        d="M12 8v4l3 2"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
+    <Image
+      source={source}
+      style={{ width: size, height: size, borderRadius: size * 0.24 }}
+      resizeMode="contain"
+      accessibilityIgnoresInvertColors
+    />
   );
-}
-
-function LinkGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function BrokenLinkGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Two link halves pulled apart, with a small break mark between them. */}
-      <Path
-        d="M9 15l-1.5 1.5a3.5 3.5 0 0 1-4.95-4.95L5 9.6"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M15 9l1.5-1.5a3.5 3.5 0 0 1 4.95 4.95L19 14.4"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M12 4v3M20 12h-3M12 20v-3M4 12h3"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
-
-function AlertGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 3l9 16H3l9-16z"
-        stroke={colors.emergency}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path d="M12 10v4" stroke={colors.emergency} strokeWidth={1.6} strokeLinecap="round" />
-      <Circle cx={12} cy={16.5} r={0.9} fill={colors.emergency} />
-    </Svg>
-  );
-}
-
-function BellGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9z"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M13.73 21a2 2 0 0 1-3.46 0"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function StarGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function CalendarGlyph({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M8 2v3M16 2v3M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-        stroke={ICON_COLOR}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-export function NotificationTypeIcon({ type, size = 22 }: Props) {
-  const t = (type ?? '').toLowerCase();
-
-  if (t.includes('hug')) return <HeartGlyph size={size} />;
-  if (t.includes('reminder')) return <ClockGlyph size={size} />;
-  if (t.includes('unlink')) return <BrokenLinkGlyph size={size} />;
-  if (t.includes('partnerlink') || t.includes('link')) return <LinkGlyph size={size} />;
-  if (t.includes('emergency')) return <AlertGlyph size={size} />;
-  if (t.includes('vision')) return <StarGlyph size={size} />;
-  if (t.includes('calendar') || t.includes('event')) return <CalendarGlyph size={size} />;
-
-  return <BellGlyph size={size} />;
 }

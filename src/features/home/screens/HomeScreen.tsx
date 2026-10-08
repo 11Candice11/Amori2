@@ -225,11 +225,17 @@ export function HomeScreen() {
       }
     }
     setArtifactOpen(true);
+    // Mark as opened immediately when they tear it open, so the button changes
+    // to "Open Vault" even if they don't save. This persists the state so it
+    // stays "Open Vault" on return.
+    setArtifactOpened(true);
+    void artifactStore.markOpenedToday();
   }, [dailyGift, loadingGift]);
 
   const handleCloseArtifact = useCallback(() => {
     setArtifactOpen(false);
-    // Don't automatically set opened here - only when user explicitly saves to vault
+    // The opened state was already set when the artifact was revealed (in
+    // handleOpenArtifact), so no need to update it here.
   }, []);
 
   const handleViewVault = useCallback(() => {
@@ -278,13 +284,8 @@ export function HomeScreen() {
 
       // Remember it's now in the vault so it can't be saved again this session.
       setSavedMemoryIds((prev) => new Set(prev).add(dailyGift.memory.id));
-      // Only flip the dashboard card to "View vault" once the save is confirmed.
-      setArtifactOpened(true);
-      void artifactStore.markOpenedToday();
       showSuccessOverlay('Saved to your vault');
     } catch (error) {
-      // Leave the card in its unopened state so the user can retry — a failed
-      // save must not make it look like a gift was kept.
       console.error('Failed to save gift to vault:', error);
       showErrorOverlay("Couldn't save to your vault");
       throw error;

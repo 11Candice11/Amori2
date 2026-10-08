@@ -57,6 +57,7 @@ public sealed class UserService(
         if (request.HugNotifications.HasValue) settings.HugNotifications = request.HugNotifications.Value;
         if (request.EmergencyNotifications.HasValue) settings.EmergencyNotifications = request.EmergencyNotifications.Value;
         if (request.CheckInReminders.HasValue) settings.CheckInReminders = request.CheckInReminders.Value;
+        if (!string.IsNullOrWhiteSpace(request.CheckInReminderTime)) settings.CheckInReminderTime = request.CheckInReminderTime;
         if (request.PartnerActivityNotifications.HasValue) settings.PartnerActivityNotifications = request.PartnerActivityNotifications.Value;
         if (request.DailyDigest.HasValue) settings.DailyDigest = request.DailyDigest.Value;
 
@@ -145,6 +146,7 @@ public sealed class UserService(
         HugNotifications = settings.HugNotifications,
         EmergencyNotifications = settings.EmergencyNotifications,
         CheckInReminders = settings.CheckInReminders,
+        CheckInReminderTime = settings.CheckInReminderTime,
         PartnerActivityNotifications = settings.PartnerActivityNotifications,
         DailyDigest = settings.DailyDigest,
         

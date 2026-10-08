@@ -48,6 +48,9 @@ public sealed class GetCurrentUserResponse
     /// <summary>Notifications: receive reminders to complete check-ins.</summary>
     public bool CheckInReminders { get; set; } = true;
 
+    /// <summary>Notifications: daily check-in reminder time in 24-hour format "HH:MM".</summary>
+    public string CheckInReminderTime { get; set; } = "09:00";
+
     /// <summary>Notifications: get notified when partner is active.</summary>
     public bool PartnerActivityNotifications { get; set; } = true;
 

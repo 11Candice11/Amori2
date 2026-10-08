@@ -48,6 +48,9 @@ public sealed class UpdateUserSettingsRequest
     /// <summary>Receive reminders to complete check-ins.</summary>
     public bool? CheckInReminders { get; set; }
 
+    /// <summary>Daily check-in reminder time in 24-hour format "HH:MM".</summary>
+    public string? CheckInReminderTime { get; set; }
+
     /// <summary>Get notified when partner is active.</summary>
     public bool? PartnerActivityNotifications { get; set; }
 

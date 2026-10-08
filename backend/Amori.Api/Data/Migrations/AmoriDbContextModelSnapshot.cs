@@ -2561,6 +2561,10 @@ namespace Amori.Api.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("allow_partner_reminders");
 
+                    b.Property<string>("CheckInReminderTime")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<bool>("CheckInReminders")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

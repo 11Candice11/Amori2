@@ -13,9 +13,12 @@
  *
  * Success and failure are mutually exclusive per flow, but if both were ever
  * active the failure overlay wins (an error is the more important thing to see).
+ *
+ * Success overlays also show a warm bright-golden edge glow that spans the
+ * screen border for ~2.5 s: quick fade-in (200 ms), hold, then fade-out.
  */
 import React, { useEffect, useRef } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { vibrate } from '../../haptics';
@@ -31,12 +34,95 @@ import { SuccessAnimation, ErrorAnimation } from '../screens';
 
 type OverlayState = { id: number; message?: string; durationMs: number };
 
+/**
+ * Warm golden screen-edge glow shown during the success overlay.
+ *
+ * Renders an absolutely-positioned View that covers the entire Modal
+ * surface with a thick golden border, a matching outer shadow, and an
+ * inner soft-glow layer. The glow sequence:
+ *   0 ms  →  200 ms : fade in  (ease-out)
+ *   200 ms → 2500 ms: hold at full opacity
+ *   2500 ms → 2900 ms: fade out (the Lottie continues playing for the
+ *                      remaining ~3 s before the overlay dismisses)
+ */
+function SuccessGlowEdge({ trigger }: { trigger: number | null }) {
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (trigger === null) {
+      glowAnim.setValue(0);
+      return;
+    }
+    // Fade in → hold → fade out, all while the Lottie keeps playing.
+    const seq = Animated.sequence([
+      // Fade in: 200 ms
+      Animated.timing(glowAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      // Hold: 2300 ms  (200 + 2300 = 2500 ms total visible)
+      Animated.delay(2300),
+      // Fade out: 400 ms
+      Animated.timing(glowAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]);
+    seq.start();
+    return () => {
+      seq.stop();
+    };
+  }, [trigger, glowAnim]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[glowStyles.edge, { opacity: glowAnim }]}
+    >
+
+      {/* Inner soft-glow ring — slightly inset, lighter opacity */}
+      <View style={glowStyles.innerRing} />
+    </Animated.View>
+  );
+}
+
+const GOLD_BRIGHT = '#DFBA73';   // brightest gold from the palette
+const GOLD_SOFT   = '#C5A365';   // mid gold for the inner ring
+
+const glowStyles = StyleSheet.create({
+  edge: {
+    ...StyleSheet.absoluteFillObject,
+    // Outer border glow
+    borderWidth: 6,
+    borderColor: GOLD_BRIGHT,
+    borderRadius: 0,
+    // Shadow gives the bloom effect on both iOS and Android
+    shadowColor: GOLD_BRIGHT,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.95,
+    shadowRadius: 28,
+    elevation: 32,
+    // Pointer events disabled — taps fall through to the backdrop Pressable
+  },
+  innerRing: {
+    ...StyleSheet.absoluteFillObject,
+    margin: 6,
+    borderWidth: 3,
+    borderColor: `${GOLD_SOFT}99`, // ~60% opacity
+    borderRadius: 0,
+  },
+});
+
 type FeedbackModalProps = {
   overlay: OverlayState | null;
   hide: () => void;
   /** Haptic pattern to buzz when the overlay appears. */
   haptic: number | number[];
   render: (size: number, onFinish: () => void) => React.ReactNode;
+  /** When true the golden screen-edge glow plays alongside the overlay. */
+  showGlow?: boolean;
 };
 
 /**
@@ -44,7 +130,7 @@ type FeedbackModalProps = {
  * "clear exactly once, only my own id" dismissal logic so both hosts behave
  * identically.
  */
-function FeedbackModal({ overlay, hide, haptic, render }: FeedbackModalProps) {
+function FeedbackModal({ overlay, hide, haptic, render, showGlow = false }: FeedbackModalProps) {
   // The id we're currently showing, so the fallback timer and finish handler
   // only ever clear the overlay they belong to (not a newer one).
   const shownId = useRef<number | null>(null);
@@ -76,6 +162,11 @@ function FeedbackModal({ overlay, hide, haptic, render }: FeedbackModalProps) {
       animationType="fade"
       onRequestClose={dismiss}
     >
+      {/* Golden screen-edge glow — only rendered for success, keyed by id
+          so it restarts whenever a new overlay fires. */}
+      {showGlow ? (
+        <SuccessGlowEdge key={overlay?.id ?? 0} trigger={overlay ? overlay.id : null} />
+      ) : null}
       <Pressable style={styles.backdrop} onPress={dismiss}>
         <View style={styles.card}>
           {/* Keyed by id so re-firing restarts the animation from frame 0. */}
@@ -100,6 +191,7 @@ export function FeedbackOverlayHost() {
         overlay={error ? null : success}
         hide={hideSuccessOverlay}
         haptic={20}
+        showGlow
         render={(size, onFinish) => (
           <SuccessAnimation key={success?.id} size={size} onFinish={onFinish} />
         )}
