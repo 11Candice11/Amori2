@@ -73,16 +73,34 @@ const QUADRANT_COLORS: Record<MoodQuadrant, string> = {
   LOW_UNPLEASANT: '#6B9FFF',       // Blue
 };
 
-// Circular color spectrum for transitions
+// Circular color spectrum for transitions with gradient fades
 const COLOR_SPECTRUM = [
   '#FF6B6B',    // 0: Red (HIGH_UNPLEASANT)
-  '#FF8A5B',    // 1: Orange (HIGH_UNPLEASANT → HIGH_PLEASANT transition)
-  '#FFD93D',    // 2: Yellow (HIGH_PLEASANT)
-  '#87CEEB',    // 3: Light Blue (HIGH_PLEASANT → LOW_PLEASANT transition)
-  '#6BCF9E',    // 4: Green (LOW_PLEASANT)
-  '#5CB8B8',    // 5: Turquoise (LOW_PLEASANT → LOW_UNPLEASANT transition)
-  '#6B9FFF',    // 6: Blue (LOW_UNPLEASANT)
-  '#8B7FB8',    // 7: Purple (LOW_UNPLEASANT → HIGH_UNPLEASANT transition)
+  '#FF7B6B',    // 1: Red-Orange fade
+  '#FF8B6B',    // 2: Orange-Red fade
+  '#FF9B6B',    // 3: Light Orange fade
+  '#FFB84D',    // 4: Orange (transition)
+  '#FFC93D',    // 5: Orange-Yellow fade
+  '#FFD93D',    // 6: Yellow (HIGH_PLEASANT)
+  '#E0D93D',    // 7: Yellow-Green fade
+  '#C7D93D',    // 8: Yellow-Green fade 2
+  '#ADED6E',    // 9: Light Blue-Green fade
+  '#87CEEB',    // 10: Light Blue (HIGH_PLEASANT → LOW_PLEASANT)
+  '#79C9E8',    // 11: Light Blue-Green fade
+  '#6BCF9E',    // 12: Green (LOW_PLEASANT)
+  '#65C9A0',    // 13: Green-Teal fade
+  '#5FC3A2',    // 14: Green-Turquoise fade
+  '#5CB8B8',    // 15: Turquoise (LOW_PLEASANT → LOW_UNPLEASANT transition)
+  '#5BB0B8',    // 16: Turquoise-Blue fade
+  '#5AACBE',    // 17: Turquoise-Blue fade 2
+  '#5AA2C0',    // 18: Light Blue fade
+  '#6B9FFF',    // 19: Blue (LOW_UNPLEASANT)
+  '#7E94FF',    // 20: Blue-Purple fade
+  '#8B7FB8',    // 21: Purple (LOW_UNPLEASANT → HIGH_UNPLEASANT)
+  '#9073A8',    // 22: Purple-Red fade
+  '#956798',    // 23: Purple-Red fade 2
+  '#9A5B88',    // 24: Purple-Red fade 3
+  '#9F4F78',    // 25: Red-Purple fade
 ];
 
 // Helper to get color for a mood based on its quadrant
@@ -93,10 +111,10 @@ function getMoodColor(mood: MoodOption): string {
 // Map quadrant to position in the color spectrum for smooth transitions
 function getQuadrantColorIndex(quadrant: MoodQuadrant): number {
   switch (quadrant) {
-    case 'HIGH_UNPLEASANT': return 0;  // Red
-    case 'HIGH_PLEASANT': return 2;    // Yellow
-    case 'LOW_PLEASANT': return 4;     // Green
-    case 'LOW_UNPLEASANT': return 6;   // Blue
+    case 'HIGH_UNPLEASANT': return 0;   // Red
+    case 'HIGH_PLEASANT': return 6;     // Yellow
+    case 'LOW_PLEASANT': return 12;     // Green
+    case 'LOW_UNPLEASANT': return 19;   // Blue
   }
 }
 
@@ -174,6 +192,16 @@ function getAdjacentQuadrants(quadrant: MoodQuadrant): MoodQuadrant[] {
       return ['HIGH_PLEASANT', 'LOW_UNPLEASANT'];
     case 'LOW_UNPLEASANT':
       return ['HIGH_UNPLEASANT', 'LOW_PLEASANT'];
+  }
+}
+
+// Get scroll index for a quadrant
+function getQuadrantIndex(quadrant: MoodQuadrant): number {
+  switch (quadrant) {
+    case 'HIGH_PLEASANT': return 0;
+    case 'HIGH_UNPLEASANT': return 1;
+    case 'LOW_PLEASANT': return 2;
+    case 'LOW_UNPLEASANT': return 3;
   }
 }
 
@@ -485,23 +513,23 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xs,
+    padding: 2,
   },
   bubble: {
-    width: '85%',
-    height: '85%',
+    width: '75%',
+    height: '75%',
     borderRadius: 1000,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   bubbleText: {
     ...typography.bodySemiBold,
-    fontSize: 11,
+    fontSize: 9,
     color: '#0A140F',
     textAlign: 'center',
     paddingHorizontal: spacing.xs,
@@ -511,7 +539,7 @@ const styles = StyleSheet.create({
     width: '110%',
     height: '110%',
     borderRadius: 1000,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: colors.gold,
   },
 

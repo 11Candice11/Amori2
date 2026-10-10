@@ -69,7 +69,8 @@ export function BadgeGrid({
 
 const styles = StyleSheet.create({
   list: {
-    flex: 1,
+    // Don't use flex: 1 since this is often inside a ScrollView
+    width: '100%',
   },
 
   content: {
