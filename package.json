@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "cards": "node scripts/generate-card-images.js",
+    "prestart": "npm run cards",
+    "preandroid": "npm run cards",
+    "preios": "npm run cards",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "device": "./scripts/run-on-device.sh",
@@ -30,7 +34,6 @@
     "@react-navigation/native-stack": "^6.9.26",
     "expo": "~51.0.0",
     "expo-av": "~14.0.7",
-    "expo-dev-client": "~4.0.29",
     "expo-device": "~6.0.2",
     "expo-notifications": "^0.28.19",
     "lottie-react-native": "6.7.0",

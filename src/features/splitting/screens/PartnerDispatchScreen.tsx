@@ -311,10 +311,10 @@ const styles = StyleSheet.create({
   quietPillText: { ...typography.label, color: colors.emergency, fontSize: 9 },
 
   guidanceCard: {
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.2)',
+    borderColor: 'rgba(139,111,58,0.2)',
     padding: spacing.md,
     marginTop: spacing.sm,
   },
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
   },
-  quietTileSent: { borderColor: colors.gold, backgroundColor: 'rgba(197,163,101,0.1)' },
+  quietTileSent: { borderColor: colors.gold, backgroundColor: 'rgba(139,111,58,0.1)' },
   quietTileTitle: { ...typography.bodyMedium, color: colors.neutral, fontSize: 14 },
   quietTileSub: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 3 },
 

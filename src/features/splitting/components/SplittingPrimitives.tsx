@@ -5,8 +5,9 @@
  * dark-green sanctuary + gold design tokens.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ViewStyle, Animated, Image } from 'react-native';
 import { colors, spacing, typography } from '../../../shared/theme';
+import { usePressAnimation } from '../../../shared/hooks';
 import { ArrowRightIcon, CheckIcon } from './SplittingIcons';
 
 // ─── Primary pill CTA ───────────────────────────────────────────────────────
@@ -24,18 +25,24 @@ export function PrimaryButton({
   withArrow?: boolean;
   icon?: React.ReactNode;
 }) {
+  const { scaleValue, onPressIn, onPressOut } = usePressAnimation();
+
   return (
-    <Pressable
-      style={[styles.primaryBtn, disabled && styles.primaryBtnDisabled]}
-      onPress={disabled ? undefined : onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      android_ripple={{ color: 'rgba(10,20,15,0.2)' }}
-    >
-      {icon ? <View style={styles.btnIcon}>{icon}</View> : null}
-      <Text style={styles.primaryBtnText}>{label}</Text>
-      {withArrow ? <ArrowRightIcon color={colors.ctaText} size={18} /> : null}
-    </Pressable>
+    <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+      <Pressable
+        style={[styles.primaryBtn, disabled && styles.primaryBtnDisabled]}
+        onPress={disabled ? undefined : onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        android_ripple={{ color: 'rgba(10,20,15,0.2)' }}
+      >
+        {icon ? <View style={styles.btnIcon}>{icon}</View> : null}
+        <Text style={styles.primaryBtnText}>{label}</Text>
+        {withArrow ? <ArrowRightIcon color={colors.ctaText} size={18} /> : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -50,33 +57,45 @@ export function SecondaryButton({
   onPress?: () => void;
   icon?: React.ReactNode;
 }) {
+  const { scaleValue, onPressIn, onPressOut } = usePressAnimation();
+
   return (
-    <Pressable
-      style={styles.secondaryBtn}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
-    >
-      {icon ? <View style={styles.btnIcon}>{icon}</View> : null}
-      <Text style={styles.secondaryBtnText}>{label}</Text>
-    </Pressable>
+    <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+      <Pressable
+        style={styles.secondaryBtn}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
+      >
+        {icon ? <View style={styles.btnIcon}>{icon}</View> : null}
+        <Text style={styles.secondaryBtnText}>{label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 // ─── Text-only tertiary link ────────────────────────────────────────────────
 
 export function TextButton({ label, onPress }: { label: string; onPress?: () => void }) {
+  const { scaleValue, onPressIn, onPressOut } = usePressAnimation();
+
   return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={styles.textBtn}
-    >
-      <Text style={styles.textBtnLabel}>{label}</Text>
-    </Pressable>
+    <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={styles.textBtn}
+      >
+        <Text style={styles.textBtnLabel}>{label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -98,25 +117,31 @@ export function SelectChip({
   icon?: React.ReactNode;
   accessibilityHint?: string;
 }) {
+  const { scaleValue, onPressIn, onPressOut } = usePressAnimation();
+
   return (
-    <Pressable
-      style={[styles.chip, selected && styles.chipSelected]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={label}
-      accessibilityHint={accessibilityHint}
-      android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
-    >
-      {icon ? <View style={styles.chipIcon}>{icon}</View> : null}
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-      {selected ? (
-        <View style={styles.chipCheck}>
-          <CheckIcon color={colors.ctaText} size={11} />
-        </View>
-      ) : null}
-    </Pressable>
+    <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+      <Pressable
+        style={[styles.chip, selected && styles.chipSelected]}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        onLongPress={onLongPress}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={label}
+        accessibilityHint={accessibilityHint}
+        android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
+      >
+        {icon ? <View style={styles.chipIcon}>{icon}</View> : null}
+        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+        {selected ? (
+          <View style={styles.chipCheck}>
+            <CheckIcon color={colors.ctaText} size={11} />
+          </View>
+        ) : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -150,36 +175,42 @@ export function ChoiceCard({
   suggested?: boolean;
   onPress?: () => void;
 }) {
+  const { scaleValue, onPressIn, onPressOut } = usePressAnimation();
+
   return (
-    <Pressable
-      style={[styles.choiceCard, selected && styles.choiceCardSelected]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: !!selected }}
-      accessibilityLabel={title}
-      android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
-    >
-      {icon ? <View style={styles.choiceIcon}>{icon}</View> : null}
-      <View style={{ flex: 1 }}>
-        <View style={styles.choiceTitleRow}>
-          <Text style={styles.choiceTitle}>{title}</Text>
-          {suggested ? (
-            <View style={styles.suggestedPill}>
-              <Text style={styles.suggestedText}>Suggested</Text>
+    <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+      <Pressable
+        style={[styles.choiceCard, selected && styles.choiceCardSelected]}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityState={{ selected: !!selected }}
+        accessibilityLabel={title}
+        android_ripple={{ color: 'rgba(139,111,58,0.08)' }}
+      >
+        {icon ? <View style={styles.choiceIcon}>{icon}</View> : null}
+        <View style={{ flex: 1 }}>
+          <View style={styles.choiceTitleRow}>
+            <Text style={styles.choiceTitle}>{title}</Text>
+            {suggested ? (
+              <View style={styles.suggestedPill}>
+                <Text style={styles.suggestedText}>Suggested</Text>
+              </View>
+            ) : null}
+          </View>
+          {tag ? (
+            <View style={styles.choiceTagPill}>
+              <Text style={styles.choiceTagText}>{tag}</Text>
             </View>
           ) : null}
+          {description ? <Text style={styles.choiceDesc}>{description}</Text> : null}
         </View>
-        {tag ? (
-          <View style={styles.choiceTagPill}>
-            <Text style={styles.choiceTagText}>{tag}</Text>
-          </View>
-        ) : null}
-        {description ? <Text style={styles.choiceDesc}>{description}</Text> : null}
-      </View>
-      <View style={[styles.radio, selected && styles.radioSelected]}>
-        {selected ? <View style={styles.radioDot} /> : null}
-      </View>
-    </Pressable>
+        <View style={[styles.radio, selected && styles.radioSelected]}>
+          {selected ? <View style={styles.radioDot} /> : null}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -243,6 +274,20 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     paddingHorizontal: spacing.lg,
+    // 3D beveled border
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderTopColor: 'rgba(139,111,58,1)',
+    borderLeftColor: 'rgba(139,111,58,0.9)',
+    borderRightColor: 'rgba(107,86,44,1)',
+    borderBottomColor: 'rgba(107,86,44,1.2)',
+    shadowColor: 'rgba(139,111,58,0.8)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
   primaryBtnDisabled: { opacity: 0.45 },
   primaryBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 16 },
@@ -256,8 +301,15 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     paddingHorizontal: spacing.lg,
     backgroundColor: 'rgba(6,78,59,0.35)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(167,210,182,0.25)',
+    // 3D beveled border (secondary style)
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(139,111,58,1)',
+    borderLeftColor: 'rgba(139,111,58,0.9)',
+    borderRightColor: 'rgba(107,86,44,1)',
+    borderBottomColor: 'rgba(107,86,44,1.2)',
   },
   secondaryBtnText: { ...typography.bodyMedium, color: colors.primaryLight, fontSize: 15 },
   textBtn: { alignItems: 'center', paddingVertical: spacing.sm },
@@ -316,7 +368,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -324,7 +376,7 @@ const styles = StyleSheet.create({
   choiceTitle: { ...typography.headlineSm, color: colors.neutral, fontSize: 20 },
   choiceTagPill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -333,7 +385,7 @@ const styles = StyleSheet.create({
   choiceTagText: { ...typography.label, color: colors.gold, fontSize: 10 },
   choiceDesc: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 8, lineHeight: 19 },
   suggestedPill: {
-    backgroundColor: 'rgba(197,163,101,0.18)',
+    backgroundColor: 'rgba(139,111,58,0.18)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,

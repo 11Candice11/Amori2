@@ -22,6 +22,7 @@ import { colors, spacing, typography } from '../../../shared/theme';
 import { authService } from '../../../services/auth/authService';
 import { getSignInBackground } from '../../../utils/backgroundImages';
 import { validateLogin } from '../utils/authSchema';
+import { GoldButton } from '../../../shared/components/buttons';
 
 type Props = {
   onLoginSuccess: () => void;
@@ -179,25 +180,15 @@ export function LoginScreen({ onLoginSuccess }: Props) {
                   <Text style={styles.errorText}>{error}</Text>
                 ) : null}
 
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.submitButton,
-                    loading && styles.submitButtonDisabled,
-                    pressed && !loading && styles.submitButtonPressed,
-                  ]}
+                <GoldButton
+                  title={isLogin ? 'Sign In' : 'Create Account'}
                   onPress={handleSubmit}
+                  loading={loading}
                   disabled={loading}
-                  accessibilityRole="button"
-                  accessibilityLabel={isLogin ? 'Sign in' : 'Create account'}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color={colors.ctaText} />
-                  ) : (
-                    <Text style={styles.submitButtonText}>
-                      {isLogin ? 'Sign In' : 'Create Account'}
-                    </Text>
-                  )}
-                </Pressable>
+                  fullWidth
+                  size="large"
+                  style={styles.submitButton}
+                />
 
                 <Pressable
                   onPress={() => { setMode(isLogin ? 'register' : 'login'); setError(null); }}
@@ -257,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17, 29, 22, 0.88)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(253,252,240,0.1)',
+    borderColor: 'rgba(139,111,58,0.1)',
     padding: spacing.lg,
   },
   modeToggle: {
@@ -301,7 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10,20,15,0.7)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(253,252,240,0.12)',
+    borderColor: 'rgba(139,111,58,0.12)',
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     ...typography.body,
@@ -313,23 +304,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   submitButton: {
-    backgroundColor: colors.ctaBackground,
-    borderRadius: 50,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: spacing.xs,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonPressed: {
-    opacity: 0.88,
-  },
-  submitButtonText: {
-    ...typography.bodySemiBold,
-    color: colors.ctaText,
-    fontSize: 15,
   },
   switchLink: {
     alignItems: 'center',

@@ -10,19 +10,19 @@
  * tab roots stays in sync and there's a single poller behind them all.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../../theme';
 import { useNotificationCount } from '../../state/notificationStore';
-import { BellIcon } from '../icons';
+import { ACTION_ICON_SOURCES } from '../icons/AppIcons';
 
 type Props = {
   onPress: () => void;
-  /** Icon tint. Defaults to the neutral header colour. */
+  /** Icon tint. Not used with PNG icon but kept for API compatibility. */
   color?: string;
 };
 
-export function NotificationBell({ onPress, color = colors.neutral }: Props) {
+export function NotificationBell({ onPress }: Props) {
   const count = useNotificationCount();
   const hasUnread = count > 0;
   const label = count > 99 ? '99+' : String(count);
@@ -38,9 +38,14 @@ export function NotificationBell({ onPress, color = colors.neutral }: Props) {
           ? `Notifications, ${count} unread`
           : 'Notifications'
       }
-      android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+      android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
     >
-      <BellIcon color={color} />
+      <Image
+        source={ACTION_ICON_SOURCES.notifications}
+        style={styles.bellIcon}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
       {hasUnread ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText} numberOfLines={1}>
@@ -58,6 +63,11 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bellIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
   },
   badge: {
     position: 'absolute',

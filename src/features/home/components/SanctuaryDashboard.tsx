@@ -14,7 +14,7 @@
  * the light/dark modes and the botanical/gold variants.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
@@ -25,6 +25,79 @@ import { useNotificationCount } from '../../../shared/state/notificationStore';
 import { MonthlyMemoriesWidget } from '../../memories/components/MonthlyMemoriesWidget';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
+
+/** Animated button with 3D press effect and border image */
+function AnimatedButton({
+  onPress,
+  children,
+  style,
+  accessibilityLabel,
+}: {
+  onPress?: () => void;
+  children: React.ReactNode;
+  style?: any;
+  accessibilityLabel?: string;
+}) {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  const shadowAnim = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.96,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 0,
+      }),
+      Animated.timing(shadowAnim, {
+        toValue: 0.4,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 4,
+      }),
+      Animated.timing(shadowAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Animated.View
+        style={[
+          style,
+          {
+            transform: [{ scale: scaleAnim }],
+            shadowOpacity: shadowAnim.interpolate({
+              inputRange: [0.4, 1],
+              outputRange: [0.15, 0.3],
+            }),
+          },
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 function HeartIcon({ size = 20 }: { size?: number }) {
   return (
@@ -52,7 +125,7 @@ function DashboardBell({ onPress }: { onPress?: () => void }) {
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={hasUnread ? `Notifications, ${count} unread` : 'Notifications'}
-      android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+      android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
     >
       <ActionImageIcon name="notifications" size={22} />
       {hasUnread ? (
@@ -128,15 +201,12 @@ function AttunementItem({
     <Pressable
       style={({ pressed }) => [styles.attItem, pressed && styles.pressed]}
       onPress={onPress}
-      android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
       accessibilityRole="button"
       accessibilityLabel={title}
     >
-      <View style={styles.attItemHeader}>
-        {icon}
-        <View style={[styles.attDot, danger && styles.attDotDanger]} />
-      </View>
-      <Text style={styles.attItemTitle}>{title}</Text>
+      {icon}
+      {danger ? <View style={styles.attDotDanger} /> : null}
     </Pressable>
   );
 }
@@ -399,7 +469,7 @@ export function SanctuaryDashboard({
         <Pressable
           style={({ pressed }) => [styles.weekCard, pressed && styles.pressed]}
           onPress={onOpenWeeklyReflection}
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
           accessibilityRole="button"
           accessibilityLabel="View this week's reflection"
         >
@@ -469,7 +539,7 @@ export function SanctuaryDashboard({
                   ]}
                   onPress={handleReconnectHug}
                   disabled={reconnectHugSent}
-                  android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                  android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
                   accessibilityRole="button"
                   accessibilityState={{ disabled: reconnectHugSent }}
                   accessibilityLabel={reconnectHugSent ? 'Hug sent' : 'Send a hug'}
@@ -482,7 +552,7 @@ export function SanctuaryDashboard({
                 <Pressable
                   style={({ pressed }) => [styles.reconnectBtn, pressed && styles.pressed]}
                   onPress={handleReconnectCheckIn}
-                  android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                  android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
                   accessibilityRole="button"
                   accessibilityLabel="Share a short check-in"
                 >
@@ -493,7 +563,7 @@ export function SanctuaryDashboard({
                   <Pressable
                     style={({ pressed }) => [styles.reconnectExtendBtn, pressed && styles.pressed]}
                     onPress={onExtendSpace}
-                    android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                    android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
                     accessibilityRole="button"
                     accessibilityLabel="Not yet, extend your space"
                   >
@@ -505,7 +575,7 @@ export function SanctuaryDashboard({
               <Pressable
                 style={({ pressed }) => [styles.windowExtendBtn, pressed && styles.pressed]}
                 onPress={onExtendSpace}
-                android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+                android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
                 accessibilityRole="button"
                 accessibilityLabel="Extend your space"
               >
@@ -527,7 +597,7 @@ export function SanctuaryDashboard({
               style={({ pressed }) => [styles.windowClose, pressed && styles.pressed]}
               onPress={handleDismissSpace}
               hitSlop={10}
-              android_ripple={{ color: 'rgba(197,163,101,0.15)', radius: 20, borderless: true }}
+              android_ripple={{ color: 'rgba(139,111,58,0.15)', radius: 20, borderless: true }}
               accessibilityRole="button"
               accessibilityLabel={spaceWindow.finished ? 'Dismiss' : 'End your space'}
             >
@@ -541,7 +611,7 @@ export function SanctuaryDashboard({
       <Pressable
         style={({ pressed }) => [styles.checkInRow, pressed && styles.pressed]}
         onPress={onCheckIn}
-        android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+        android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
         accessibilityRole="button"
         accessibilityLabel={hasMoodToday ? 'Update your check-in' : 'Check in'}
       >
@@ -574,13 +644,13 @@ export function SanctuaryDashboard({
       <View style={styles.attGrid}>
         <View style={styles.attRow}>
           {onLetsChat ? (
-            <AttunementItem icon={<ActionImageIcon name="chat" />} title="Let's Chat" onPress={onLetsChat} />
+            <AttunementItem icon={<ActionImageIcon name="chat" size={100} />} title="Let's Chat" onPress={onLetsChat} />
           ) : null}
-          <AttunementItem icon={<ActionImageIcon name="hug" />} title="Send hug" onPress={onHug} />
+          <AttunementItem icon={<ActionImageIcon name="hug" size={100} />} title="Send hug" onPress={onHug} />
         </View>
         <View style={styles.attRow}>
-          <AttunementItem icon={<ActionImageIcon name="distraction" />} title="Distraction" onPress={onDistraction} />
-          <AttunementItem icon={<ActionImageIcon name="incident" />} title="Log Incident" onPress={onLogIncident} />
+          <AttunementItem icon={<ActionImageIcon name="distraction" size={100} />} title="Distraction" onPress={onDistraction} />
+          <AttunementItem icon={<ActionImageIcon name="incident" size={100} />} title="Log Incident" onPress={onLogIncident} />
         </View>
       </View>
 
@@ -626,28 +696,24 @@ export function SanctuaryDashboard({
                 {nextGift.label} till your next gift
               </Text>
             ) : null}
-            <Pressable
-              style={({ pressed }) => [styles.artifactBtn, pressed && styles.pressed]}
+            <AnimatedButton
               onPress={onViewVault}
-              android_ripple={{ color: 'rgba(10,20,15,0.15)' }}
-              accessibilityRole="button"
+              style={styles.artifactBtn}
               accessibilityLabel="View vault"
             >
               <VaultIcon />
               <Text style={styles.artifactBtnText}>VIEW VAULT</Text>
-            </Pressable>
+            </AnimatedButton>
           </>
         ) : (
-          <Pressable
-            style={({ pressed }) => [styles.artifactBtn, pressed && styles.pressed]}
+          <AnimatedButton
             onPress={onOpenArtifact}
-            android_ripple={{ color: 'rgba(10,20,15,0.15)' }}
-            accessibilityRole="button"
+            style={styles.artifactBtn}
             accessibilityLabel="Tear open"
           >
             <LockIcon />
             <Text style={styles.artifactBtnText}>TEAR OPEN</Text>
-          </Pressable>
+          </AnimatedButton>
         )}
       </View>
 
@@ -761,6 +827,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    // Subtle 3D depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   // This Week (weekly reflection) card
@@ -774,6 +846,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.md,
+    // Gold glow effect for special weekly card
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
   },
   weekCardIcon: {
     width: 44,
@@ -833,6 +911,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
     marginBottom: spacing.md,
+    // Subtle 3D depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   partnerAvatar: {
     width: 44,
@@ -874,10 +958,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
     padding: spacing.md,
     // Extra right padding so content never sits under the "×" close button.
     paddingRight: spacing.lg + spacing.md,
@@ -902,7 +986,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
   },
   windowExtendText: {
     ...typography.label,
@@ -926,10 +1010,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
+    // 3D gold shadow
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
   },
   reconnectBtnPrimary: {
-    backgroundColor: 'rgba(197,163,101,0.24)',
+    backgroundColor: 'rgba(139,111,58,0.24)',
+    shadowOpacity: 0.3,
+    elevation: 3,
   },
   reconnectBtnSent: {
     opacity: 0.7,
@@ -978,6 +1070,12 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
     padding: spacing.md,
     marginBottom: spacing.lg,
+    // Subtle 3D effect
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   checkInTextWrap: {
     flex: 1,
@@ -1063,35 +1161,18 @@ const styles = StyleSheet.create({
   },
   attItem: {
     flex: 1,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    minHeight: 92,
-    justifyContent: 'space-between',
-  },
-  attItemHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  attDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.gold,
-    opacity: 0.6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   attDotDanger: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.emergency,
-    opacity: 1,
-  },
-  attItemTitle: {
-    ...typography.bodySemiBold,
-    color: colors.neutral,
-    fontSize: 15,
-    marginTop: spacing.sm,
   },
 
   // Daily artifact
@@ -1102,6 +1183,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     alignItems: 'center',
+    // Prominent 3D effect for the special artifact
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   artifactBadge: {
     paddingHorizontal: 12,
@@ -1172,6 +1259,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ctaBackground,
     borderRadius: 14,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minWidth: 180,
+    // 3D Beveled border effect
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderTopColor: 'rgba(139, 111, 58, 1)',
+    borderLeftColor: 'rgba(139, 111, 58, 0.9)',
+    borderRightColor: 'rgba(107, 86, 44, 1)',
+    borderBottomColor: 'rgba(107, 86, 44, 1.2)',
+    // Enhanced 3D shadow
+    shadowColor: '#8B6F3A',
+    shadowOffset: { width: 2, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 18,
+    elevation: 14,
   },
   artifactBtnText: {
     ...typography.bodySemiBold,

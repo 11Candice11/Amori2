@@ -64,4 +64,12 @@ public sealed class GetCurrentUserResponse
 
     /// <summary>App settings: enable vibration feedback.</summary>
     public bool VibrationEnabled { get; set; } = true;
+
+    // ─── Gamification ───────────────────────────────────────────────────────────
+    
+    /// <summary>Gamification: current points and level information.</summary>
+    public UserPointsResponse? Points { get; set; }
+
+    /// <summary>Gamification: list of earned badges not yet archived to vault.</summary>
+    public List<BadgeResponse> EarnedBadges { get; set; } = [];
 }

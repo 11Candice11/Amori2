@@ -134,6 +134,39 @@ function openMemory(memoryId: string) {
 }
 
 /**
+ * Open the calendar when the partner adds an event. Tapping a "CalendarEventAdded"
+ * notification navigates to the calendar screen on the Together tab.
+ */
+function openCalendarEventCreated(eventId: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Together', {
+    screen: 'Calendar',
+  } as never);
+}
+
+/**
+ * Open the bucket list when the partner adds an item. Tapping a "BucketListItemAdded"
+ * notification navigates to the Date Ideas (bucket list) screen on the Together tab.
+ */
+function openBucketListItem(itemId: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Together', {
+    screen: 'DateIdeas',
+  } as never);
+}
+
+/**
+ * Open the wishlist when the partner adds an item. Tapping a "WishlistItemAdded"
+ * notification navigates to the Wishlist screen on the Together tab.
+ */
+function openWishlistItem(itemId: string) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Together', {
+    screen: 'Wishlist',
+  } as never);
+}
+
+/**
  * Open the CalendarDay view for a specific date. Tapping a "CalendarEvent"
  * notification (partner created an event, or a reminder fired) lands the user
  * on the day so they can see the event in context.
@@ -280,6 +313,9 @@ export default function App() {
         onOpenChat: openChat,
         onOpenVisionBoardItem: openVisionBoardItem,
         onOpenMemory: openMemory,
+        onOpenCalendarEventCreated: openCalendarEventCreated,
+        onOpenBucketListItem: openBucketListItem,
+        onOpenWishlistItem: openWishlistItem,
         onOpenCalendarEvent: openCalendarEvent,
       });
       return unsubscribe;

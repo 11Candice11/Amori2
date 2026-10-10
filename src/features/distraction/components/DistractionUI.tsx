@@ -10,11 +10,14 @@ import {
   StyleSheet,
   Text,
   View,
+  Animated,
+  Image,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
+import { usePressAnimation } from '../../../shared/hooks';
 
 type ScreenHeaderProps = {
   eyebrow?: string;
@@ -61,25 +64,32 @@ export function Button({
   style,
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
+  const { scaleValue, onPressIn, onPressOut } = usePressAnimation();
+
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      android_ripple={{
-        color: isPrimary ? 'rgba(10,20,15,0.2)' : 'rgba(197,163,101,0.12)',
-      }}
-      style={[
-        isPrimary ? styles.primaryBtn : styles.secondaryBtn,
-        disabled && styles.btnDisabled,
-        style,
-      ]}
-    >
-      <Text style={isPrimary ? styles.primaryBtnText : styles.secondaryBtnText}>
-        {label}
-      </Text>
-    </Pressable>
+    <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        android_ripple={{
+          color: isPrimary ? 'rgba(10,20,15,0.2)' : 'rgba(139,111,58,0.12)',
+        }}
+        style={[
+          disabled && styles.btnDisabled,
+          style,
+        ]}
+      >
+        <View style={isPrimary ? styles.primaryBtn : styles.secondaryBtn}>
+          <Text style={isPrimary ? styles.primaryBtnText : styles.secondaryBtnText}>
+            {label}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -103,17 +113,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
+    // 3D Beveled border effect
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderTopColor: 'rgba(139, 111, 58, 1)',
+    borderLeftColor: 'rgba(139, 111, 58, 0.9)',
+    borderRightColor: 'rgba(107, 86, 44, 1)',
+    borderBottomColor: 'rgba(107, 86, 44, 1.2)',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 2, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 18,
+    elevation: 12,
   },
-  primaryBtnText: { ...typography.bodySemiBold, color: colors.ctaText },
   secondaryBtn: {
+    backgroundColor: 'transparent',
     borderRadius: 50,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingVertical: 14,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
+    // 3D Beveled border effect (lighter for secondary)
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(139, 111, 58, 0.8)',
+    borderLeftColor: 'rgba(139, 111, 58, 0.7)',
+    borderRightColor: 'rgba(107, 86, 44, 0.8)',
+    borderBottomColor: 'rgba(107, 86, 44, 1)',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 1, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  secondaryBtnText: { ...typography.bodySemiBold, color: colors.neutral },
-  btnDisabled: { opacity: 0.5 },
+  primaryBtnText: { 
+    ...typography.bodySemiBold, 
+    color: colors.ctaText,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    zIndex: 10,
+  },
+  secondaryBtnText: { 
+    ...typography.bodySemiBold, 
+    color: colors.neutral,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+    zIndex: 10,
+  },
+  btnDisabled: { 
+    opacity: 0.6,
+    shadowOpacity: 0.2,
+  },
 });

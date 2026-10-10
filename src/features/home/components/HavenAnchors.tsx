@@ -100,7 +100,7 @@ function AnchorItem({ icon, title, subtitle, onPress, cardWidth }: AnchorItemPro
     <Pressable
       style={[styles.item, { width: cardWidth }]}
       onPress={onPress}
-      android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
       accessibilityRole="button"
       accessibilityLabel={title}
     >

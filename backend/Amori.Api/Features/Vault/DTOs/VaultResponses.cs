@@ -57,8 +57,11 @@ public sealed class VaultGiftResponse
 /// </summary>
 public sealed class SendGiftResult
 {
-    /// <summary>The memory that was sent.</summary>
+    /// <summary>The memory or vision that was sent.</summary>
     public Guid MemoryId { get; init; }
+
+    /// <summary>The ID of the gift entry in the recipient's vault.</summary>
+    public Guid GiftId { get; init; }
 
     /// <summary>Display name of the partner the gift was delivered to.</summary>
     public string RecipientName { get; init; } = string.Empty;

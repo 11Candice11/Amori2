@@ -85,7 +85,7 @@ function ArchiveRow({
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       onPress={() => onOpen(entry)}
       onLongPress={() => onDelete(entry)}
-      android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
       accessibilityRole="button"
       accessibilityLabel={`Saved reflection for ${entry.rangeLabel}`}
     >

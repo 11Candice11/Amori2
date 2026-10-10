@@ -184,7 +184,7 @@ export function SanctuaryJournalScreen() {
             accessibilityLabel="Save a quiet note to Hearth Journal"
             accessibilityState={{ expanded: noteExpanded }}
             onPress={() => setNoteExpanded(prev => !prev)}
-            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
           >
             <LeafIcon color={colors.gold} size={16} />
             <Text style={styles.saveNoteText}>
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: 'rgba(6,78,59,0.6)',
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.4)',
+    borderColor: 'rgba(139,111,58,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',

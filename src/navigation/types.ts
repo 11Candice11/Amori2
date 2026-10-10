@@ -8,6 +8,7 @@ import type { DistractionStackParamList } from './DistractionStackParamList';
 import type { TimelineStackParamList } from './TimelineStackParamList';
 import type { ChatStackParamList } from './ChatStackParamList';
 import type { SupportProfileStackParamList } from './SupportProfileStackParamList';
+import type { ProfileStackParamList } from './ProfileStackParamList';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -18,8 +19,9 @@ export type MainTabParamList = {
    * The settings tab. `openLink` carries a nonce (e.g. Date.now()) that, when
    * it changes, tells ProfileScreen to open the Link Partner modal — used when
    * a partner link-request notification is tapped.
+   * This is now a nested stack that can navigate to sub-screens like Achievements.
    */
-  Profile: { openLink?: number } | undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
   /**
    * The Hug flow (nested stack). Deliberately absent from TAB_CONFIG so it
    * has no bottom-bar button — it's reached from the dashboard "Send a hug"

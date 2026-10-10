@@ -63,7 +63,7 @@ const stepStyles = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
-  nodeActive: { borderColor: colors.gold, backgroundColor: 'rgba(197,163,101,0.15)' },
+  nodeActive: { borderColor: colors.gold, backgroundColor: 'rgba(139,111,58,0.15)' },
   nodeText: { ...typography.label, color: colors.neutralMuted, fontSize: 8 },
   line: { flex: 1, height: 1.5, backgroundColor: colors.border },
   lineActive: { backgroundColor: colors.gold },
@@ -201,7 +201,7 @@ export function IncidentDetailScreen() {
             key={t.key}
             style={[styles.tabBtn, activeTab === t.key && styles.tabBtnActive]}
             onPress={() => setActiveTab(t.key)}
-            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === t.key }}
           >
@@ -298,10 +298,10 @@ export function IncidentDetailScreen() {
               ))
             )}
             <View style={styles.addBtnRow}>
-              <Pressable style={styles.addBtn} onPress={() => navigation.navigate('AddResponse', { incidentId })} android_ripple={{ color: 'rgba(197,163,101,0.1)' }}>
+              <Pressable style={styles.addBtn} onPress={() => navigation.navigate('AddResponse', { incidentId })} android_ripple={{ color: 'rgba(139,111,58,0.1)' }}>
                 <Text style={styles.addBtnText} numberOfLines={1}>+ Add Response</Text>
               </Pressable>
-              <Pressable style={[styles.addBtn, styles.addBtnSecondary]} onPress={() => navigation.navigate('AddNote', { incidentId })} android_ripple={{ color: 'rgba(197,163,101,0.1)' }}>
+              <Pressable style={[styles.addBtn, styles.addBtnSecondary]} onPress={() => navigation.navigate('AddNote', { incidentId })} android_ripple={{ color: 'rgba(139,111,58,0.1)' }}>
                 <Text style={styles.addBtnSecondaryText} numberOfLines={1}>+ Add Note</Text>
               </Pressable>
             </View>
@@ -380,10 +380,10 @@ export function IncidentDetailScreen() {
               <EmptyState icon="✅" title="Not yet resolved" />
             )}
             <View style={styles.addBtnRow}>
-              <Pressable style={styles.addBtn} onPress={() => navigation.navigate('IncidentReview', { incidentId })} android_ripple={{ color: 'rgba(197,163,101,0.1)' }}>
+              <Pressable style={styles.addBtn} onPress={() => navigation.navigate('IncidentReview', { incidentId })} android_ripple={{ color: 'rgba(139,111,58,0.1)' }}>
                 <Text style={styles.addBtnText} numberOfLines={1}>Write Review</Text>
               </Pressable>
-              <Pressable style={[styles.addBtn, styles.addBtnSecondary]} onPress={() => navigation.navigate('IncidentLessons', { incidentId })} android_ripple={{ color: 'rgba(197,163,101,0.1)' }}>
+              <Pressable style={[styles.addBtn, styles.addBtnSecondary]} onPress={() => navigation.navigate('IncidentLessons', { incidentId })} android_ripple={{ color: 'rgba(139,111,58,0.1)' }}>
                 <Text style={styles.addBtnSecondaryText} numberOfLines={1}>Lessons Learned</Text>
               </Pressable>
             </View>
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
   },
   tabBtnActive: { 
     borderColor: colors.gold, 
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
   },
   tabBtnText: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 11 },
   tabBtnTextActive: { color: colors.gold, fontFamily: typography.bodySemiBold.fontFamily },
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
   errorText: { ...typography.bodySm, color: '#B34040', textAlign: 'center', marginBottom: spacing.sm },
 
   bubble: { backgroundColor: colors.surfaceCard, borderRadius: 12, padding: spacing.md, marginBottom: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  bubbleNote: { backgroundColor: 'rgba(197,163,101,0.06)', borderColor: 'rgba(197,163,101,0.2)' },
+  bubbleNote: { backgroundColor: 'rgba(139,111,58,0.06)', borderColor: 'rgba(139,111,58,0.2)' },
   bubbleHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 },
   bubbleAuthor: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 12, flex: 1 },
   bubbleType: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 10 },

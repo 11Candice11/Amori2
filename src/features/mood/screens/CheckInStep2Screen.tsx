@@ -1,28 +1,24 @@
 /**
  * CheckInStep2Screen — "Choose your specific mood"
  *
- * Step 2 of 2: Shows a list of moods filtered to the quadrant the
- * user selected in Step 1. Each row has a radio-style selector, mood
- * name, and a short description. At the bottom there's a "Confirm &
- * Anchor" CTA and an "I don't know" fallback.
- *
- * Design notes:
- *  - Forest image header with a dark overlay (same pattern as Step 1)
- *  - Quadrant label + tagline shown prominently at top
- *  - Scrollable list of mood options (radio select)
- *  - Gold CTA pill at bottom
- *  - "I don't know" ghost link below CTA
+ * Step 2 of 2: Shows a bubble cloud of moods where:
+ * - Each mood is its own bubble with text inside
+ * - Selected quadrant's color dominates, but other colors are visible
+ * - Horizontally scrollable to pan and see moods from other quadrants
+ * - Tap a bubble to expand it and show the description at bottom
+ * - Selected bubble shows the mood description
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
+  Animated,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
+  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -35,41 +31,7 @@ import {
   type MoodQuadrant,
 } from '../types/mood.types';
 
-// ─── Images ───────────────────────────────────────────────────────────────────
-
-// Use the forest image for High Unpleasant (stormy), fireplace for others
-const forestImage = require('../../../../images/forest.png');
-const fireplaceImage = require('../../../../images/fireplace.png');
-const cozyImage = require('../../../../images/cozy.png');
-
-function getBackgroundImage(quadrant: MoodQuadrant) {
-  switch (quadrant) {
-    case 'HIGH_UNPLEASANT':
-      return forestImage;   // dark, stirring forest
-    case 'LOW_UNPLEASANT':
-      return forestImage;   // quiet forest, subdued
-    case 'HIGH_PLEASANT':
-      return fireplaceImage; // warm, bright fire
-    case 'LOW_PLEASANT':
-      return cozyImage;      // calm, cozy interior
-  }
-}
-
 // ─── Icons ────────────────────────────────────────────────────────────────────
-
-function CheckIcon() {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M5 12l4 4L19 7"
-        stroke={colors.ctaText}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
 
 function AnchorIcon() {
   return (
@@ -101,14 +63,117 @@ function QuestionDontKnowIcon() {
   );
 }
 
-// ─── Quadrant accent color helper ────────────────────────────────────────────
+// ─── Color spectrum ────────────────────────────────────────────────────────────
 
-function getQuadrantLabelColor(quadrant: MoodQuadrant): string {
+// Color mapping for each quadrant - circular spectrum
+const QUADRANT_COLORS: Record<MoodQuadrant, string> = {
+  HIGH_UNPLEASANT: '#FF6B6B',      // Red
+  HIGH_PLEASANT: '#FFD93D',        // Yellow
+  LOW_PLEASANT: '#6BCF9E',         // Green
+  LOW_UNPLEASANT: '#6B9FFF',       // Blue
+};
+
+// Circular color spectrum for transitions
+const COLOR_SPECTRUM = [
+  '#FF6B6B',    // 0: Red (HIGH_UNPLEASANT)
+  '#FF8A5B',    // 1: Orange (HIGH_UNPLEASANT → HIGH_PLEASANT transition)
+  '#FFD93D',    // 2: Yellow (HIGH_PLEASANT)
+  '#87CEEB',    // 3: Light Blue (HIGH_PLEASANT → LOW_PLEASANT transition)
+  '#6BCF9E',    // 4: Green (LOW_PLEASANT)
+  '#5CB8B8',    // 5: Turquoise (LOW_PLEASANT → LOW_UNPLEASANT transition)
+  '#6B9FFF',    // 6: Blue (LOW_UNPLEASANT)
+  '#8B7FB8',    // 7: Purple (LOW_UNPLEASANT → HIGH_UNPLEASANT transition)
+];
+
+// Helper to get color for a mood based on its quadrant
+function getMoodColor(mood: MoodOption): string {
+  return QUADRANT_COLORS[mood.quadrant];
+}
+
+// Map quadrant to position in the color spectrum for smooth transitions
+function getQuadrantColorIndex(quadrant: MoodQuadrant): number {
   switch (quadrant) {
-    case 'HIGH_PLEASANT':   return colors.gold;
-    case 'LOW_PLEASANT':    return colors.primaryLight;
-    case 'HIGH_UNPLEASANT': return '#B34040';
-    case 'LOW_UNPLEASANT':  return colors.neutralMuted;
+    case 'HIGH_UNPLEASANT': return 0;  // Red
+    case 'HIGH_PLEASANT': return 2;    // Yellow
+    case 'LOW_PLEASANT': return 4;     // Green
+    case 'LOW_UNPLEASANT': return 6;   // Blue
+  }
+}
+
+// Generate bubble layout for 2x2 quadrant grid with center transitions
+interface BubbleLayout {
+  mood: MoodOption;
+  size: number;
+  color: string;
+  quadrant: MoodQuadrant;
+}
+
+function generateBubbleGrid(quadrant: MoodQuadrant): BubbleLayout[] {
+  const sizes = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 0.85, 0.95, 1.05, 1.15, 1.25, 1.35, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4];
+  const bubbles: BubbleLayout[] = [];
+  
+  // Get moods for this quadrant (main 20)
+  const moodsForQuadrant = MOOD_OPTIONS.filter((m) => m.quadrant === quadrant);
+  const mainColor = QUADRANT_COLORS[quadrant];
+  
+  moodsForQuadrant.forEach((mood, index) => {
+    if (index < 20) {
+      bubbles.push({
+        mood,
+        size: sizes[index % sizes.length],
+        color: mainColor,
+        quadrant,
+      });
+    }
+  });
+  
+  // Add 10 transition moods to each adjacent quadrant with transition colors
+  const adjacent = getAdjacentQuadrants(quadrant);
+  const currentColorIndex = getQuadrantColorIndex(quadrant);
+  
+  adjacent.forEach((adjQuadrant, adjIndex) => {
+    const adjColorIndex = getQuadrantColorIndex(adjQuadrant);
+    // Get the transition color between current and adjacent
+    const isClockwise = (adjColorIndex > currentColorIndex) || 
+                        (currentColorIndex === 6 && adjColorIndex === 0); // Blue to Red wrap
+    
+    // Pick the middle color between the two quadrants
+    let transitionColorIndex: number;
+    if (adjIndex === 0) {
+      // First adjacent quadrant - use first transition color
+      transitionColorIndex = (currentColorIndex + 1) % COLOR_SPECTRUM.length;
+    } else {
+      // Second adjacent quadrant - use second transition color (going backwards)
+      transitionColorIndex = (currentColorIndex - 1 + COLOR_SPECTRUM.length) % COLOR_SPECTRUM.length;
+    }
+    
+    const transitionColor = COLOR_SPECTRUM[transitionColorIndex];
+    const transitionMoods = MOOD_OPTIONS.filter((m) => m.quadrant === adjQuadrant).slice(0, 10);
+    
+    transitionMoods.forEach((mood, index) => {
+      bubbles.push({
+        mood,
+        size: sizes[index % sizes.length],
+        color: transitionColor,
+        quadrant: adjQuadrant,
+      });
+    });
+  });
+  
+  return bubbles;
+}
+
+// Get adjacent quadrants (the ones that share an edge)
+function getAdjacentQuadrants(quadrant: MoodQuadrant): MoodQuadrant[] {
+  switch (quadrant) {
+    case 'HIGH_PLEASANT':
+      return ['HIGH_UNPLEASANT', 'LOW_PLEASANT'];
+    case 'HIGH_UNPLEASANT':
+      return ['HIGH_PLEASANT', 'LOW_UNPLEASANT'];
+    case 'LOW_PLEASANT':
+      return ['HIGH_PLEASANT', 'LOW_UNPLEASANT'];
+    case 'LOW_UNPLEASANT':
+      return ['HIGH_UNPLEASANT', 'LOW_PLEASANT'];
   }
 }
 
@@ -128,13 +193,21 @@ type Props = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, submitting = false, error = null }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
+  const [currentQuadrant, setCurrentQuadrant] = useState<MoodQuadrant>(quadrant);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const meta = QUADRANTS.find((q) => q.key === quadrant)!;
-  const moodsForQuadrant = MOOD_OPTIONS.filter((m) => m.quadrant === quadrant);
-  const selectedMood = moodsForQuadrant.find((m) => m.id === selectedId) ?? null;
-  const accentColor = getQuadrantLabelColor(quadrant);
-  const bgImage = getBackgroundImage(quadrant);
+  // Generate bubble grid for current quadrant (20 main + 20 transitions)
+  const bubbles = generateBubbleGrid(currentQuadrant);
+
+  const selectedMood = selectedMoodId 
+    ? MOOD_OPTIONS.find((m) => m.id === selectedMoodId) ?? null
+    : null;
+
+  const handleBubbleSelect = (moodId: string) => {
+    Vibration.vibrate(30);
+    setSelectedMoodId(moodId);
+  };
 
   const handleConfirm = useCallback(() => {
     if (selectedMood) {
@@ -142,154 +215,215 @@ export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, s
     }
   }, [selectedMood, onConfirm]);
 
-  const renderMoodRow = useCallback(
-    (mood: MoodOption) => {
-      const isSelected = mood.id === selectedId;
-      return (
-        <Pressable
-          key={mood.id}
-          style={({ pressed }) => [
-            styles.moodRow,
-            isSelected && styles.moodRowSelected,
-            pressed && styles.moodRowPressed,
-          ]}
-          onPress={() => setSelectedId(mood.id)}
-          android_ripple={{ color: 'rgba(253,252,240,0.05)' }}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: isSelected }}
-          accessibilityLabel={`${mood.label}: ${mood.description}`}
-        >
-          {/* Radio / check indicator */}
-          <View style={[styles.radio, isSelected && styles.radioSelected]}>
-            {isSelected && <CheckIcon />}
-          </View>
-
-          {/* Text */}
-          <View style={styles.moodText}>
-            <Text style={[styles.moodLabel, isSelected && styles.moodLabelSelected]}>
-              {mood.label}
-            </Text>
-            <Text style={styles.moodDescription}>{mood.description}</Text>
-          </View>
-        </Pressable>
-      );
-    },
-    [selectedId],
-  );
+  // Map quadrant to scroll index
+  const quadrantIndex = getQuadrantIndex(quadrant);
+  
+  useEffect(() => {
+    // Scroll to the correct quadrant when it changes
+    setTimeout(() => {
+      if (scrollViewRef.current) {
+        const screenWidth = 100; // approximate, will be set by ScrollView
+        scrollViewRef.current.scrollTo({ x: quadrantIndex * screenWidth, animated: true });
+      }
+    }, 100);
+  }, [quadrant, quadrantIndex]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      {/* Mood list scrolls freely */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        overScrollMode="never"
-      >
-        {/* ── Header with background image ── */}
-        <ImageBackground
-          source={bgImage}
-          style={styles.headerImage}
-          imageStyle={styles.headerImageStyle}
-          resizeMode="cover"
-        >
-          <View style={styles.headerOverlay}>
-            {/* Back button */}
-            <Pressable
-              style={styles.backButton}
-              onPress={!submitting ? onBack : undefined}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              accessibilityState={{ disabled: submitting }}
-            >
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M19 12H5M5 12l7-7M5 12l7 7"
-                  stroke={colors.neutral}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
-            </Pressable>
+      <View style={styles.container}>
+        {/* Header with back button and title */}
+        <View style={styles.header}>
+          <Pressable
+            style={styles.backButton}
+            onPress={!submitting ? onBack : undefined}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityState={{ disabled: submitting }}
+          >
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M19 12H5M5 12l7-7M5 12l7 7"
+                stroke={colors.neutral}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
 
-            {/* Step label */}
-            <View style={styles.stepRow}>
-              <View style={styles.stepDot} />
-              <Text style={styles.stepLabel}>STEP 2 OF 2</Text>
-            </View>
-
-            {/* Quadrant label + tagline */}
-            <Text style={[styles.quadrantLabel, { color: accentColor }]}>
-              {meta.label.toUpperCase()} • {meta.tagline.toUpperCase()}
-            </Text>
-
-            <Text style={styles.headerSubtext}>
-              Take a deep breath. No judgment in this sanctuary.
-            </Text>
-          </View>
-        </ImageBackground>
-
-        {/* ── Mood list ── */}
-        <View style={styles.listContainer}>
-          {moodsForQuadrant.map(renderMoodRow)}
+          <Text style={styles.headerTitle}>
+            Tap the emotion that best describes how you feel right now
+          </Text>
         </View>
 
-        {/* Bottom padding so last mood row isn't hidden behind the fixed footer */}
-        <View style={styles.listBottomPadding} />
-      </ScrollView>
-
-      {/* ── Fixed footer — always visible, never scrolls away ── */}
-      <View style={styles.footer}>
-        {/* Surface any submit / "I don't know" error so it isn't silent */}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {/* Confirm CTA */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.confirmButton,
-            (!selectedMood || submitting) && styles.confirmButtonDisabled,
-            pressed && selectedMood && !submitting && styles.confirmButtonPressed,
-          ]}
-          onPress={handleConfirm}
-          disabled={!selectedMood || submitting}
-          android_ripple={selectedMood && !submitting ? { color: 'rgba(10,20,15,0.2)' } : undefined}
-          accessibilityRole="button"
-          accessibilityLabel="Confirm and anchor"
-          accessibilityState={{ disabled: !selectedMood || submitting }}
+        {/* Bubble cloud - horizontal scroll between quadrants */}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.bubbleScroll}
+          contentContainerStyle={styles.bubbleContainer}
+          horizontal={true}
+          scrollEnabled={true}
+          showsHorizontalScrollIndicator={false}
+          pagingEnabled={true}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={(event) => {
+            const contentOffsetX = event.nativeEvent.contentOffset.x;
+            const screenWidth = event.nativeEvent.layoutMeasurement.width;
+            const pageIndex = Math.round(contentOffsetX / screenWidth);
+            const quadrants: MoodQuadrant[] = ['HIGH_PLEASANT', 'HIGH_UNPLEASANT', 'LOW_PLEASANT', 'LOW_UNPLEASANT'];
+            if (quadrants[pageIndex]) {
+              setCurrentQuadrant(quadrants[pageIndex]);
+            }
+          }}
         >
-          {submitting ? (
-            <ActivityIndicator size="small" color={colors.ctaText} />
-          ) : (
-            <>
-              <AnchorIcon />
-              <Text style={styles.confirmButtonText}>Confirm & Anchor</Text>
-            </>
-          )}
-        </Pressable>
+          {['HIGH_PLEASANT', 'HIGH_UNPLEASANT', 'LOW_PLEASANT', 'LOW_UNPLEASANT'].map((q) => (
+            <View key={q} style={styles.quadrantPage}>
+              <ScrollView
+                scrollEnabled={true}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.bubbleGrid}>
+                  {generateBubbleGrid(q as MoodQuadrant).map((bubble, index) => (
+                    <BubbleMood
+                      key={`${bubble.mood.id}-${index}`}
+                      bubble={bubble}
+                      isSelected={selectedMoodId === bubble.mood.id}
+                      onPress={() => handleBubbleSelect(bubble.mood.id)}
+                      delay={Math.min(index * 15, 600)}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          ))}
+        </ScrollView>
 
-        {/* I don't know */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.dontKnowButton,
-            pressed && styles.dontKnowPressed,
-            submitting && styles.dontKnowPressed,
-          ]}
-          onPress={!submitting ? onIDontKnow : undefined}
-          android_ripple={{ color: 'rgba(253,252,240,0.06)' }}
-          accessibilityRole="button"
-          accessibilityLabel="I don't know, hard to pinpoint words right now"
-          accessibilityState={{ disabled: submitting }}
-        >
-          <QuestionDontKnowIcon />
-          <Text style={styles.dontKnowText}>I don't know</Text>
-        </Pressable>
-        <Text style={styles.dontKnowHint}>Hard to pinpoint words right now</Text>
+        {/* Description shown at bottom when mood is selected */}
+        {selectedMood && (
+          <View style={styles.descriptionContainer}>
+            <Text style={[styles.descriptionText, { color: getMoodColor(selectedMood) }]}>
+              <Text style={styles.descriptionLabel}>{selectedMood.label}</Text>
+            </Text>
+            <Text style={styles.descriptionSubtext}>{selectedMood.description}</Text>
+          </View>
+        )}
+
+        {/* Footer with actions */}
+        <View style={styles.footer}>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.confirmButton,
+              (!selectedMood || submitting) && styles.confirmButtonDisabled,
+              pressed && selectedMood && !submitting && styles.confirmButtonPressed,
+            ]}
+            onPress={handleConfirm}
+            disabled={!selectedMood || submitting}
+            android_ripple={selectedMood && !submitting ? { color: 'rgba(10,20,15,0.2)' } : undefined}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm and anchor"
+            accessibilityState={{ disabled: !selectedMood || submitting }}
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color={colors.ctaText} />
+            ) : (
+              <>
+                <AnchorIcon />
+                <Text style={styles.confirmButtonText}>Confirm & Anchor</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.dontKnowButton,
+              pressed && styles.dontKnowPressed,
+              submitting && styles.dontKnowPressed,
+            ]}
+            onPress={!submitting ? onIDontKnow : undefined}
+            android_ripple={{ color: 'rgba(253,252,240,0.06)' }}
+            accessibilityRole="button"
+            accessibilityLabel="I don't know, hard to pinpoint words right now"
+            accessibilityState={{ disabled: submitting }}
+          >
+            <QuestionDontKnowIcon />
+            <Text style={styles.dontKnowText}>I don't know</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+// Bubble component
+interface BubbleMoodProps {
+  bubble: BubbleLayout;
+  isSelected: boolean;
+  onPress: () => void;
+  delay: number;
+}
+
+function BubbleMood({ bubble, isSelected, onPress, delay }: BubbleMoodProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Fade in
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim, delay]);
+
+  useEffect(() => {
+    // Scale animation when selected
+    Animated.spring(scaleAnim, {
+      toValue: isSelected ? 1.2 : 1,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 40,
+    }).start();
+  }, [isSelected, scaleAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.bubbleWrapper,
+        {
+          transform: [{ scale: scaleAnim }],
+          opacity: fadeAnim,
+        },
+      ]}
+    >
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.bubble,
+          {
+            backgroundColor: bubble.color,
+          },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${bubble.mood.label}: ${bubble.mood.description}`}
+      >
+        <Text 
+          style={styles.bubbleText}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {bubble.mood.label}
+        </Text>
+        {isSelected && (
+          <View style={styles.bubbleSelection} />
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -300,122 +434,110 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scroll: {
+  container: {
     flex: 1,
-  },
-  content: {
-    // no paddingBottom here — footer handles the bottom space
   },
 
-  // Header image
-  headerImage: {
-    width: '100%',
-    height: 200,
-    marginBottom: spacing.sm,
-  },
-  headerImageStyle: {
-    opacity: 0.6,
-  },
-  headerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(10,20,15,0.6)',
+  // Header
+  header: {
+    paddingTop: spacing.xl,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-    justifyContent: 'flex-end',
+    paddingBottom: spacing.md,
+    alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
     top: spacing.md,
     left: spacing.md,
     padding: 4,
+    zIndex: 10,
   },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: spacing.xs,
-  },
-  stepDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.gold,
-  },
-  stepLabel: {
-    ...typography.label,
-    color: colors.gold,
-    fontSize: 9,
-  },
-  quadrantLabel: {
-    ...typography.label,
-    fontSize: 11,
-    marginBottom: spacing.xs,
-    letterSpacing: 1.4,
-  },
-  headerSubtext: {
-    ...typography.body,
-    color: colors.neutralMuted,
+  headerTitle: {
+    ...typography.headline,
+    color: colors.neutral,
+    textAlign: 'center',
+    fontSize: 18,
+    paddingHorizontal: spacing.lg,
   },
 
-  // Mood list
-  listContainer: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-  },
-  listBottomPadding: {
-    // Enough room so the last mood row clears the fixed footer
-    height: 180,
-  },
-  moodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  moodRowSelected: {
-    borderColor: 'rgba(197,163,101,0.4)',
-    backgroundColor: 'rgba(197,163,101,0.08)',
-  },
-  moodRowPressed: {
-    opacity: 0.82,
-  },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.neutralSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  radioSelected: {
-    backgroundColor: colors.ctaBackground,
-    borderColor: colors.ctaBackground,
-  },
-  moodText: {
+  // Bubble cloud
+  bubbleScroll: {
     flex: 1,
   },
-  moodLabel: {
-    ...typography.bodyMedium,
-    color: colors.neutral,
-    marginBottom: 2,
+  bubbleContainer: {
+    flexGrow: 1,
   },
-  moodLabelSelected: {
-    color: colors.gold,
+  quadrantPage: {
+    width: '100%',
+    height: '100%',
+    flex: 1,
   },
-  moodDescription: {
-    ...typography.bodySm,
-    color: colors.neutralMuted,
+  bubbleGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    padding: spacing.md,
+  },
+  bubbleWrapper: {
+    width: '12.5%',  // 8 columns (100 / 8 = 12.5%)
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xs,
+  },
+  bubble: {
+    width: '85%',
+    height: '85%',
+    borderRadius: 1000,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  bubbleText: {
+    ...typography.bodySemiBold,
+    fontSize: 11,
+    color: '#0A140F',
+    textAlign: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  bubbleSelection: {
+    position: 'absolute',
+    width: '110%',
+    height: '110%',
+    borderRadius: 1000,
+    borderWidth: 3,
+    borderColor: colors.gold,
   },
 
-  // Fixed footer
+  // Description at bottom
+  descriptionContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: 'rgba(10,20,15,0.4)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(197,163,101,0.2)',
+  },
+  descriptionLabel: {
+    ...typography.bodySemiBold,
+    fontSize: 16,
+  },
+  descriptionText: {
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  descriptionSubtext: {
+    ...typography.body,
+    color: colors.neutral,
+    textAlign: 'center',
+  },
+
+  // Footer
   footer: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
@@ -464,19 +586,10 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.neutralMuted,
   },
-  dontKnowHint: {
-    ...typography.bodySm,
-    color: colors.neutralSubtle,
-    textAlign: 'center',
-    paddingBottom: spacing.xs,
-  },
   error: {
     ...typography.bodySm,
     color: '#B34040',
     textAlign: 'center',
     marginBottom: spacing.sm,
-  },
-  bottomPadding: {
-    height: spacing.lg,
   },
 });

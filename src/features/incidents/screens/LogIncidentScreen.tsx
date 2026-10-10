@@ -225,7 +225,7 @@ export function LogIncidentScreen() {
                     key={cat}
                     style={[styles.categoryBtn, category === cat && styles.categoryBtnActive]}
                     onPress={() => setCategory(cat)}
-                    android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+                    android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
                   >
                     <Text style={[styles.categoryBtnText, category === cat && styles.categoryBtnTextActive]}>
                       {CATEGORY_LABELS[cat]}
@@ -262,7 +262,7 @@ export function LogIncidentScreen() {
                     key={l}
                     style={[styles.levelBtn, impact === l && { backgroundColor: LEVEL_COLORS[l] + '33', borderColor: LEVEL_COLORS[l] }]}
                     onPress={() => setImpact(l)}
-                    android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+                    android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
                   >
                     <Text style={[styles.levelBtnText, impact === l && { color: LEVEL_COLORS[l] }]}>{l}</Text>
                   </Pressable>
@@ -275,7 +275,7 @@ export function LogIncidentScreen() {
                     key={l}
                     style={[styles.levelBtn, urgency === l && { backgroundColor: LEVEL_COLORS[l] + '33', borderColor: LEVEL_COLORS[l] }]}
                     onPress={() => setUrgency(l as IncidentUrgency)}
-                    android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+                    android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
                   >
                     <Text style={[styles.levelBtnText, urgency === l && { color: LEVEL_COLORS[l] }]}>{l}</Text>
                   </Pressable>
@@ -304,7 +304,7 @@ export function LogIncidentScreen() {
                     ]}
                     onPress={disabled ? undefined : () => setAssigneeChoice(choice)}
                     disabled={disabled}
-                    android_ripple={disabled ? undefined : { color: 'rgba(197,163,101,0.08)' }}
+                    android_ripple={disabled ? undefined : { color: 'rgba(139,111,58,0.08)' }}
                   >
                     <View style={[styles.assignRadio, assigneeChoice === choice && styles.assignRadioActive]} />
                     <View style={{ flex: 1 }}>
@@ -405,17 +405,17 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  categoryBtnActive: { backgroundColor: 'rgba(197,163,101,0.15)', borderColor: colors.gold },
+  categoryBtnActive: { backgroundColor: 'rgba(139,111,58,0.15)', borderColor: colors.gold },
   categoryBtnText: { ...typography.bodySm, color: colors.neutralMuted },
   categoryBtnTextActive: { color: colors.gold },
 
   infoBox: {
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.2)',
+    borderColor: 'rgba(139,111,58,0.2)',
   },
   infoText: { ...typography.bodySm, color: colors.gold },
 

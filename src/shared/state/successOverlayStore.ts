@@ -1,9 +1,9 @@
 /**
- * A tiny observable store for the app-wide "success" Lottie overlay.
+ * A tiny observable store for the app-wide "success" sparkles overlay.
  *
  * Mirrors bannerStore: module-level state, a Set of listeners, and a
  * `useSuccessOverlay` hook. Any create/save flow can celebrate a success with
- * the shared `success.json` animation by calling `showSuccessOverlay(...)` —
+ * the shared gold sparkles animation by calling `showSuccessOverlay(...)` —
  * no per-screen modal state or prop-drilling required. A single
  * `SuccessOverlayHost` mounted near the app root renders whatever is current.
  *
@@ -36,9 +36,9 @@ export interface ShowSuccessOverlayOptions {
   durationMs?: number;
 }
 
-// Matches the actual length of success.json (6 s). The overlay auto-dismisses
+// Matches the actual length of the sparkles animation (~5 s). The overlay auto-dismisses
 // via onAnimationFinish; this is only the fallback if that callback never fires.
-const DEFAULT_DURATION_MS = 6000;
+const DEFAULT_DURATION_MS = 5000;
 
 /**
  * Show the success overlay. Safe to call from anywhere (screens, services,

@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -273,7 +274,6 @@ export function ImportantDatesScreen() {
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
-                    styles.saveBtn,
                     (!canSave || pressed) && styles.saveBtnDisabled,
                   ]}
                   onPress={handleSave}
@@ -281,11 +281,13 @@ export function ImportantDatesScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Save important date"
                 >
-                  {saving ? (
-                    <ActivityIndicator color={colors.ctaText} size="small" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Add date</Text>
-                  )}
+                  <View style={styles.saveBtn}>
+                    {saving ? (
+                      <ActivityIndicator color={colors.ctaText} size="small" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Add date</Text>
+                    )}
+                  </View>
                 </Pressable>
               </View>
             }
@@ -367,6 +369,30 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    // 3D Beveled border effect
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderTopColor: 'rgba(139, 111, 58, 1)',
+    borderLeftColor: 'rgba(139, 111, 58, 0.9)',
+    borderRightColor: 'rgba(107, 86, 44, 1)',
+    borderBottomColor: 'rgba(107, 86, 44, 1.2)',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 2, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  borderImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2,
+    pointerEvents: 'none',
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { ...typography.bodySemiBold, color: colors.ctaText, fontSize: 15 },

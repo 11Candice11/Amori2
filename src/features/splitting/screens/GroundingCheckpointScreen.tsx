@@ -170,7 +170,7 @@ export function GroundingCheckpointScreen() {
           onPress={() => setShowAddModal(true)}
           accessibilityRole="button"
           accessibilityLabel="Add custom trigger"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
         >
           <Text style={styles.addButtonText}>+ Add Custom Trigger</Text>
         </Pressable>
@@ -300,12 +300,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.gold,
     borderStyle: 'dashed',
-    backgroundColor: 'rgba(197,163,101,0.05)',
+    backgroundColor: 'rgba(139,111,58,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addButtonPressed: {
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
   },
   addButtonText: {
     ...typography.bodySemiBold,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   categoryButtonActive: {
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.15)',
+    backgroundColor: 'rgba(139,111,58,0.15)',
   },
   categoryButtonPressed: {
     opacity: 0.7,

@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   unassigned: {
     ...typography.bodySm,
-    color: 'rgba(253,252,240,0.3)',
+    color: 'rgba(139,111,58,0.3)',
     fontSize: 11,
   },
   metaDot: {

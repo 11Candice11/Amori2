@@ -196,7 +196,7 @@ export function CompassionBridgeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Show me another message"
             onPress={shuffleNotes}
-            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
           >
             <SparkleIcon color={colors.gold} size={18} />
             <Text style={styles.shuffleText}>Show me another message</Text>
@@ -211,7 +211,7 @@ export function CompassionBridgeScreen() {
           accessibilityState={{ busy: savingMemories }}
           disabled={savingMemories}
           onPress={openMemories}
-          android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.08)' }}
         >
           <View style={styles.infinityBadge}>
             <InfinityIcon color={colors.primaryLight} size={18} />
@@ -228,7 +228,7 @@ export function CompassionBridgeScreen() {
           accessibilityRole="button"
           accessibilityLabel="Open a little surprise"
           onPress={() => setGiftOpen(true)}
-          android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.08)' }}
         >
           <View style={styles.giftBadgeCircle}>
             <SparkleIcon color={colors.gold} size={18} />
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 12,
     padding: spacing.md,
   },
@@ -370,10 +370,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
     padding: spacing.md,
     marginTop: 12,
   },

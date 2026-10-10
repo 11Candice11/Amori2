@@ -21,6 +21,9 @@ public sealed class Memory : BaseEntity
     public bool IsFavorite { get; set; }
     public bool IsDeleted { get; set; }
 
+    /// <summary>True if this is a gift-only memory created by one partner and sent directly to the other's vault. Gift-only memories do not appear in the regular memories feed.</summary>
+    public bool IsGiftOnly { get; set; }
+
     // Navigation
     public Relationship Relationship { get; set; } = null!;
     public User CreatedBy { get; set; } = null!;

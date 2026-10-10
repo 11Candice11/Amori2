@@ -24,7 +24,7 @@ export function MemoriesCard({ onOpenMemories, onOpenTimeline }: MemoriesCardPro
       <Pressable
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         onPress={onOpenMemories}
-        android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+        android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
         accessibilityRole="button"
         accessibilityLabel="Open our memories"
       >
@@ -112,11 +112,18 @@ const styles = StyleSheet.create({
   },
   timelineBtn: {
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
+    // 3D beveled border (secondary button style)
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(139,111,58,1)',
+    borderLeftColor: 'rgba(139,111,58,0.9)',
+    borderRightColor: 'rgba(107,86,44,1)',
+    borderBottomColor: 'rgba(107,86,44,1.2)',
   },
   timelineBtnText: {
     ...typography.bodySemiBold,
@@ -128,6 +135,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
+    // 3D beveled border
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderTopColor: 'rgba(139,111,58,1)',
+    borderLeftColor: 'rgba(139,111,58,0.9)',
+    borderRightColor: 'rgba(107,86,44,1)',
+    borderBottomColor: 'rgba(107,86,44,1.2)',
+    shadowColor: 'rgba(139,111,58,0.8)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
   viewBtnPressed: {
     opacity: 0.7,

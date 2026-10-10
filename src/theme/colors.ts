@@ -69,46 +69,46 @@ export type Palette = {
 
 // ─── Botanical dark palette (original / default theme) ──────────────────────────
 export const darkPalette: Palette = {
-  primary: '#064E3B',
-  primaryLight: '#A7D2B6',
-  secondary: '#022C22',
-  tertiary: '#D4AF37',
+  primary: '#8B6F3A',
+  primaryLight: '#A48344',
+  secondary: '#6B562C',
+  tertiary: '#8B6F3A',
 
-  // Accent
-  gold: '#C5A365',
+  // Accent - deep dark gold almost brown
+  gold: '#8B6F3A',
 
-  // Text / neutrals
-  neutral: '#FDFCF0',
-  neutralMuted: 'rgba(253, 252, 240, 0.64)',
-  neutralSubtle: 'rgba(253, 252, 240, 0.38)',
+  // Text / neutrals - deep dark gold almost brown
+  neutral: '#8B6F3A',
+  neutralMuted: 'rgba(139, 111, 58, 0.64)',
+  neutralSubtle: 'rgba(139, 111, 58, 0.38)',
 
   // Backgrounds & surfaces
   background: '#0A140F',
   surface: '#0A140F',
   surfaceCard: '#111D16',
 
-  // Call-to-action
-  ctaBackground: '#C5A365',
+  // Call-to-action - ruby/diamond button
+  ctaBackground: '#8B6F3A',
   ctaText: '#0A140F',
 
   // Status / feedback
   emergency: '#E07A5F',
   emergencyBg: 'rgba(224, 122, 95, 0.14)',
-  statusDot: '#A7D2B6',
-  rhythmComplete: '#A7D2B6',
+  statusDot: '#8B6F3A',
+  rhythmComplete: '#8B6F3A',
 
   // Tabs
-  tabActive: '#C5A365',
-  tabInactive: '#E0E0E0',
+  tabActive: '#8B6F3A',
+  tabInactive: 'rgba(139, 111, 58, 0.5)',
 
-  border: 'rgba(253, 252, 240, 0.08)',
+  border: 'rgba(139, 111, 58, 0.25)',
 
-  // Gold tint overlays
-  goldTint08: 'rgba(197,163,101,0.08)',
-  goldTint12: 'rgba(197,163,101,0.12)',
-  goldTint15: 'rgba(197,163,101,0.15)',
-  goldTint25: 'rgba(197,163,101,0.25)',
-  goldTint35: 'rgba(197,163,101,0.35)',
+  // Brownish gold tint overlays
+  goldTint08: 'rgba(139,111,58,0.08)',
+  goldTint12: 'rgba(139,111,58,0.12)',
+  goldTint15: 'rgba(139,111,58,0.15)',
+  goldTint25: 'rgba(139,111,58,0.25)',
+  goldTint35: 'rgba(139,111,58,0.35)',
 };
 
 // ─── Botanical light palette ────────────────────────────────────────────────────
@@ -116,132 +116,132 @@ export const darkPalette: Palette = {
 // accents use the tertiary/secondary golds from the gold palette board
 // (Tertiary #A48344, Secondary #C5A059) per product direction.
 export const lightPalette: Palette = {
-  primary: '#064E3B',
-  primaryLight: '#A7D2B6',
-  secondary: '#C5A059',
-  tertiary: '#A48344',
+  primary: '#6B562C',
+  primaryLight: '#8B6F3A',
+  secondary: '#4A3D1F',
+  tertiary: '#6B562C',
 
-  // Accent — the tertiary gold (#A48344) reads with strong contrast on light surfaces.
-  gold: '#A48344',
+  // Accent — deep dark gold almost brown
+  gold: '#6B562C',
 
-  // Text / neutrals — dark botanical green on light surfaces.
-  neutral: '#0A140F',
-  neutralMuted: 'rgba(10, 20, 15, 0.64)',
-  neutralSubtle: 'rgba(10, 20, 15, 0.42)',
+  // Text / neutrals — deep dark brownish gold on light surfaces
+  neutral: '#6B562C',
+  neutralMuted: 'rgba(107, 86, 44, 0.64)',
+  neutralSubtle: 'rgba(107, 86, 44, 0.42)',
 
   // Backgrounds & surfaces
   background: '#FAF8F5',
   surface: '#FAF8F5',
   surfaceCard: '#FFFFFF',
 
-  // Call-to-action — dark green button with light text.
-  ctaBackground: '#064E3B',
+  // Call-to-action — ruby/diamond button
+  ctaBackground: '#6B562C',
   ctaText: '#FAF8F5',
 
   // Status / feedback
   emergency: '#B34040',
   emergencyBg: 'rgba(179, 64, 64, 0.10)',
-  statusDot: '#A48344',
-  rhythmComplete: '#A48344',
+  statusDot: '#6B562C',
+  rhythmComplete: '#6B562C',
 
   // Tabs
-  tabActive: '#A48344',
-  tabInactive: 'rgba(10, 20, 15, 0.38)',
+  tabActive: '#6B562C',
+  tabInactive: 'rgba(107, 86, 44, 0.38)',
 
-  border: 'rgba(10, 20, 15, 0.10)',
+  border: 'rgba(107, 86, 44, 0.20)',
 
-  // Gold tint overlays
-  goldTint08: 'rgba(164,131,68,0.08)',
-  goldTint12: 'rgba(164,131,68,0.12)',
-  goldTint15: 'rgba(164,131,68,0.15)',
-  goldTint25: 'rgba(164,131,68,0.25)',
-  goldTint35: 'rgba(164,131,68,0.35)',
+  // Brownish gold tint overlays
+  goldTint08: 'rgba(107,86,44,0.08)',
+  goldTint12: 'rgba(107,86,44,0.12)',
+  goldTint15: 'rgba(107,86,44,0.15)',
+  goldTint25: 'rgba(107,86,44,0.25)',
+  goldTint35: 'rgba(107,86,44,0.35)',
 };
 
 // ─── Gold dark palette ("high energy pleasant") ─────────────────────────────────
 // Warm gold on near-black, from the gold palette board:
 // Primary #DFBA73, Secondary #C5A059, Tertiary #A48344, Neutral #0D120E.
 export const goldDarkPalette: Palette = {
-  primary: '#DFBA73',
-  primaryLight: '#EBD3A3',
-  secondary: '#C5A059',
-  tertiary: '#A48344',
+  primary: '#8B6F3A',
+  primaryLight: '#A48344',
+  secondary: '#6B562C',
+  tertiary: '#8B6F3A',
 
-  // Accent — the brightest gold leads.
-  gold: '#DFBA73',
+  // Accent — deep dark gold almost brown
+  gold: '#8B6F3A',
 
-  // Text / neutrals — warm off-white on the near-black neutral.
-  neutral: '#FBF3E4',
-  neutralMuted: 'rgba(251, 243, 228, 0.64)',
-  neutralSubtle: 'rgba(251, 243, 228, 0.38)',
+  // Text / neutrals — deep dark gold almost brown
+  neutral: '#8B6F3A',
+  neutralMuted: 'rgba(139, 111, 58, 0.64)',
+  neutralSubtle: 'rgba(139, 111, 58, 0.38)',
 
   // Backgrounds & surfaces — Neutral #0D120E is the base; cards lift slightly.
   background: '#0D120E',
   surface: '#0D120E',
   surfaceCard: '#171C15',
 
-  // Call-to-action — gold button with near-black text.
-  ctaBackground: '#DFBA73',
+  // Call-to-action — ruby/diamond button
+  ctaBackground: '#8B6F3A',
   ctaText: '#0D120E',
 
   // Status / feedback
   emergency: '#E07A5F',
   emergencyBg: 'rgba(224, 122, 95, 0.14)',
-  statusDot: '#DFBA73',
-  rhythmComplete: '#DFBA73',
+  statusDot: '#8B6F3A',
+  rhythmComplete: '#8B6F3A',
 
   // Tabs
-  tabActive: '#DFBA73',
-  tabInactive: 'rgba(251, 243, 228, 0.42)',
+  tabActive: '#8B6F3A',
+  tabInactive: 'rgba(139, 111, 58, 0.42)',
 
-  border: 'rgba(251, 243, 228, 0.08)',
+  border: 'rgba(139, 111, 58, 0.25)',
 
-  // Gold tint overlays
-  goldTint08: 'rgba(223,186,115,0.08)',
-  goldTint12: 'rgba(223,186,115,0.12)',
-  goldTint15: 'rgba(223,186,115,0.15)',
-  goldTint25: 'rgba(223,186,115,0.25)',
-  goldTint35: 'rgba(223,186,115,0.35)',
+  // Brownish gold tint overlays
+  goldTint08: 'rgba(139,111,58,0.08)',
+  goldTint12: 'rgba(139,111,58,0.12)',
+  goldTint15: 'rgba(139,111,58,0.15)',
+  goldTint25: 'rgba(139,111,58,0.25)',
+  goldTint35: 'rgba(139,111,58,0.35)',
 };
 
 // ─── Gold light palette ─────────────────────────────────────────────────────────
 // Light counterpart of the gold scheme, so toggling light mode while the gold
 // variant is active stays coherent.
 export const goldLightPalette: Palette = {
-  primary: '#A48344',
-  primaryLight: '#DFBA73',
-  secondary: '#C5A059',
-  tertiary: '#A48344',
+  primary: '#6B562C',
+  primaryLight: '#8B6F3A',
+  secondary: '#4A3D1F',
+  tertiary: '#6B562C',
 
-  gold: '#A48344',
+  gold: '#6B562C',
 
-  neutral: '#0D120E',
-  neutralMuted: 'rgba(13, 18, 14, 0.64)',
-  neutralSubtle: 'rgba(13, 18, 14, 0.42)',
+  neutral: '#6B562C',
+  neutralMuted: 'rgba(107, 86, 44, 0.64)',
+  neutralSubtle: 'rgba(107, 86, 44, 0.42)',
 
   background: '#FBF6EC',
   surface: '#FBF6EC',
   surfaceCard: '#FFFFFF',
 
-  ctaBackground: '#A48344',
+  ctaBackground: '#6B562C',
   ctaText: '#FBF6EC',
 
   emergency: '#B34040',
   emergencyBg: 'rgba(179, 64, 64, 0.10)',
-  statusDot: '#A48344',
-  rhythmComplete: '#A48344',
+  statusDot: '#6B562C',
+  rhythmComplete: '#6B562C',
 
-  tabActive: '#A48344',
-  tabInactive: 'rgba(13, 18, 14, 0.38)',
+  tabActive: '#6B562C',
+  tabInactive: 'rgba(107, 86, 44, 0.38)',
 
-  border: 'rgba(13, 18, 14, 0.10)',
+  border: 'rgba(107, 86, 44, 0.20)',
 
-  // Gold tint overlays
-  goldTint08: 'rgba(164,131,68,0.08)',
-  goldTint12: 'rgba(164,131,68,0.12)',
-  goldTint15: 'rgba(164,131,68,0.15)',
-  goldTint25: 'rgba(164,131,68,0.25)',
-  goldTint35: 'rgba(164,131,68,0.35)',
+  // Brownish gold tint overlays
+  goldTint08: 'rgba(107,86,44,0.08)',
+  goldTint12: 'rgba(107,86,44,0.12)',
+  goldTint15: 'rgba(107,86,44,0.15)',
+  goldTint25: 'rgba(107,86,44,0.25)',
+  goldTint35: 'rgba(107,86,44,0.35)',
 };
 
 const palettes: Record<ThemeVariant, Record<ThemeMode, Palette>> = {

@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     top: EDGE_ITEMS * WHEEL_ITEM_HEIGHT,
     height: WHEEL_ITEM_HEIGHT,
     borderRadius: 10,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderWidth: 1,
     borderColor: colors.border,
   },

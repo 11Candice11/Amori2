@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cellText: { ...typography.body, color: 'rgba(253,252,240,0.55)', fontSize: 20 },
+  cellText: { ...typography.body, color: 'rgba(139,111,58,0.55)', fontSize: 20 },
   cellTextFound: { color: colors.gold, fontFamily: 'Manrope-SemiBold', fontSize: 24 },
   hint: {
     ...typography.bodySm,
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 3,
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.25)',
+    backgroundColor: 'rgba(139,111,58,0.25)',
   },
   missMarker: {
     position: 'absolute',
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
   },
   hiddenNumberText: {
     fontFamily: 'Manrope-SemiBold',
-    color: 'rgba(253,252,240,0.85)',
+    color: 'rgba(139,111,58,0.85)',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: 'rgba(253,252,240,0.04)',
+    backgroundColor: 'rgba(139,111,58,0.04)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     marginTop: spacing.xs,

@@ -1,0 +1,100 @@
+/**
+ * BadgeGrid — displays multiple badges in a responsive grid.
+ *
+ * Used for achievements screen, profile badge section, etc.
+ */
+import React, { useMemo } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, typography } from '../theme';
+import { getBadgesByCategory, ALL_BADGES } from '../../constants/badges';
+import { BadgeDisplay, type BadgeDisplayProps } from './BadgeDisplay';
+import type { BadgeCategory } from '../../constants/badges';
+
+export type BadgeGridProps = {
+  badges: string[]; // Array of badge IDs
+  category?: BadgeCategory;
+  variant?: 'large' | 'medium' | 'small';
+  showNames?: boolean;
+  unlockedBadges?: Set<string>; // Set of unlocked badge IDs
+  onBadgePress?: (badgeId: string) => void;
+  emptyText?: string;
+  numColumns?: number;
+};
+
+export function BadgeGrid({
+  badges,
+  variant = 'medium',
+  showNames = false,
+  unlockedBadges = new Set(),
+  onBadgePress,
+  emptyText,
+  numColumns = 3,
+}: BadgeGridProps) {
+  const data = useMemo(
+    () => badges.map((id) => ({ id, isLocked: !unlockedBadges.has(id) })),
+    [badges, unlockedBadges]
+  );
+
+  if (data.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>{emptyText || 'No badges yet'}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      scrollEnabled={false}
+      data={data}
+      numColumns={numColumns}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <View style={[styles.gridItem, { flex: 1 / numColumns }]}>
+          <BadgeDisplay
+            badgeId={item.id}
+            onPress={() => onBadgePress?.(item.id)}
+            variant={variant}
+            showName={showNames}
+            isLocked={item.isLocked}
+          />
+        </View>
+      )}
+      columnWrapperStyle={styles.columnWrapper}
+      style={styles.list}
+      contentContainerStyle={styles.content}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  list: {
+    flex: 1,
+  },
+
+  content: {
+    paddingVertical: spacing.md,
+  },
+
+  columnWrapper: {
+    justifyContent: 'space-around',
+    marginBottom: spacing.lg,
+  },
+
+  gridItem: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+
+  emptyContainer: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyText: {
+    ...typography.body,
+    color: colors.neutralMuted,
+    textAlign: 'center',
+  },
+});

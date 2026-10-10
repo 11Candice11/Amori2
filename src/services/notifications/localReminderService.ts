@@ -82,7 +82,7 @@ export async function scheduleDailyCheckInReminder(timeStr: string): Promise<voi
         importance: Notifications.AndroidImportance.DEFAULT,
         sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#C5A365', // colors.gold
+        lightColor: '#D4AF6A', // colors.gold - richer gold tone
       });
     }
 

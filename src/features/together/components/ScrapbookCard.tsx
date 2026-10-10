@@ -1,16 +1,15 @@
 /**
- * ScrapbookCard — a vision board item styled as a scrapbook element
+ * ScrapbookCard — a vision board item styled as a polaroid with handwritten text
  * 
- * Image Usage:
- * - border: Frame around image (smaller, corners, on top)
- * - stamp: Behind notes (light color, dark cursive text)
- * - flower: Scattered decorations (mostly corners)
- * - paperclip: Always on top of images (corners)
+ * Features:
+ * - Clean polaroid with no borders
+ * - Handwritten cursive text
+ * - Paperclips on corners
+ * - Can be displayed in 2-column layout
  */
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Image,
-  ImageBackground,
   Pressable,
   StyleSheet,
   Text,
@@ -31,19 +30,8 @@ type ScrapbookCardProps = {
   onPress: (item: VisionBoardItemResponse) => void;
   rotation?: number;
   isNote?: boolean;
+  isDoubleColumn?: boolean;
 };
-
-// Image sources — simple background (no border variants, just the text area)
-
-const FRAME_BORDERS = {
-  border: require('../../../../images/vision_board/border.png'),
-  border2: require('../../../../images/vision_board/border2.png'),
-  border3: require('../../../../images/vision_board/border3.png'),
-  border4: require('../../../../images/vision_board/border4.png'),
-  border5: require('../../../../images/vision_board/border5.png'),
-  border6: require('../../../../images/vision_board/border6.png'),
-  border7: require('../../../../images/vision_board/border7.png'),
-} as const;
 
 const STAMPS = [
   require('../../../../images/vision_board/stamp.png'),
@@ -70,21 +58,12 @@ const FLOWERS = [
   require('../../../../images/vision_board/flower12.png'),
   require('../../../../images/vision_board/flower13.png'),
   require('../../../../images/vision_board/flower14.png'),
-  require('../../../../images/vision_board/flower15.png'),
 ];
 
 const PAPERCLIPS = [
   require('../../../../images/vision_board/paperclip.png'),
   require('../../../../images/vision_board/paperclip2.png'),
 ];
-
-const FRAME_STYLES = Object.keys(FRAME_BORDERS) as Array<keyof typeof FRAME_BORDERS>;
-
-function getFrameBorder(itemId: string) {
-  const seed = itemId.charCodeAt(0) + itemId.charCodeAt(itemId.length - 1);
-  const styleIndex = seed % FRAME_STYLES.length;
-  return FRAME_BORDERS[FRAME_STYLES[styleIndex]];
-}
 
 function getStamp(itemId: string) {
   const seed = itemId.charCodeAt(0);
@@ -106,94 +85,77 @@ export function ScrapbookCard({
   onPress,
   rotation = Math.random() * 6 - 3,
   isNote = false,
+  isDoubleColumn = false,
 }: ScrapbookCardProps) {
   const imageUrl = resolveMediaUrl(item.imageUrl);
   const typeLabel = VISION_BOARD_ITEM_TYPE_LABELS[decodeVisionBoardItemType(item.type)];
   const myId = userSettingsStore.get()?.id;
   const isCreatedByMe = myId && item.createdByUserId === myId;
 
-  // Note style - uses stamp background with text
+  // Note style with stamp background
   if (isNote) {
     const stampImage = getStamp(item.id);
     return (
+      <View style={[styles.noteCardContainer, isDoubleColumn && styles.noteCardDouble]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.noteCard,
+            { transform: [{ rotate: `${rotation}deg` }] },
+            pressed && styles.pressed,
+          ]}
+          onPress={() => onPress(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Dream: ${item.title}`}
+        >
+          <Image source={stampImage} style={styles.noteStamp} resizeMode="cover" />
+          <View style={styles.noteContent}>
+            <Text style={styles.noteTitle} numberOfLines={2}>{item.title}</Text>
+            {item.description && (
+              <Text style={styles.noteDesc} numberOfLines={3}>{item.description}</Text>
+            )}
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Clean polaroid with no borders
+  return (
+    <View style={[styles.polaroidContainer, isDoubleColumn && styles.polaroidDouble]}>
       <Pressable
         style={({ pressed }) => [
-          styles.noteCard,
+          styles.polaroid,
           { transform: [{ rotate: `${rotation}deg` }] },
           pressed && styles.pressed,
         ]}
         onPress={() => onPress(item)}
         accessibilityRole="button"
-        accessibilityLabel={`Dream: ${item.title}`}
+        accessibilityLabel={`Open ${item.title}`}
       >
-        {/* Stamp background behind text */}
-        <Image source={stampImage} style={styles.noteStamp} resizeMode="cover" />
-
-        {/* Text content on top */}
-        <View style={styles.noteContent}>
-          <Text style={styles.noteTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          {item.description && (
-            <Text style={styles.noteDesc} numberOfLines={3}>
-              {item.description}
-            </Text>
+        {/* Image section */}
+        <View style={styles.imageWrapper}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Text style={styles.placeholderText}>📷</Text>
+            </View>
           )}
+
+          {/* Paperclips on corners - positioned outside image */}
+          <Image
+            source={getPaperclip(item.id, 0)}
+            style={styles.paperclipTL}
+            resizeMode="contain"
+          />
+          <Image
+            source={getPaperclip(item.id, 1)}
+            style={styles.paperclipTR}
+            resizeMode="contain"
+          />
         </View>
 
-        {/* Decorative flowers in corners */}
-        <Image source={getFlower(item.id, 0)} style={styles.flowerTL} resizeMode="contain" />
-        <Image source={getFlower(item.id, 1)} style={styles.flowerBR} resizeMode="contain" />
-      </Pressable>
-    );
-  }
-
-  // Vision item with image
-  const frameBorder = getFrameBorder(item.id);
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        { transform: [{ rotate: `${rotation}deg` }] },
-        pressed && styles.pressed,
-      ]}
-      onPress={() => onPress(item)}
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${item.title}`}
-    >
-      {/* Cream polaroid background */}
-      <View style={[styles.cardBG, { backgroundColor: '#fef9e7' }]}>
-        {/* Polaroid border with image */}
-        <View style={styles.polaroidBorder}>
-          {/* Image section */}
-          <View style={styles.imageContainer}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Text style={styles.placeholderText}>📷</Text>
-              </View>
-            )}
-
-            {/* Frame border - smaller, on top of image, in corners */}
-            <Image source={frameBorder} style={styles.frameBorderImage} resizeMode="contain" />
-
-            {/* Paperclips - top corners */}
-            <Image
-              source={getPaperclip(item.id, 0)}
-              style={styles.paperclipTL}
-              resizeMode="contain"
-            />
-            <Image
-              source={getPaperclip(item.id, 1)}
-              style={styles.paperclipTR}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
-
-        {/* Text area (at bottom of cream polaroid) */}
+        {/* Text area with handwritten style */}
         <View style={styles.textArea}>
           <Text style={styles.cardTitle} numberOfLines={2}>
             {item.title}
@@ -214,49 +176,42 @@ export function ScrapbookCard({
             <Text style={styles.completionNote}>✓ {item.completedNote}</Text>
           )}
         </View>
-      </View>
-
-      {/* Flower decorations - scattered around card */}
-      <Image source={getFlower(item.id, 0)} style={styles.flowerTopLeft} resizeMode="contain" />
-      <Image source={getFlower(item.id, 1)} style={styles.flowerTopRight} resizeMode="contain" />
-      <Image source={getFlower(item.id, 2)} style={styles.flowerBottomLeft} resizeMode="contain" />
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pressed: {
-    opacity: 0.9,
+  pressed: { opacity: 0.9 },
+
+  // ─── Polaroid Card ─────────────────────────────────────────────────────
+  polaroidContainer: {
+    flex: 1,
+    padding: spacing.sm,
+    minWidth: '50%',
   },
 
-  // ─── Vision Card ───────────────────────────────────────────────────────────
-  card: {
-    marginBottom: spacing.lg,
-    marginHorizontal: spacing.sm,
-    borderRadius: 8,
+  polaroidDouble: {
+    minWidth: '100%',
+  },
+
+  polaroid: {
+    backgroundColor: '#fef9e7',
+    borderRadius: 2,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+    minHeight: 300,
   },
 
-  cardBG: {
-    width: '100%',
-    minHeight: 350,
-  },
-
-  polaroidBorder: {
-    padding: spacing.md,
-    backgroundColor: '#fef9e7',
-  },
-
-  imageContainer: {
+  imageWrapper: {
     width: '100%',
     height: 200,
     position: 'relative',
-    marginBottom: spacing.md,
+    backgroundColor: '#f0ede6',
   },
 
   image: {
@@ -277,22 +232,11 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 
-  // Frame border - small, on top, in corners
-  frameBorderImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
-
-  // Paperclips - top corners, always on top
+  // Paperclips positioned at corners, partially outside image
   paperclipTL: {
     position: 'absolute',
-    top: -8,
-    left: -8,
+    top: -10,
+    left: -10,
     width: 40,
     height: 40,
     zIndex: 10,
@@ -300,14 +244,14 @@ const styles = StyleSheet.create({
 
   paperclipTR: {
     position: 'absolute',
-    top: -8,
-    right: -8,
+    top: -10,
+    right: -10,
     width: 40,
     height: 40,
     zIndex: 10,
   },
 
-  // Text area (bottom of card)
+  // Text area with handwritten cursive font
   textArea: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
@@ -316,98 +260,77 @@ const styles = StyleSheet.create({
   },
 
   cardTitle: {
-    ...typography.bodySemiBold,
+    fontSize: 18,
     color: '#2d2d2d',
-    fontSize: 15,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     fontStyle: 'italic',
+    fontWeight: '600',
+    fontFamily: 'cursive',
   },
 
   cardDesc: {
-    ...typography.bodySm,
+    fontSize: 13,
     color: '#2d2d2d',
-    fontSize: 12,
-    opacity: 0.8,
-    marginBottom: spacing.sm,
+    opacity: 0.85,
+    marginBottom: spacing.xs,
     fontStyle: 'italic',
+    fontFamily: 'cursive',
   },
 
   cardMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
+    opacity: 0.6,
   },
 
   cardType: {
-    ...typography.label,
-    color: '#666',
     fontSize: 9,
+    color: '#2d2d2d',
     letterSpacing: 1,
     textTransform: 'uppercase',
+    fontWeight: '500',
   },
 
   cardOwner: {
-    ...typography.bodySm,
-    color: '#666',
     fontSize: 10,
+    color: '#2d2d2d',
     fontStyle: 'italic',
-    opacity: 0.7,
+    fontFamily: 'cursive',
   },
 
   completionNote: {
-    ...typography.bodySm,
-    color: '#4a7c59',
     fontSize: 11,
-    marginTop: spacing.sm,
+    color: '#4a7c59',
+    marginTop: spacing.xs,
     fontStyle: 'italic',
+    fontFamily: 'cursive',
   },
 
-  // Flower decorations - scattered around card
-  flowerTopLeft: {
-    position: 'absolute',
-    top: -15,
-    left: -15,
-    width: 50,
-    height: 50,
-    opacity: 0.6,
+  // ─── Note Card ─────────────────────────────────────────────────────────
+  noteCardContainer: {
+    flex: 1,
+    padding: spacing.sm,
+    minWidth: '100%',
   },
 
-  flowerTopRight: {
-    position: 'absolute',
-    top: -15,
-    right: -15,
-    width: 50,
-    height: 50,
-    opacity: 0.6,
+  noteCardDouble: {
+    minWidth: '50%',
   },
 
-  flowerBottomLeft: {
-    position: 'absolute',
-    bottom: -15,
-    left: -15,
-    width: 50,
-    height: 50,
-    opacity: 0.6,
-  },
-
-  // ─── Note Card ─────────────────────────────────────────────────────────────
   noteCard: {
     backgroundColor: '#fef9e7',
     borderRadius: 4,
     padding: spacing.md,
-    marginBottom: spacing.md,
-    marginHorizontal: spacing.sm,
-    borderWidth: 1,
-    borderColor: '#f5f1e0',
+    minHeight: 100,
+    position: 'relative',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 1, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 3,
-    minHeight: 100,
-    position: 'relative',
-    overflow: 'hidden',
   },
 
   noteStamp: {
@@ -430,37 +353,18 @@ const styles = StyleSheet.create({
   },
 
   noteTitle: {
-    ...typography.bodySemiBold,
-    color: '#2d2d2d',
     fontSize: 15,
-    marginBottom: spacing.sm,
+    color: '#2d2d2d',
+    marginBottom: spacing.xs,
     fontStyle: 'italic',
+    fontWeight: '600',
+    fontFamily: 'cursive',
   },
 
   noteDesc: {
-    ...typography.bodySm,
-    color: '#555',
     fontSize: 12,
+    color: '#555',
     fontStyle: 'italic',
-  },
-
-  flowerTL: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 40,
-    height: 40,
-    opacity: 0.5,
-    zIndex: 2,
-  },
-
-  flowerBR: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 40,
-    height: 40,
-    opacity: 0.5,
-    zIndex: 2,
+    fontFamily: 'cursive',
   },
 });

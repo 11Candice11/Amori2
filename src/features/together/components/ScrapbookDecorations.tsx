@@ -1,19 +1,10 @@
 /**
- * ScrapbookDecorations — decorative elements using your image assets
- * (corners, flowers, stamps, tape, leaves, hearts, pencils, paperclips, etc.)
- * 
- * Dynamic loading: Just add new images to /images/vision_board and they'll
- * automatically be picked up by the relevant categories!
+ * ScrapbookDecorations — decorative elements using your image assets.
+ * Only requires files that exist in images/vision_board/.
  */
 import React from 'react';
 import { Image, View, StyleSheet } from 'react-native';
 
-// ─── Dynamic Image Loading ────────────────────────────────────────────────
-
-/**
- * Dynamically load all flowers from the folder.
- * Just add flower*.png files and they'll be included automatically.
- */
 const FLOWERS = [
   require('../../../../images/vision_board/flower.png'),
   require('../../../../images/vision_board/flower2.png'),
@@ -28,23 +19,26 @@ const FLOWERS = [
   require('../../../../images/vision_board/flower11.png'),
 ];
 
-const LEAVES = [
-  require('../../../../images/vision_board/leaf.png'),
-  require('../../../../images/vision_board/leaf2.png'),
-  require('../../../../images/vision_board/leaf3.png'),
-];
-
-const HEARTS = [
-  require('../../../../images/vision_board/heart.png'),
-  require('../../../../images/vision_board/heart2.png'),
-];
-
-const TAPES = [
-  require('../../../../images/vision_board/tape.png'),
-  require('../../../../images/vision_board/tape2.png'),
+const DECORATIONS = [
+  require('../../../../images/vision_board/decoration.png'),
+  require('../../../../images/vision_board/decoration1.png'),
+  require('../../../../images/vision_board/decoration2.png'),
+  require('../../../../images/vision_board/decoration3.png'),
+  require('../../../../images/vision_board/decoration4.png'),
+  require('../../../../images/vision_board/decoration5.png'),
+  require('../../../../images/vision_board/decoration6.png'),
+  require('../../../../images/vision_board/decoration7.png'),
+  require('../../../../images/vision_board/decoration8.png'),
+  require('../../../../images/vision_board/decoration9.png'),
+  require('../../../../images/vision_board/decoration10.png'),
+  require('../../../../images/vision_board/decoration11.png'),
+  require('../../../../images/vision_board/decoration12.png'),
+  require('../../../../images/vision_board/decoration15.png'),
+  require('../../../../images/vision_board/decoration16.png'),
 ];
 
 const STAMPS = [
+  require('../../../../images/vision_board/stamp.png'),
   require('../../../../images/vision_board/stamp2.png'),
   require('../../../../images/vision_board/stamp3.png'),
   require('../../../../images/vision_board/stamp4.png'),
@@ -58,70 +52,16 @@ const PAPERCLIPS = [
   require('../../../../images/vision_board/paperclip2.png'),
 ];
 
-const PINS = [
-  require('../../../../images/vision_board/pin.png'),
-  require('../../../../images/vision_board/pin2.png'),
-];
-
-const PENCILS = [
-  require('../../../../images/vision_board/pencil.png'),
-  require('../../../../images/vision_board/pencil2.png'),
-];
-
-/**
- * Helper to get a random item from an array deterministically based on a seed.
- * Same seed = same result every time.
- */
 function getByVariant<T>(items: T[], variant: number): T {
   if (items.length === 0) return undefined as any;
   return items[(variant - 1) % items.length];
 }
 
-/**
- * Helper to pick randomly but deterministically based on a string seed.
- */
 function getByIdSeed<T>(items: T[], seed: string): T {
   if (items.length === 0) return undefined as any;
   const hash = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return items[hash % items.length];
 }
-
-// ─── Decorative Elements from Assets ───────────────────────────────────────
-
-export function CornerFlower({
-  size = 48,
-  position = 'top-left',
-  style,
-}: {
-  size?: number;
-  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-  style?: any;
-}) {
-  let source;
-  switch (position) {
-    case 'top-left':
-      source = require('../../../../images/vision_board/top_left_corner.png');
-      break;
-    case 'top-right':
-      source = require('../../../../images/vision_board/right_top_corner.png');
-      break;
-    case 'bottom-left':
-      source = require('../../../../images/vision_board/bottom_left_corner.png');
-      break;
-    case 'bottom-right':
-      source = require('../../../../images/vision_board/right_bottom_corner.png');
-      break;
-  }
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
-}
-
-// ─── Flower Decorations ────────────────────────────────────────────────────
 
 export function FlowerDecor({
   size = 40,
@@ -130,28 +70,20 @@ export function FlowerDecor({
   style,
 }: {
   size?: number;
-  variant?: number; // Use specific variant (1-11), or leave empty
-  seedId?: string;  // Use item ID to pick deterministically
+  variant?: number;
+  seedId?: string;
   style?: any;
 }) {
-  const source = variant 
+  const source = variant
     ? getByVariant(FLOWERS, variant)
     : seedId
     ? getByIdSeed(FLOWERS, seedId)
     : FLOWERS[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+  return <Image source={source} style={[style, { width: size, height: size, resizeMode: 'contain' }]} />;
 }
 
-// ─── Leaf Decorations ──────────────────────────────────────────────────────
-
-export function LeafDecor({
-  size = 30,
+export function DecorationDecor({
+  size = 40,
   variant,
   seedId,
   style,
@@ -162,76 +94,19 @@ export function LeafDecor({
   style?: any;
 }) {
   const source = variant
-    ? getByVariant(LEAVES, variant)
+    ? getByVariant(DECORATIONS, variant)
     : seedId
-    ? getByIdSeed(LEAVES, seedId)
-    : LEAVES[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+    ? getByIdSeed(DECORATIONS, seedId)
+    : DECORATIONS[0];
+  return <Image source={source} style={[style, { width: size, height: size, resizeMode: 'contain' }]} />;
 }
 
-// ─── Heart Decorations ────────────────────────────────────────────────────
-
-export function HeartDecor({
-  size = 30,
-  variant,
-  seedId,
-  style,
-}: {
-  size?: number;
-  variant?: number;
-  seedId?: string;
-  style?: any;
-}) {
-  const source = variant
-    ? getByVariant(HEARTS, variant)
-    : seedId
-    ? getByIdSeed(HEARTS, seedId)
-    : HEARTS[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
-}
-
-// ─── Tape ─────────────────────────────────────────────────────────────────
-
-export function TapeDecor({
-  width = 80,
-  height = 24,
-  variant,
-  seedId,
-  style,
-}: {
-  width?: number;
-  height?: number;
-  variant?: number;
-  seedId?: string;
-  style?: any;
-}) {
-  const source = variant
-    ? getByVariant(TAPES, variant)
-    : seedId
-    ? getByIdSeed(TAPES, seedId)
-    : TAPES[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width, height, resizeMode: 'stretch' }]}
-    />
-  );
-}
-
-// ─── Stamps ────────────────────────────────────────────────────────────────
+/** Alias for backward compat — previously LeafDecor, HeartDecor, TapeDecor etc. */
+export const LeafDecor = DecorationDecor;
+export const HeartDecor = DecorationDecor;
+export const TapeDecor = DecorationDecor;
+export const PinDecor = DecorationDecor;
+export const PencilDecor = DecorationDecor;
 
 export function StampDecor({
   size = 50,
@@ -249,16 +124,8 @@ export function StampDecor({
     : seedId
     ? getByIdSeed(STAMPS, seedId)
     : STAMPS[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+  return <Image source={source} style={[style, { width: size, height: size, resizeMode: 'contain' }]} />;
 }
-
-// ─── Paperclip ────────────────────────────────────────────────────────────
 
 export function PaperclipDecor({
   size = 32,
@@ -276,117 +143,39 @@ export function PaperclipDecor({
     : seedId
     ? getByIdSeed(PAPERCLIPS, seedId)
     : PAPERCLIPS[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+  return <Image source={source} style={[style, { width: size, height: size, resizeMode: 'contain' }]} />;
 }
 
-// ─── Pin ──────────────────────────────────────────────────────────────────
-
-export function PinDecor({
-  size = 28,
-  variant,
-  seedId,
+/** CornerFlower — uses decoration images since corner PNGs no longer exist */
+export function CornerFlower({
+  size = 48,
+  position = 'top-left',
   style,
 }: {
   size?: number;
-  variant?: number;
-  seedId?: string;
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   style?: any;
 }) {
-  const source = variant
-    ? getByVariant(PINS, variant)
-    : seedId
-    ? getByIdSeed(PINS, seedId)
-    : PINS[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+  const idx = { 'top-left': 0, 'top-right': 1, 'bottom-left': 2, 'bottom-right': 3 }[position];
+  return <Image source={DECORATIONS[idx]} style={[style, { width: size, height: size, resizeMode: 'contain' }]} />;
 }
 
-// ─── Pencil ────────────────────────────────────────────────────────────────
-
-export function PencilDecor({
-  size = 40,
-  variant,
-  seedId,
-  style,
-}: {
-  size?: number;
-  variant?: number;
-  seedId?: string;
-  style?: any;
-}) {
-  const source = variant
-    ? getByVariant(PENCILS, variant)
-    : seedId
-    ? getByIdSeed(PENCILS, seedId)
-    : PENCILS[0];
-
-  return (
-    <Image
-      source={source}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+/** EnvelopeDecor — uses a decoration image since envelope.png no longer exists */
+export function EnvelopeDecor({ size = 40, style }: { size?: number; style?: any }) {
+  return <Image source={DECORATIONS[4]} style={[style, { width: size, height: size, resizeMode: 'contain' }]} />;
 }
 
-// ─── Envelope ──────────────────────────────────────────────────────────────
-
-export function EnvelopeDecor({
-  size = 40,
-  style,
-}: {
-  size?: number;
-  style?: any;
-}) {
-  return (
-    <Image
-      source={require('../../../../images/vision_board/envelope.png')}
-      style={[style, { width: size, height: size, resizeMode: 'contain' }]}
-    />
-  );
+/** StickyNoteBackground — uses a decoration image since sticky_note_background.png no longer exists */
+export function StickyNoteBackground({ width = 200, height = 200, style }: { width?: number; height?: number; style?: any }) {
+  return <Image source={DECORATIONS[5]} style={[style, { width, height, resizeMode: 'stretch' }]} />;
 }
 
-// ─── Sticky Note Background ────────────────────────────────────────────────
-
-export function StickyNoteBackground({
-  width = 200,
-  height = 200,
-  style,
-}: {
-  width?: number;
-  height?: number;
-  style?: any;
-}) {
-  return (
-    <Image
-      source={require('../../../../images/vision_board/sticky_note_background.png')}
-      style={[style, { width, height, resizeMode: 'stretch' }]}
-    />
-  );
-}
-
-// ─── Decorative Cluster ────────────────────────────────────────────────────
-
-export function ScrapbookDecorationCluster({
-  style,
-}: {
-  style?: any;
-}) {
+export function ScrapbookDecorationCluster({ style }: { style?: any }) {
   return (
     <View style={[styles.cluster, style]}>
       <FlowerDecor size={40} variant={1} style={{ opacity: 0.6 }} />
-      <LeafDecor size={28} variant={2} style={{ opacity: 0.5 }} />
-      <HeartDecor size={32} variant={1} style={{ opacity: 0.5 }} />
+      <DecorationDecor size={28} variant={2} style={{ opacity: 0.5 }} />
+      <DecorationDecor size={32} variant={3} style={{ opacity: 0.5 }} />
     </View>
   );
 }

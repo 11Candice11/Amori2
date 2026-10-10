@@ -4,9 +4,16 @@
  * The Hearth Vault shows all the memories that were randomly selected as daily
  * gifts and then saved by the user. Each gift card displays the memory's title,
  * description, date, and location.
+ *
+ * Features include:
+ * - Level progress bar showing points toward next level
+ * - Card collection progress (X/Y cards collected)
+ * - Grid view of cards with individual point rewards
+ * - Deck view for browsing cards
+ * - Send gift option
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
@@ -18,8 +25,17 @@ import type { SavedGift } from '../types/vault.types';
 import { getCardImage } from '../../../utils/cardSelector';
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
 import { SendGiftModal } from '../components/SendGiftModal';
+import { CardDeckView } from '../components/CardDeckView';
+import { CardGridView } from '../components/CardGridView';
+import { LevelProgressBar } from '../components/LevelProgressBar';
+import { CardCollectionInfo } from '../components/CardCollectionInfo';
+import { BadgeCollection } from '../components/BadgeCollection';
+import { BadgeRewardModal } from '../components/BadgeRewardModal';
 import { formatRelativeDate, formatShortDate } from '../../../utils/dateUtils';
-import type { RootStackParamList } from '../../../navigation/types';
+import type { MainTabParamList } from '../../../navigation/types';
+import type { Badge } from '../types/vault.types';
+import { pointsService } from '../../../services/api/pointsService';
+import { useBadgeRewardListener } from '../hooks/useBadgeRewardListener';
 
 function VaultGlyph({ size = 40 }: { size?: number }) {
   return (
@@ -137,13 +153,22 @@ function GiftCard({ gift, onPress }: GiftCardProps) {
 
 export function VaultScreen() {
   const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'Vault'>>();
+  const route = useRoute<RouteProp<MainTabParamList, 'Vault'>>();
   const [gifts, setGifts] = useState<SavedGift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedGift, setSelectedGift] = useState<SavedGift | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [sendVisible, setSendVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'deck'>('deck');
+  const [rewardedBadge, setRewardedBadge] = useState<Badge | null>(null);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+
+  // A card counts as collected once, even if several gifts share its art.
+  const uniqueCardCount = useMemo(
+    () => new Set(gifts.map((g) => g.cardNumber)).size,
+    [gifts],
+  );
 
   const loadGifts = useCallback(async () => {
     try {
@@ -195,6 +220,20 @@ export function VaultScreen() {
     setModalVisible(true);
   }, []);
 
+  // Tapping an unlocked card in the grid opens its detail reveal.
+  const handleDeckGiftPress = useCallback((giftId: string) => {
+    const gift = gifts.find(g => g.id === giftId);
+    if (!gift) return;
+    setSelectedGift(gift);
+    setModalVisible(true);
+  }, [gifts]);
+
+  const handleRandomCard = useCallback(() => {
+    if (gifts.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * gifts.length);
+    setSelectedGift(gifts[randomIndex]);
+  }, [gifts]);
+
   const openWeeklyReflection = useCallback(() => {
     // From the Vault, jump to the browsable list of saved reflections.
     (navigation as { navigate: (name: string) => void }).navigate('WeeklyReflectionArchive');
@@ -211,6 +250,26 @@ export function VaultScreen() {
     // nothing new to show here — but refresh anyway in case the list is stale.
     loadGifts();
   }, [loadGifts]);
+
+  const handleSaveBadgeToVault = useCallback(
+    async (badgeId: string) => {
+      try {
+        await pointsService.archiveBadge(badgeId);
+        // Badge saved successfully
+        setShowBadgeModal(false);
+        setRewardedBadge(null);
+      } catch (err) {
+        console.error('Failed to save badge:', err);
+      }
+    },
+    []
+  );
+
+  // Listen for badge rewards
+  useBadgeRewardListener((badge) => {
+    setRewardedBadge(badge);
+    setShowBadgeModal(true);
+  });
 
   const renderGift = useCallback(
     ({ item }: { item: SavedGift }) => <GiftCard gift={item} onPress={handleGiftPress} />,
@@ -294,21 +353,93 @@ export function VaultScreen() {
             <Text style={styles.retryButtonText}>Try Again</Text>
           </Pressable>
         </View>
+      ) : gifts.length === 0 ? (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.emptyState}>
+            <View style={styles.glyphCircle}>
+              <VaultGlyph />
+            </View>
+            <Text style={styles.emptyTitle}>Your Vault is empty</Text>
+            <Text style={styles.emptyBody}>
+              When you open your daily gift and tap "Save to Vault", it will appear here for you to
+              revisit anytime.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.sendGiftBtn, pressed && styles.pressed]}
+              onPress={openSendGift}
+              accessibilityRole="button"
+              accessibilityLabel="Send a gift to your partner"
+            >
+              <Text style={styles.sendGiftBtnText}>Send a gift</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      ) : viewMode === 'deck' ? (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Gamification sections */}
+          <View style={styles.gamificationSection}>
+            <LevelProgressBar />
+            <CardCollectionInfo collectedCount={uniqueCardCount} />
+          </View>
+
+          {/* Send gift button */}
+          <View style={styles.sendGiftSection}>
+            <Pressable
+              style={({ pressed }) => [styles.sendGiftBtnSmall, pressed && styles.pressed]}
+              onPress={openSendGift}
+              accessibilityRole="button"
+              accessibilityLabel="Send a gift to your partner"
+            >
+              <Text style={styles.sendGiftBtnText}>Send a gift</Text>
+            </Pressable>
+          </View>
+
+          {/* Deck view */}
+          <View style={styles.deckViewContainer}>
+            <CardDeckView
+              gifts={gifts}
+              selectedGiftId={selectedGift?.id || null}
+              onSelectGift={handleDeckGiftPress}
+              loading={loading}
+            />
+          </View>
+
+          {/* All badges, earned and locked, so there's always something to aim for */}
+          <BadgeCollection />
+        </ScrollView>
       ) : (
-        <FlatList
-          data={gifts}
-          renderItem={renderGift}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
-          ListHeaderComponent={renderListHeader}
-          ListEmptyComponent={renderEmptyState}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Gamification sections */}
+          <View style={styles.gamificationSection}>
+            <LevelProgressBar />
+            <CardCollectionInfo collectedCount={uniqueCardCount} />
+          </View>
+
+          {/* Send gift button */}
+          <View style={styles.sendGiftSection}>
+            <Pressable
+              style={({ pressed }) => [styles.sendGiftBtnSmall, pressed && styles.pressed]}
+              onPress={openSendGift}
+              accessibilityRole="button"
+              accessibilityLabel="Send a gift to your partner"
+            >
+              <Text style={styles.sendGiftBtnText}>Send a gift</Text>
+            </Pressable>
+          </View>
+
+          {/* Grid view of cards */}
+          <CardGridView
+            gifts={gifts}
+            onSelectGift={handleGiftPress}
+            loading={loading}
+          />
+
+          <BadgeCollection />
+        </ScrollView>
       )}
 
       {/* Gift detail modal with twirling animation */}
-      {selectedGift && (
+      {selectedGift && modalVisible && (
         <ArtifactRevealModal
           visible={modalVisible}
           onClose={handleCloseModal}
@@ -326,6 +457,17 @@ export function VaultScreen() {
 
       {/* Send a gift to your partner — spin-to-reveal composer. */}
       <SendGiftModal visible={sendVisible} onClose={closeSendGift} onSent={handleGiftSent} />
+
+      {/* Badge reward modal — shows when user levels up */}
+      <BadgeRewardModal
+        visible={showBadgeModal}
+        badgeId={rewardedBadge?.id || null}
+        onDismiss={() => {
+          setShowBadgeModal(false);
+          setRewardedBadge(null);
+        }}
+        onSaveToVault={handleSaveBadgeToVault}
+      />
     </SafeAreaView>
   );
 }
@@ -541,5 +683,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: spacing.md,
+  },
+
+  scrollContent: {
+    paddingBottom: spacing.xl,
+  },
+
+  gamificationSection: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.md,
+  },
+
+  sendGiftSection: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+
+  deckViewContainer: {
+    marginTop: spacing.lg,
+    minHeight: 600,
   },
 });

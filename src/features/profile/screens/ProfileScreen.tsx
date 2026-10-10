@@ -309,7 +309,7 @@ export function ProfileScreen({ onLogout }: Props) {
               pressed && styles.linkRowPressed,
             ]}
             onPress={openLinkModal}
-            android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
             accessibilityRole="button"
             accessibilityLabel={
               unreadRequestCount > 0
@@ -346,7 +346,7 @@ export function ProfileScreen({ onLogout }: Props) {
               pressed && styles.linkRowPressed,
             ]}
             onPress={openLinkModal}
-            android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
             accessibilityRole="button"
             accessibilityLabel="Manage partner link"
           >
@@ -368,7 +368,7 @@ export function ProfileScreen({ onLogout }: Props) {
         <Pressable
           style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
           onPress={() => navigation.navigate('SupportProfile', { screen: 'SupportProfileHome' })}
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
           accessibilityRole="button"
           accessibilityLabel="How to Know Me"
         >
@@ -384,6 +384,26 @@ export function ProfileScreen({ onLogout }: Props) {
           <ChevronIcon />
         </Pressable>
 
+        {/* Achievements */}
+        <Pressable
+          style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+          onPress={() => navigation.navigate('Profile', { screen: 'Achievements' })}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
+          accessibilityRole="button"
+          accessibilityLabel="Achievements and Badges"
+        >
+          <View style={styles.linkIconCircle}>
+            <Text style={styles.achievementIcon}>🏆</Text>
+          </View>
+          <View style={styles.linkTextWrap}>
+            <Text style={styles.linkTitle}>Achievements</Text>
+            <Text style={styles.linkSubtitle}>
+              View your badges and track your progress together.
+            </Text>
+          </View>
+          <ChevronIcon />
+        </Pressable>
+
         {/* Account */}
         <Text style={styles.sectionLabel}>ACCOUNT</Text>
         <Pressable
@@ -393,7 +413,7 @@ export function ProfileScreen({ onLogout }: Props) {
             pressed && styles.linkRowPressed,
           ]}
           onPress={() => setPasswordModalVisible(true)}
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
           accessibilityRole="button"
           accessibilityLabel="Change password"
         >
@@ -423,9 +443,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.shareMood ?? true}
               onValueChange={(v) => toggleSetting('shareMood', v)}
               disabled={loading || !user || savingSetting === 'shareMood'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Share mood"
             />
           </View>
@@ -443,9 +463,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.shareActivity ?? true}
               onValueChange={(v) => toggleSetting('shareActivity', v)}
               disabled={loading || !user || savingSetting === 'shareActivity'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Share activity"
             />
           </View>
@@ -463,9 +483,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.shareCheckIns ?? true}
               onValueChange={(v) => toggleSetting('shareCheckIns', v)}
               disabled={loading || !user || savingSetting === 'shareCheckIns'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Share check-ins"
             />
           </View>
@@ -483,9 +503,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.shareLocation ?? true}
               onValueChange={(v) => toggleSetting('shareLocation', v)}
               disabled={loading || !user || savingSetting === 'shareLocation'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Share location"
             />
           </View>
@@ -503,9 +523,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.shareTimeline ?? true}
               onValueChange={(v) => toggleSetting('shareTimeline', v)}
               disabled={loading || !user || savingSetting === 'shareTimeline'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Share timeline"
             />
           </View>
@@ -525,9 +545,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.allowHugs ?? true}
               onValueChange={(v) => toggleSetting('allowHugs', v)}
               disabled={loading || !user || savingSetting === 'allowHugs'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Allow hugs"
             />
           </View>
@@ -545,9 +565,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.allowEmergencyAlerts ?? true}
               onValueChange={(v) => toggleSetting('allowEmergencyAlerts', v)}
               disabled={loading || !user || savingSetting === 'allowEmergencyAlerts'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Allow emergency alerts"
             />
           </View>
@@ -565,9 +585,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.allowPartnerReminders ?? true}
               onValueChange={(v) => toggleSetting('allowPartnerReminders', v)}
               disabled={loading || !user || savingSetting === 'allowPartnerReminders'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Allow partner reminders"
             />
           </View>
@@ -587,9 +607,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.notificationsEnabled ?? true}
               onValueChange={(v) => toggleSetting('notificationsEnabled', v)}
               disabled={loading || !user || savingSetting === 'notificationsEnabled'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Enable notifications"
             />
           </View>
@@ -607,9 +627,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.hugNotifications ?? true}
               onValueChange={(v) => toggleSetting('hugNotifications', v)}
               disabled={loading || !user || savingSetting === 'hugNotifications' || !user?.notificationsEnabled}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Hug notifications"
             />
           </View>
@@ -627,9 +647,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.emergencyNotifications ?? true}
               onValueChange={(v) => toggleSetting('emergencyNotifications', v)}
               disabled={loading || !user || savingSetting === 'emergencyNotifications' || !user?.notificationsEnabled}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Emergency notifications"
             />
           </View>
@@ -647,9 +667,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.checkInReminders ?? true}
               onValueChange={(v) => toggleSetting('checkInReminders', v)}
               disabled={loading || !user || savingSetting === 'checkInReminders' || !user?.notificationsEnabled}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Check-in reminders"
             />
           </View>
@@ -687,9 +707,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.partnerActivityNotifications ?? true}
               onValueChange={(v) => toggleSetting('partnerActivityNotifications', v)}
               disabled={loading || !user || savingSetting === 'partnerActivityNotifications' || !user?.notificationsEnabled}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Partner activity"
             />
           </View>
@@ -707,9 +727,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.dailyDigest ?? true}
               onValueChange={(v) => toggleSetting('dailyDigest', v)}
               disabled={loading || !user || savingSetting === 'dailyDigest' || !user?.notificationsEnabled}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Daily digest"
             />
           </View>
@@ -729,9 +749,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.soundEnabled ?? true}
               onValueChange={(v) => toggleSetting('soundEnabled', v)}
               disabled={loading || !user || savingSetting === 'soundEnabled'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Sound effects"
             />
           </View>
@@ -749,9 +769,9 @@ export function ProfileScreen({ onLogout }: Props) {
               value={user?.vibrationEnabled ?? true}
               onValueChange={(v) => toggleSetting('vibrationEnabled', v)}
               disabled={loading || !user || savingSetting === 'vibrationEnabled'}
-              trackColor={{ false: 'rgba(253,252,240,0.16)', true: colors.gold }}
+              trackColor={{ false: 'rgba(139,111,58,0.16)', true: colors.gold }}
               thumbColor={colors.neutral}
-              ios_backgroundColor="rgba(253,252,240,0.16)"
+              ios_backgroundColor="rgba(139,111,58,0.16)"
               accessibilityLabel="Vibration"
             />
           </View>
@@ -819,9 +839,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
     borderWidth: 1.5,
-    borderColor: 'rgba(197,163,101,0.25)',
+    borderColor: 'rgba(139,111,58,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -880,9 +900,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
+    borderColor: 'rgba(139,111,58,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -906,6 +926,9 @@ const styles = StyleSheet.create({
     color: colors.neutral,
     fontSize: 10,
     letterSpacing: 0,
+  },
+  achievementIcon: {
+    fontSize: 20,
   },
   linkTextWrap: {
     flex: 1,
@@ -947,7 +970,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.md,
     paddingLeft: spacing.md,
-    backgroundColor: 'rgba(197,163,101,0.04)',
+    backgroundColor: 'rgba(139,111,58,0.04)',
   },
   settingTextWrap: {
     flex: 1,

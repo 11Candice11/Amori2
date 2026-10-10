@@ -24,5 +24,12 @@ public interface IVaultService
     /// </summary>
     Task<SendGiftResult> SendGiftToPartnerAsync(Guid userId, SaveVaultGiftRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// Create a new gift-only memory and send it to the partner's vault in one operation.
+    /// The memory is not added to the caller's or partner's regular memories feed,
+    /// only appears in the partner's vault. Returns a confirmation with the gift ID.
+    /// </summary>
+    Task<SendGiftResult> CreateGiftToPartnerAsync(Guid userId, CreateGiftRequest request, CancellationToken ct = default);
+
     Task RemoveGiftAsync(Guid userId, Guid giftId, CancellationToken ct = default);
 }

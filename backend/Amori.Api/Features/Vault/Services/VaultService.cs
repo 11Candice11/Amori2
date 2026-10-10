@@ -1,6 +1,7 @@
 using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
+using Amori.Api.Domain.Enums;
 using Amori.Api.Infrastructure.Relationships;
 using Amori.Api.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -197,6 +198,7 @@ public sealed class VaultService(
 
         string title;
         Guid referenceId;
+        VaultGift? gift = null;
 
         if (hasMemory)
         {
@@ -213,7 +215,7 @@ public sealed class VaultService(
 
             if (existing == null)
             {
-                var gift = new VaultGift
+                gift = new VaultGift
                 {
                     UserId = partner.Id,
                     MemoryId = memory.Id,
@@ -221,6 +223,10 @@ public sealed class VaultService(
                 };
                 db.VaultGifts.Add(gift);
                 await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                gift = existing;
             }
 
             title = memory.Title;
@@ -241,7 +247,7 @@ public sealed class VaultService(
 
             if (existing == null)
             {
-                var gift = new VaultGift
+                gift = new VaultGift
                 {
                     UserId = partner.Id,
                     VisionBoardItemId = vision.Id,
@@ -249,6 +255,10 @@ public sealed class VaultService(
                 };
                 db.VaultGifts.Add(gift);
                 await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                gift = existing;
             }
 
             title = vision.Title;
@@ -269,6 +279,86 @@ public sealed class VaultService(
         return new SendGiftResult
         {
             MemoryId = hasMemory ? request.MemoryId!.Value : Guid.Empty,
+            GiftId = gift!.Id,
+            RecipientName = partner.DisplayName,
+        };
+    }
+
+    public async Task<SendGiftResult> CreateGiftToPartnerAsync(Guid userId, CreateGiftRequest request, CancellationToken ct = default)
+    {
+        // Validate input
+        if (string.IsNullOrWhiteSpace(request.Title))
+            throw new ValidationException("Title is required.");
+        if (request.CardNumber is < 1 or > CardCount)
+            throw new ValidationException($"CardNumber must be between 1 and {CardCount}.");
+
+        var rel = await relAccess.GetUserRelationshipAsync(userId)
+            ?? throw new NotFoundException("You are not a member of any relationship.");
+        var partner = await relAccess.GetPartnerAsync(userId)
+            ?? throw new ConflictException("Your relationship does not have a second partner yet.");
+
+        // Create a new memory for the gift
+        var memory = new Memory
+        {
+            RelationshipId = rel.Id,
+            CreatedByUserId = userId,
+            Title = request.Title.Trim(),
+            Description = request.Description,
+            Category = (MemoryCategory)request.Category,
+            MemoryDateTime = request.MemoryDateTime.ToUniversalTime(),
+            Location = request.Location,
+            Latitude = request.Latitude.HasValue ? (double?)request.Latitude.Value : null,
+            Longitude = request.Longitude.HasValue ? (double?)request.Longitude.Value : null,
+            // Gift-only memories are marked so they don't appear in the feed — only in vaults
+            IsGiftOnly = true
+        };
+        db.Memories.Add(memory);
+        await db.SaveChangesAsync(ct);
+
+        // Add media if provided
+        if (request.Media.Count > 0)
+        {
+            foreach (var mediaReq in request.Media)
+            {
+                var media = new MemoryMedia
+                {
+                    MemoryId = memory.Id,
+                    FileKey = mediaReq.FileKey,
+                    MediaType = (MemoryMediaType)mediaReq.MediaType,
+                    DurationSeconds = mediaReq.DurationSeconds,
+                    Title = string.IsNullOrWhiteSpace(mediaReq.Title) ? null : mediaReq.Title.Trim(),
+                    ThumbnailUrl = string.IsNullOrWhiteSpace(mediaReq.ThumbnailUrl) ? null : mediaReq.ThumbnailUrl.Trim()
+                };
+                db.MemoryMedia.Add(media);
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
+        // Create a gift entry in the partner's vault
+        var gift = new VaultGift
+        {
+            UserId = partner.Id,
+            MemoryId = memory.Id,
+            CardNumber = request.CardNumber
+        };
+        db.VaultGifts.Add(gift);
+        await db.SaveChangesAsync(ct);
+
+        // Notify the partner
+        var sender = await db.Users.FindAsync([userId], ct);
+        var senderName = sender?.DisplayName ?? "Your partner";
+        await notifications.CreateAsync(
+            partner.Id,
+            "You received a gift 🎁",
+            $"{senderName} sent you \u201C{request.Title}\u201D for your vault.",
+            notificationType: NotificationTypes.Gift,
+            referenceId: memory.Id.ToString(),
+            ct);
+
+        return new SendGiftResult
+        {
+            MemoryId = memory.Id,
+            GiftId = gift.Id,
             RecipientName = partner.DisplayName,
         };
     }

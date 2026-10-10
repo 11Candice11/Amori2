@@ -49,6 +49,7 @@ public static class ApplicationServicesExtensions
 
         // ── Users ─────────────────────────────────────────────────────────────
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IPointsService, PointsService>();
 
         // ── Mood ──────────────────────────────────────────────────────────────
         services.AddScoped<IMoodService, MoodService>();

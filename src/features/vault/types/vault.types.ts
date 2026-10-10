@@ -120,3 +120,40 @@ export interface SendGiftResult {
   /** Display name of the partner the gift was delivered to. */
   recipientName: string;
 }
+
+// ─── Badges ────────────────────────────────────────────────────────────────
+
+/**
+ * A badge earned by the user as a reward for reaching a level milestone.
+ * Badges can be saved to the vault as personal achievements.
+ */
+export interface Badge {
+  /** Unique badge ID */
+  id: string;
+  /** Badge name/type (e.g., "Level 5", "Level 10") */
+  badgeName: string;
+  /** Description of what the badge represents */
+  description: string;
+  /** The level at which this badge was earned */
+  awardedAtLevel: number;
+  /** URL to the badge image */
+  imageUrl?: string | null;
+  /** Whether the badge is archived/saved to vault */
+  isArchivedInVault: boolean;
+  /** When the badge was earned (ISO 8601) */
+  earnedAt: string;
+}
+
+/**
+ * A badge saved to the vault for display.
+ * Similar to SavedGift but for badges instead of memories/visions.
+ */
+export interface SavedBadge {
+  id: string;
+  badgeName: string;
+  description: string;
+  awardedAtLevel: number;
+  imageUrl?: string | null;
+  /** When it was saved to vault (ISO 8601) */
+  savedAt: string;
+}

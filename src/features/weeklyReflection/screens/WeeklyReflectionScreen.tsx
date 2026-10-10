@@ -527,7 +527,7 @@ function LiveReflectionView() {
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Previous week"
-            android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+            android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
           >
             <ChevronLeft />
           </Pressable>
@@ -550,7 +550,7 @@ function LiveReflectionView() {
             accessibilityRole="button"
             accessibilityLabel="Next week"
             accessibilityState={{ disabled: isCurrentWeek }}
-            android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+            android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
           >
             <ChevronRight disabled={isCurrentWeek} />
           </Pressable>

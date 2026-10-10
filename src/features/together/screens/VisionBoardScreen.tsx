@@ -1,12 +1,12 @@
 /**
- * VisionBoardScreen — the couple's shared "Us" Vision Board.
+ * VisionBoardScreen -- the couple's shared "Us" Vision Board.
  * 
  * Now with a scrapbook aesthetic! Polaroid-style cards with tape, pins,
  * and decorative elements. Integrates bucket list & to-do list items as
  * little dream notes scattered throughout.
  *
- *   GET /api/vision-board → { sections, items }
- *   GET /api/together → { bucketList, todoList }
+ *   GET /api/vision-board -> { sections, items }
+ *   GET /api/together -> { bucketList, todoList }
  *
  * Everything the couple is building, dreaming and becoming together, displayed
  * like a physical scrapboard with randomly rotated cards, decorative tape,
@@ -20,6 +20,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -52,6 +53,12 @@ import type { BucketListItemResponse } from '../types/together.types';
 import { ScrapbookCard, CornerFlower } from '../components';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'VisionBoard'>;
+
+// Background images for scrapboard
+const BACKGROUNDS = [
+  require('../../../../images/background/neutral1.png'),
+  require('../../../../images/background/neutral2.png'),
+];
 
 // ─── Screen ─────────────────────────────────────────────────────────────────
 
@@ -264,7 +271,7 @@ export function VisionBoardScreen() {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search…"
+            placeholder="Search..."
             placeholderTextColor={colors.neutralSubtle}
             returnKeyType="search"
             clearButtonMode="while-editing"
@@ -285,35 +292,31 @@ export function VisionBoardScreen() {
           ) : null}
         </View>
 
-        {/* Bucket List & To-Do List as header section */}
+        {/* To-Do List & Wishlist as handwritten note cards */}
         {(bucketActive.length > 0 || todoActive.length > 0) && (
-          <View style={styles.collectionsSection}>
-            <Text style={styles.collectionsTitle}>Our Journey 📋</Text>
-            <View style={styles.collectionsRow}>
+          <View style={styles.notesSection}>
+            <Text style={styles.notesTitle}>Our Plans & Dreams 📝</Text>
+            <View style={styles.notesGrid}>
               {bucketActive.length > 0 && (
-                <View style={styles.collectionBox}>
-                  <Text style={styles.collectionBoxTitle}>Bucket List</Text>
-                  {bucketActive.slice(0, 3).map((item) => (
-                    <Text key={item.id} style={styles.collectionItem}>
-                      ☐ {item.title}
+                <View style={styles.noteCardWrapper}>
+                  <View style={styles.handwrittenNote}>
+                    <Text style={styles.handwrittenTitle}>Bucket List ✓</Text>
+                    <Text style={styles.handwrittenContent}>
+                      {bucketActive.slice(0, 5).map(item => `• ${item.title}`).join('\n')}
+                      {bucketActive.length > 5 && `\n... and ${bucketActive.length - 5} more!`}
                     </Text>
-                  ))}
-                  {bucketActive.length > 3 && (
-                    <Text style={styles.collectionMore}>+ {bucketActive.length - 3} more</Text>
-                  )}
+                  </View>
                 </View>
               )}
               {todoActive.length > 0 && (
-                <View style={styles.collectionBox}>
-                  <Text style={styles.collectionBoxTitle}>To-Do</Text>
-                  {todoActive.slice(0, 3).map((item) => (
-                    <Text key={item.id} style={styles.collectionItem}>
-                      ☐ {item.title}
+                <View style={styles.noteCardWrapper}>
+                  <View style={styles.handwrittenNote}>
+                    <Text style={styles.handwrittenTitle}>To-Do List ☐</Text>
+                    <Text style={styles.handwrittenContent}>
+                      {todoActive.slice(0, 5).map(item => `• ${item.title}`).join('\n')}
+                      {todoActive.length > 5 && `\n... and ${todoActive.length - 5} more!`}
                     </Text>
-                  ))}
-                  {todoActive.length > 3 && (
-                    <Text style={styles.collectionMore}>+ {todoActive.length - 3} more</Text>
-                  )}
+                  </View>
                 </View>
               )}
             </View>
@@ -333,31 +336,45 @@ export function VisionBoardScreen() {
           </View>
         ) : (
           <>
-            {/* Vision items in scrapbook layout */}
-            <View style={styles.scrapboard}>
-              {orderedSections.map((section) => {
-                const sectionItems = activeBySection.get(section.id) ?? [];
-                if (sectionItems.length === 0) return null;
-                return (
-                  <View key={section.id} style={styles.sectionGroup}>
-                    {section.name && (
-                      <View style={styles.sectionLabel}>
-                        <Text style={styles.sectionLabelText}>{section.name}</Text>
+            {/* Vision items in scrapbook layout with background */}
+            <ImageBackground
+              source={BACKGROUNDS[0]}
+              style={styles.scrapboardWrapper}
+              imageStyle={styles.scrapboardBG}
+            >
+              <View style={styles.scrapboard}>
+                {orderedSections.map((section) => {
+                  const sectionItems = activeBySection.get(section.id) ?? [];
+                  if (sectionItems.length === 0) return null;
+                  return (
+                    <View key={section.id} style={styles.sectionGroup}>
+                      {section.name && (
+                        <View style={styles.sectionLabel}>
+                          <Text style={styles.sectionLabelText}>{section.name}</Text>
+                        </View>
+                      )}
+                      {/* Layout items in a flexible grid that can do 2 columns sometimes */}
+                      <View style={styles.itemsGrid}>
+                        {sectionItems.map((item, idx) => {
+                          // Randomly decide if this item should be double-column (about 30% of the time)
+                          const isDouble = idx % 3 === 2;
+                          return (
+                            <ScrapbookCard
+                              key={item.id}
+                              item={item}
+                              onPress={handleOpenItem}
+                              rotation={Math.random() * 6 - 3}
+                              isNote={idx % 4 === 3}
+                              isDoubleColumn={isDouble}
+                            />
+                          );
+                        })}
                       </View>
-                    )}
-                    {sectionItems.map((item, idx) => (
-                      <ScrapbookCard
-                        key={item.id}
-                        item={item}
-                        onPress={handleOpenItem}
-                        rotation={Math.random() * 6 - 3}
-                        isNote={idx % 4 === 3} // Every 4th item is a note-style
-                      />
-                    ))}
-                  </View>
-                );
-              })}
-            </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ImageBackground>
 
             {/* Achieved section */}
             {completed.length > 0 && (
@@ -366,16 +383,24 @@ export function VisionBoardScreen() {
                   <Text style={styles.achievedTitle}>✓ Achieved</Text>
                   <View style={styles.achievedRule} />
                 </View>
-                <View style={styles.scrapboard}>
-                  {completed.map((item) => (
-                    <ScrapbookCard
-                      key={item.id}
-                      item={item}
-                      onPress={handleOpenItem}
-                      rotation={Math.random() * 6 - 3}
-                    />
-                  ))}
-                </View>
+                <ImageBackground
+                  source={BACKGROUNDS[0]}
+                  style={styles.scrapboardWrapper}
+                  imageStyle={styles.scrapboardBG}
+                >
+                  <View style={styles.scrapboard}>
+                    <View style={styles.itemsGrid}>
+                      {completed.map((item) => (
+                        <ScrapbookCard
+                          key={item.id}
+                          item={item}
+                          onPress={handleOpenItem}
+                          rotation={Math.random() * 6 - 3}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </ImageBackground>
               </View>
             )}
           </>
@@ -434,7 +459,7 @@ const styles = StyleSheet.create({
 
   addDreamBtn: {
     flex: 1,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gold,
@@ -486,6 +511,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
   },
+
+  // Handwritten notes section
+  notesSection: {
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  notesTitle: {
+    ...typography.headlineSm,
+    color: colors.gold,
+    fontSize: 16,
+    marginBottom: spacing.md,
+    fontStyle: 'italic',
+  },
+  notesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  noteCardWrapper: {
+    flex: 1,
+    minWidth: '48%',
+  },
+  handwrittenNote: {
+    backgroundColor: '#fef9e7',
+    borderRadius: 4,
+    padding: spacing.md,
+    minHeight: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f0ede6',
+  },
+  handwrittenTitle: {
+    fontSize: 16,
+    color: '#2d2d2d',
+    marginBottom: spacing.sm,
+    fontStyle: 'italic',
+    fontWeight: '600',
+    fontFamily: 'cursive',
+  },
+  handwrittenContent: {
+    fontSize: 12,
+    color: '#2d2d2d',
+    lineHeight: 18,
+    fontStyle: 'italic',
+    fontFamily: 'cursive',
+  },
+
   collectionBox: {
     flex: 1,
     backgroundColor: colors.surfaceCard,
@@ -518,8 +594,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  sectionGroup: {
-    marginBottom: spacing.xl,
+  scrapboardWrapper: {
+    marginBottom: spacing.lg,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#faf8f3',
+  },
+
+  scrapboardBG: {
+    resizeMode: 'cover',
+    opacity: 0.4,
+  },
+
+  itemsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 0,
   },
 
   sectionLabel: {

@@ -94,7 +94,7 @@ function RepositoryCard({
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={onPress}
-      android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
@@ -237,8 +237,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    borderColor: 'rgba(139,111,58,0.25)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
   },
   headerTextWrap: {
     flex: 1,
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   newBadge: {
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
   },
   newBadgeText: {
     ...typography.label,

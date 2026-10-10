@@ -33,11 +33,11 @@ const SWIPE_THRESHOLD = 20;
 
 /** Tile colours keyed by value; higher tiles glow gold. */
 function tileStyle(value: number) {
-  if (value === 0) return { bg: 'rgba(253,252,240,0.04)', fg: 'transparent' };
+  if (value === 0) return { bg: 'rgba(139,111,58,0.04)', fg: 'transparent' };
   if (value <= 4) return { bg: 'rgba(167,210,182,0.18)', fg: colors.neutral };
   if (value <= 16) return { bg: 'rgba(167,210,182,0.30)', fg: colors.neutral };
-  if (value <= 64) return { bg: 'rgba(197,163,101,0.35)', fg: colors.neutral };
-  if (value <= 256) return { bg: 'rgba(197,163,101,0.55)', fg: colors.ctaText };
+  if (value <= 64) return { bg: 'rgba(139,111,58,0.35)', fg: colors.neutral };
+  if (value <= 256) return { bg: 'rgba(139,111,58,0.55)', fg: colors.ctaText };
   return { bg: colors.gold, fg: colors.ctaText };
 }
 
@@ -225,7 +225,7 @@ function ArrowBtn({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Move ${label}`}
-      android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+      android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
     >
       <Text style={styles.arrowGlyph}>{glyph}</Text>
     </Pressable>

@@ -158,7 +158,7 @@ export function NeedAHugScreen() {
                       disabled={sending}
                       accessibilityRole="button"
                       accessibilityLabel="Tap and hold to send a hug"
-                      android_ripple={{ color: 'rgba(197,163,101,0.2)', borderless: true }}
+                      android_ripple={{ color: 'rgba(139,111,58,0.2)', borderless: true }}
                     >
                       <HugFiguresIcon color={colors.gold} size={44} />
                       <Text style={styles.tapLabel}>Tap to hold</Text>
@@ -204,7 +204,7 @@ export function NeedAHugScreen() {
             disabled={sending}
             accessibilityRole="button"
             accessibilityLabel="View our hugs history"
-            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
           >
             <HistoryIcon color={colors.neutral} />
             <Text style={styles.secondaryText}>View Hug History</Text>
@@ -218,7 +218,7 @@ export function NeedAHugScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add a gentle whisper"
               accessibilityState={{ expanded: whisperOpen }}
-              android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
+              android_ripple={{ color: 'rgba(139,111,58,0.08)' }}
             >
               <WhisperIcon color={colors.gold} />
               <Text style={styles.whisperTitle}>Add a gentle whisper</Text>
@@ -311,9 +311,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -338,9 +338,9 @@ const styles = StyleSheet.create({
     borderRadius: 130,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(197,163,101,0.04)',
+    backgroundColor: 'rgba(139,111,58,0.04)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.10)',
+    borderColor: 'rgba(139,111,58,0.10)',
   },
   glowMid: {
     width: 190,
@@ -348,9 +348,9 @@ const styles = StyleSheet.create({
     borderRadius: 95,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(197,163,101,0.06)',
+    backgroundColor: 'rgba(139,111,58,0.06)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.14)',
+    borderColor: 'rgba(139,111,58,0.14)',
   },
   glowCore: {
     width: 130,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: 'rgba(6,78,59,0.35)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.22)',
+    borderColor: 'rgba(139,111,58,0.22)',
   },
   tapLabel: { ...typography.label, color: colors.gold, fontSize: 9 },
 

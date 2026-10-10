@@ -80,7 +80,7 @@ export function IncidentListScreen() {
             key={item.key}
             style={[styles.tab, activeTab.key === item.key && styles.tabActive]}
             onPress={() => selectTab(item)}
-            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
           >
             <Text style={[styles.tabText, activeTab.key === item.key && styles.tabTextActive]}>
               {item.label}
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  tabActive: { backgroundColor: 'rgba(197,163,101,0.15)', borderColor: colors.gold },
+  tabActive: { backgroundColor: 'rgba(139,111,58,0.15)', borderColor: colors.gold },
   tabText: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 12 },
   tabTextActive: { color: colors.gold },
   listContent: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xl },

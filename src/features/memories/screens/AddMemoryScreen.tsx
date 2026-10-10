@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
   },
   chipText: {
     ...typography.bodySm,

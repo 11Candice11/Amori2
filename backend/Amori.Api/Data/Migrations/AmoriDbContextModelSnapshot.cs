@@ -893,6 +893,9 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_favorite");
 
+                    b.Property<bool>("IsGiftOnly")
+                        .HasColumnType("boolean");
+
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision")
                         .HasColumnName("latitude");
@@ -2703,12 +2706,17 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<Guid?>("VisionBoardItemId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MemoryId");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_vault_gifts_user_id");
+
+                    b.HasIndex("VisionBoardItemId");
 
                     b.HasIndex("UserId", "MemoryId")
                         .IsUnique()
@@ -3931,9 +3939,15 @@ namespace Amori.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Amori.Api.Domain.Entities.VisionBoardItem", "VisionBoardItem")
+                        .WithMany()
+                        .HasForeignKey("VisionBoardItemId");
+
                     b.Navigation("Memory");
 
                     b.Navigation("User");
+
+                    b.Navigation("VisionBoardItem");
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardItem", b =>

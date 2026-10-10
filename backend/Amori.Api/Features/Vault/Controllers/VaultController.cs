@@ -58,6 +58,17 @@ public sealed class VaultController(
     public async Task<IActionResult> SendGiftToPartner([FromBody] SaveVaultGiftRequest req, CancellationToken ct) =>
         Ok(await vaultService.SendGiftToPartnerAsync(RequireUserId(), req, ct));
 
+    /// <summary>
+    /// Create a new gift-only memory and send it to the caller's partner in one operation.
+    /// The memory is not added to the caller's or partner's regular memories feed, only
+    /// appears in the partner's vault. Returns a confirmation with the gift ID.
+    /// </summary>
+    [HttpPost("gifts/create")]
+    [ProducesResponseType(typeof(SendGiftResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateAndSendGiftToPartner([FromBody] CreateGiftRequest req, CancellationToken ct) =>
+        Ok(await vaultService.CreateGiftToPartnerAsync(RequireUserId(), req, ct));
+
     /// <summary>Remove a saved gift from the caller's vault.</summary>
     [HttpDelete("gifts/{giftId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

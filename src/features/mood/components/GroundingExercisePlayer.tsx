@@ -82,7 +82,7 @@ export function GroundingExercisePlayer({
           onPress={handleNext}
           accessibilityRole="button"
           accessibilityLabel={isLast ? 'Done' : 'Next'}
-          android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
         >
           <Text style={styles.primaryBtnText}>
             {isLast ? "I feel a little steadier" : "Next"}
@@ -95,7 +95,7 @@ export function GroundingExercisePlayer({
             onPress={handlePrevious}
             accessibilityRole="button"
             accessibilityLabel="Previous step"
-            android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
           >
             <Text style={styles.secondaryBtnText}>Back a step</Text>
           </Pressable>

@@ -101,12 +101,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flex: 1, padding: spacing.md },
   noteTag: {
-    backgroundColor: 'rgba(197,163,101,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
     borderRadius: 8,
     padding: spacing.sm,
     marginBottom: spacing.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.2)',
+    borderColor: 'rgba(139,111,58,0.2)',
   },
   noteTagText: { ...typography.bodySm, color: colors.gold },
   input: {

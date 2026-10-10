@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surfaceCard,
   },
-  chipActive: { borderColor: colors.gold, backgroundColor: 'rgba(197,163,101,0.16)' },
+  chipActive: { borderColor: colors.gold, backgroundColor: 'rgba(139,111,58,0.16)' },
   chipText: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 13 },
   chipTextActive: { color: colors.gold },
   input: {
