@@ -33,6 +33,7 @@ import {
 import { vibrate } from '../../../shared/haptics';
 import type { HugStackParamList } from '../../../navigation/HugStackParamList';
 import { hugService } from '../services/hugService';
+import { userPointsStore } from '../../../shared/state/userPointsStore';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -101,6 +102,10 @@ export function NeedAHugScreen() {
       setWhisper('');
       setWhisperOpen(false);
       setSending(false);
+      
+      // Refresh points after successfully sending a hug
+      userPointsStore.load(true);
+      
       navigation.navigate('HugSent', { hugId: hug.id, deliveryMs });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send your hug. Try again in a moment.');

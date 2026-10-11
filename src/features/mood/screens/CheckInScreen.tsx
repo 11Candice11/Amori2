@@ -38,6 +38,7 @@ import type { CheckInResponse } from '../../../services/api/types';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 import { moodBackgroundStore, useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 import { moodLabel } from '../../../utils/moodUtils';
+import { userPointsStore } from '../../../shared/state/userPointsStore';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'CheckInHome'>;
 
@@ -247,6 +248,9 @@ export function CheckInScreen() {
       // Moves Check-in, Together and Desk onto the new mood's background.
       moodBackgroundStore.setQuadrant(mood.quadrant);
 
+      // Refresh points after successful check-in
+      userPointsStore.load(true);
+
       // A high-pleasant check-in earns the daily gift — take them straight to
       // it rather than pausing on the "Anchored" confirmation. Other quadrants
       // still land on the confirmation with their own follow-on action.
@@ -277,6 +281,10 @@ export function CheckInScreen() {
       setConfirmedQuadrant(null);
       // An "I don't know" check-in has no quadrant — back to neutral.
       moodBackgroundStore.setQuadrant(null);
+      
+      // Refresh points after successful check-in
+      userPointsStore.load(true);
+      
       setStage('done');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your check-in.');

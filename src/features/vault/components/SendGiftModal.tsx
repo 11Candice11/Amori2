@@ -12,7 +12,7 @@
  * This uses the dedicated /api/vault/gifts/create endpoint, which creates
  * and sends the gift in one operation without polluting the memories feed.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -48,7 +48,6 @@ import {
 } from '../../memories/components/VoiceNoteRecorder';
 import { getCardImage } from '../../../utils/cardSelector';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
-import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { mediaService } from '../../../services/media/mediaService';
 import { vaultService } from '../services/vaultService';
 import type { CreateGiftMediaRequest } from '../types/vault.types';
@@ -113,6 +112,12 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The success popup is its own native Modal. iOS can only present one modal
+  // at a time, so showing it while this gift card is still open is dropped
+  // ("already presenting"). Park the message here and show it once the card
+  // has finished closing (see handleClose).
+  const pendingSuccessMessage = useRef<string | null>(null);
 
   const resetForm = useCallback(() => {
     setTitle('');
@@ -310,21 +315,22 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
               memoryId: result.memoryId,
               cardNumber: card,
             });
-            showSuccessOverlay(`Gift sent to ${result.recipientName} and saved to your vault 🎁`);
+            pendingSuccessMessage.current = `Gift sent to ${result.recipientName} and saved to your vault 🎁`;
           } catch (saveErr) {
             // Don't fail the whole operation if saving to own vault fails
             console.warn('Could not save gift to sender vault:', saveErr);
-            showSuccessOverlay(`Gift sent to ${result.recipientName} 🎁`);
+            pendingSuccessMessage.current = `Gift sent to ${result.recipientName} 🎁`;
           }
         } else {
-          showSuccessOverlay(`Gift sent to ${result.recipientName} 🎁`);
+          pendingSuccessMessage.current = `Gift sent to ${result.recipientName} 🎁`;
         }
         resetForm();
         onSent?.();
         close();
       } catch (err) {
+        // Shown inline in the form. No error popup here: it would be a second
+        // native Modal on top of this one, which iOS refuses to present.
         setError(err instanceof Error ? err.message : 'Could not send the gift.');
-        showErrorOverlay("Couldn't send gift");
         setSending(false);
       }
     },
@@ -349,6 +355,12 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
     // Don't wipe a half-filled form mid-send; reset only when idle.
     if (!sending) resetForm();
     onClose();
+
+    // The card's Modal has finished closing by now. Give iOS a beat to tear
+    // it down before presenting the success popup's Modal.
+    const message = pendingSuccessMessage.current;
+    pendingSuccessMessage.current = null;
+    if (message) setTimeout(() => showSuccessOverlay(message), 400);
   }, [sending, resetForm, onClose]);
 
   return (

@@ -4,111 +4,168 @@
  * Defines all achievements/badges in Amori with their unlock criteria,
  * descriptions, and associated images.
  *
- * Image files should be placed in src/images/badges/ as PNGs.
- * Badge IDs use snake_case and match the image base name.
+ * Image files live in images/badges/ as PNGs. Badge IDs use snake_case and
+ * match the image filename exactly (e.g. first_embrace2 -> first_embrace2.png).
+ *
+ * Tiers are per badge family, following the filename: first_embrace is tier 1,
+ * first_embrace2 is tier 2, and so on. A badge with no number is tier 1.
+ *
+ * Metro only bundles images referenced by a literal require('...'), so every
+ * image is listed explicitly in BADGE_IMAGES below. When you add a new badge:
+ *   1. drop the PNG in images/badges/
+ *   2. add a require() line to BADGE_IMAGES
+ *   3. add the badge to ALL_BADGES
  */
 
 // ─── BADGE IMAGES ─────────────────────────────────────────────────────────
-// Require statements for all badge images
+// Static require() for every badge image, keyed by badge id (= filename).
 const BADGE_IMAGES = {
-  // Hugs category
+  // Hugs
   first_embrace: require('../../images/badges/first_embrace.png'),
-  first_embrace_2: require('../../images/badges/first_embrace2.png'),
+  first_embrace2: require('../../images/badges/first_embrace2.png'),
   hug_collector: require('../../images/badges/hug_collector.png'),
+  golden_heart: require('../../images/badges/golden_heart.png'),
+  golden_heart2: require('../../images/badges/golden_heart2.png'),
+  hug_back: require('../../images/badges/hug_back.png'),
+  hug_marathon: require('../../images/badges/hug_marathon.png'),
+  long_distance_hugger: require('../../images/badges/long_distance_hugger.png'),
+  midnight_hug: require('../../images/badges/midnight_hug.png'),
+  both_ways: require('../../images/badges/both_ways.png'),
 
-  // Checkins category
+  // Check-ins
+  first_light: require('../../images/badges/first_light.png'),
   morning_ritual: require('../../images/badges/morning_ritual.png'),
   night_whispers: require('../../images/badges/night_whispers.png'),
+  daily_streak: require('../../images/badges/daily_streak.png'),
+  daily_streak2: require('../../images/badges/daily_streak2.png'),
+  evergreen: require('../../images/badges/evergreen.png'),
+  // PLACEHOLDER ART: evergreen2.png is currently a copy of shared_horizons2.png.
+  evergreen2: require('../../images/badges/evergreen2.png'),
+  evergreen3: require('../../images/badges/evergreen3.png'),
 
-  // Memory Vault category
+  // Memory vault
   memory_keeper: require('../../images/badges/memory_keeper.png'),
 
-  // Messages category
+  // Messages (Let's Chat)
   words_that_matter: require('../../images/badges/words_that_matter.png'),
-  words_that_matter_2: require('../../images/badges/words_that_matter2.png'),
-  open_heart: require('../../images/badges/open_heart.png'),
+  words_that_matter2: require('../../images/badges/words_that_matter2.png'),
 
-  // Timeline category
-  daily_streak: require('../../images/badges/daily_streak.png'),
-  daily_streak_2: require('../../images/badges/daily_streak2.png'),
-
-  // Vision Board category
-  dream_builders: require('../../images/badges/dream_builders.png'),
-  dream_builders_2: require('../../images/badges/dream_builders2.png'),
+  // Timeline
   shared_horizons: require('../../images/badges/shared_horizons.png'),
-  shared_horizons_2: require('../../images/badges/shared_horizons2.png'),
-
-  // Bucket List category
-  bucket_list_buddy: require('../../images/badges/bucket_list_buddy.png'),
-  bucket_list_buddy_2: require('../../images/badges/bucket_list_buddy2.png'),
-
-  // Games category
-  level_up: require('../../images/badges/level_up.png'),
-
-  // Partner Sync category
-  growing_together: require('../../images/badges/growing_together.png'),
-
-  // Special category
-  first_light: require('../../images/badges/first_light.png'),
-
-  // Mood category
-  finding_calm: require('../../images/badges/finding_calm.png'),
-  finding_calm_2: require('../../images/badges/finding_calm2.png'),
-
-  // Media category
-  emerald_soul: require('../../images/badges/emerald_soul.png'),
-  emerald_soul_2: require('../../images/badges/emerald_soul2.png'),
-  golden_heart: require('../../images/badges/golden_heart.png'),
-  golden_heart_2: require('../../images/badges/golden_heart2.png'),
-
-  // Progression category
-  curious_mind: require('../../images/badges/curious_mind.png'),
-  curious_mind_2: require('../../images/badges/curious_mind2.png'),
-  safe_harbor: require('../../images/badges/safe_harbor.png'),
-  evergreen: require('../../images/badges/evergreen.png'),
-  evergreen_2: require('../../images/badges/evergreen2.png'),
-  evergreen_3: require('../../images/badges/evergreen3.png'),
-
-  // Hidden/Special
-  eternal_bond: require('../../images/badges/eternal_bond.png'),
-  sacred_vow: require('../../images/badges/sacred_vow.png'),
+  shared_horizons2: require('../../images/badges/shared_horizons2.png'),
   together_forever: require('../../images/badges/together_forever.png'),
+
+  // Vision board
+  dream_builders: require('../../images/badges/dream_builders.png'),
+  dream_builders2: require('../../images/badges/dream_builders2.png'),
+
+  // Bucket list / wishlist
+  bucket_list_buddy: require('../../images/badges/bucket_list_buddy.png'),
+  // PLACEHOLDER ART: bucket_list_buddy2.png is currently a copy of shared_horizons2.png.
+  bucket_list_buddy2: require('../../images/badges/bucket_list_buddy2.png'),
+
+  // Games
+  curious_mind: require('../../images/badges/curious_mind.png'),
+  curious_mind2: require('../../images/badges/curious_mind2.png'),
+
+  // Partner sync
+  growing_together: require('../../images/badges/growing_together.png'),
+  open_heart: require('../../images/badges/open_heart.png'),
+  safe_harbor: require('../../images/badges/safe_harbor.png'),
+
+  // Mood tracking
+  finding_calm: require('../../images/badges/finding_calm.png'),
+  finding_calm2: require('../../images/badges/finding_calm2.png'),
+
+  // Media
+  emerald_soul: require('../../images/badges/emerald_soul.png'),
+  emerald_soul2: require('../../images/badges/emerald_soul2.png'),
+
+  // Special
+  sacred_vow: require('../../images/badges/sacred_vow.png'),
+  eternal_bond: require('../../images/badges/eternal_bond.png'),
+
+  // Progression
+  level_up: require('../../images/badges/level_up.png'),
 };
 
-export type BadgeCategory =
-  | 'hugs'
-  | 'checkins'
-  | 'memory_vault'
-  | 'messages'
-  | 'timeline'
-  | 'vision_board'
-  | 'bucket_list'
-  | 'games'
-  | 'partner_sync'
-  | 'special'
-  | 'mood'
-  | 'media'
-  | 'progression';
+// ─── TYPES ────────────────────────────────────────────────────────────────
+
+export const BADGE_CATEGORIES = [
+  'hugs',
+  'checkins',
+  'memory_vault',
+  'messages',
+  'timeline',
+  'vision_board',
+  'bucket_list',
+  'games',
+  'partner_sync',
+  'mood',
+  'media',
+  'special',
+  'progression',
+] as const;
+
+export type BadgeCategory = (typeof BADGE_CATEGORIES)[number];
+
+/**
+ * Categories that count towards Eternal Bond ("a badge in every category").
+ * 'special' is excluded because Eternal Bond itself lives there.
+ */
+export const ETERNAL_BOND_CATEGORIES: BadgeCategory[] = BADGE_CATEGORIES.filter(
+  (category) => category !== 'special',
+);
 
 export type UnlockCriteriaType =
+  // Hugs
   | 'hugs_sent'
+  | 'hug_replies_fast'
+  | 'hug_streak_days'
+  | 'long_distance_hugs'
+  | 'night_hugs'
+  | 'mutual_hug_days'
+  // Check-ins
   | 'checkins_completed'
   | 'checkin_streak'
   | 'morning_checkins'
   | 'evening_checkins'
+  // Memories
   | 'memories_created'
   | 'memories_saved_to_vault'
+  | 'memory_saved_on_anniversary'
+  // Messages
   | 'messages_sent'
+  | 'conversations_completed'
+  // Timeline
   | 'timeline_events_added'
+  | 'anniversary_reached'
+  // Vision board
   | 'vision_board_items_added'
+  | 'vision_board_items_achieved'
+  // Bucket list
   | 'bucket_list_items_added'
+  | 'bucket_list_items_completed'
+  // Games
   | 'games_played'
   | 'quizzes_completed'
   | 'would_you_rather_answered'
   | 'hidden_objects_solved'
-  | 'mood_logged'
-  | 'media_attachments'
+  | 'partner_quiz_perfect_scores'
+  // Partner sync
+  | 'sync_questions_agreed'
+  | 'partner_request_fast_responses'
+  | 'partner_low_mood_support'
   | 'partner_response_time'
+  // Mood
+  | 'mood_logged'
+  | 'mood_streak_days'
+  | 'distinct_moods_logged'
+  // Media
+  | 'media_attachments'
+  | 'media_shared'
+  // Meta / progression
+  | 'categories_unlocked'
   | 'perfect_attendance'
   | 'level_reached'
   | 'custom';
@@ -124,11 +181,11 @@ export interface Badge {
   id: string;
   /** Display title shown to user */
   name: string;
-  /** Short, warm description (one sentence) */
+  /** Short, warm description (one sentence) of what the badge is for */
   description: string;
   /** Category for grouping/filtering */
   category: BadgeCategory;
-  /** Optional tier for variants (1=bronze, 2=silver, 3=gold, 4+=special) */
+  /** Tier within the badge family (1 = base badge, 2 = "...2" image, 3 = "...3" image) */
   tier?: number;
   /** How to unlock this badge */
   unlockCriteria: UnlockCriteria;
@@ -138,490 +195,508 @@ export interface Badge {
   hidden?: boolean;
   /** Order for display within category */
   displayOrder?: number;
-  /** Additional metadata for badge (e.g., customEvent, moodType) */
+  /** Additional metadata for badge (e.g., time windows, reveal rules) */
   metadata?: Record<string, any>;
 }
-
-// ─── HUGS CATEGORY ────────────────────────────────────────────────────────
-
-export const FIRST_EMBRACE: Badge = {
-  id: 'first_embrace',
-  name: 'First Embrace',
-  description: 'Sent your first hug to your partner.',
-  category: 'hugs',
-  tier: 1,
-  unlockCriteria: { type: 'hugs_sent', threshold: 1 },
-  pointsReward: 50,
-  displayOrder: 1,
-};
-
-export const FIRST_EMBRACE_2: Badge = {
-  id: 'first_embrace_2',
-  name: 'Embrace Collector',
-  description: 'You have sent your first 10 hugs together.',
-  category: 'hugs',
-  tier: 2,
-  unlockCriteria: { type: 'hugs_sent', threshold: 10 },
-  pointsReward: 100,
-  displayOrder: 2,
-};
-
-export const HUG_COLLECTOR: Badge = {
-  id: 'hug_collector',
-  name: 'Hug Collector',
-  description: 'Reached 50 hugs sent - your affection knows no bounds.',
-  category: 'hugs',
-  tier: 3,
-  unlockCriteria: { type: 'hugs_sent', threshold: 50 },
-  pointsReward: 150,
-  displayOrder: 3,
-};
-
-// ─── CHECK-INS CATEGORY ───────────────────────────────────────────────────
-
-export const DAILY_STREAK: Badge = {
-  id: 'daily_streak',
-  name: 'Daily Ritual',
-  description: 'You have built a 7-day check-in streak - consistency is love.',
-  category: 'checkins',
-  tier: 1,
-  unlockCriteria: { type: 'checkin_streak', threshold: 7 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const DAILY_STREAK_2: Badge = {
-  id: 'daily_streak_2',
-  name: 'Devoted Daily',
-  description: '30 days of check-ins - a month of connection.',
-  category: 'checkins',
-  tier: 2,
-  unlockCriteria: { type: 'checkin_streak', threshold: 30 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-export const FIRST_LIGHT: Badge = {
-  id: 'first_light',
-  name: 'First Light',
-  description: 'Completed your first morning check-in together.',
-  category: 'checkins',
-  unlockCriteria: { type: 'morning_checkins', threshold: 1 },
-  pointsReward: 50,
-  displayOrder: 3,
-};
-
-export const MORNING_RITUAL: Badge = {
-  id: 'morning_ritual',
-  name: 'Morning Ritual',
-  description: 'You start 15 mornings together with a check-in.',
-  category: 'checkins',
-  unlockCriteria: { type: 'morning_checkins', threshold: 15 },
-  pointsReward: 150,
-  displayOrder: 4,
-};
-
-export const NIGHT_WHISPERS: Badge = {
-  id: 'night_whispers',
-  name: 'Night Whispers',
-  description: 'You have shared 15 evening check-ins - end each day connected.',
-  category: 'checkins',
-  unlockCriteria: { type: 'evening_checkins', threshold: 15 },
-  pointsReward: 150,
-  displayOrder: 5,
-};
-
-// ─── MEMORY & VAULT CATEGORY ──────────────────────────────────────────────
-
-export const MEMORY_KEEPER: Badge = {
-  id: 'memory_keeper',
-  name: 'Memory Keeper',
-  description: 'You have saved 10 memories to your vault - treasured moments preserved.',
-  category: 'memory_vault',
-  unlockCriteria: { type: 'memories_saved_to_vault', threshold: 10 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-// ─── MESSAGES CATEGORY ────────────────────────────────────────────────────
-
-export const WORDS_THAT_MATTER: Badge = {
-  id: 'words_that_matter',
-  name: 'Words That Matter',
-  description: 'You have exchanged 20 Lets Chat messages - every word counts.',
-  category: 'messages',
-  tier: 1,
-  unlockCriteria: { type: 'messages_sent', threshold: 20 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const WORDS_THAT_MATTER_2: Badge = {
-  id: 'words_that_matter_2',
-  name: 'Conversation Maestro',
-  description: 'Over 100 Lets Chat messages - you speak the language of love.',
-  category: 'messages',
-  tier: 2,
-  unlockCriteria: { type: 'messages_sent', threshold: 100 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-export const OPEN_HEART: Badge = {
-  id: 'open_heart',
-  name: 'Open Heart',
-  description: 'You share freely - vulnerability is strength in this relationship.',
-  category: 'messages',
-  tier: 3,
-  unlockCriteria: { type: 'messages_sent', threshold: 200 },
-  pointsReward: 300,
-  displayOrder: 3,
-};
-
-// ─── TIMELINE CATEGORY ────────────────────────────────────────────────────
-
-export const SHARED_HORIZONS: Badge = {
-  id: 'shared_horizons',
-  name: 'Shared Horizons',
-  description: 'You have marked 5 milestones on your timeline together.',
-  category: 'timeline',
-  tier: 1,
-  unlockCriteria: { type: 'timeline_events_added', threshold: 5 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const SHARED_HORIZONS_2: Badge = {
-  id: 'shared_horizons_2',
-  name: 'Timeline Architect',
-  description: 'Your timeline tells a story of 15 shared moments.',
-  category: 'timeline',
-  tier: 2,
-  unlockCriteria: { type: 'timeline_events_added', threshold: 15 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-export const TOGETHER_FOREVER: Badge = {
-  id: 'together_forever',
-  name: 'Together Forever',
-  description: 'You have immortalized 25 milestones - your story, forever.',
-  category: 'timeline',
-  tier: 3,
-  unlockCriteria: { type: 'timeline_events_added', threshold: 25 },
-  pointsReward: 300,
-  displayOrder: 3,
-};
-
-// ─── VISION BOARD CATEGORY ────────────────────────────────────────────────
-
-export const DREAM_BUILDERS: Badge = {
-  id: 'dream_builders',
-  name: 'Dream Builders',
-  description: 'You have added 10 dreams to your Vision Board.',
-  category: 'vision_board',
-  tier: 1,
-  unlockCriteria: { type: 'vision_board_items_added', threshold: 10 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const DREAM_BUILDERS_2: Badge = {
-  id: 'dream_builders_2',
-  name: 'Future Architects',
-  description: '25 dreams shared - building your future together.',
-  category: 'vision_board',
-  tier: 2,
-  unlockCriteria: { type: 'vision_board_items_added', threshold: 25 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-// ─── BUCKET LIST CATEGORY ─────────────────────────────────────────────────
-
-export const BUCKET_LIST_BUDDY: Badge = {
-  id: 'bucket_list_buddy',
-  name: 'Bucket List Buddy',
-  description: 'You have added 10 adventures to your bucket list.',
-  category: 'bucket_list',
-  tier: 1,
-  unlockCriteria: { type: 'bucket_list_items_added', threshold: 10 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const BUCKET_LIST_BUDDY_2: Badge = {
-  id: 'bucket_list_buddy_2',
-  name: 'Adventure Seeker',
-  description: '25 bucket list items - your adventure awaits.',
-  category: 'bucket_list',
-  tier: 2,
-  unlockCriteria: { type: 'bucket_list_items_added', threshold: 25 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-// ─── GAMES CATEGORY ───────────────────────────────────────────────────────
-
-export const CURIOUS_MIND: Badge = {
-  id: 'curious_mind',
-  name: 'Curious Mind',
-  description: 'You have played 10 games in the Distraction Centre together.',
-  category: 'games',
-  tier: 1,
-  unlockCriteria: { type: 'games_played', threshold: 10 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const CURIOUS_MIND_2: Badge = {
-  id: 'curious_mind_2',
-  name: 'Game Master',
-  description: 'Over 50 games played - you know how to have fun together.',
-  category: 'games',
-  tier: 2,
-  unlockCriteria: { type: 'games_played', threshold: 50 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-export const LEVEL_UP: Badge = {
-  id: 'level_up',
-  name: 'Level Up',
-  description: 'You have reached a new level - progress in love is progress indeed.',
-  category: 'games',
-  tier: 3,
-  unlockCriteria: { type: 'level_reached', threshold: 5 },
-  pointsReward: 150,
-  displayOrder: 3,
-};
-
-// ─── PARTNER SYNC CATEGORY ────────────────────────────────────────────────
-
-export const GROWING_TOGETHER: Badge = {
-  id: 'growing_together',
-  name: 'Growing Together',
-  description: 'Your partnership deepens - you truly understand each other.',
-  category: 'partner_sync',
-  unlockCriteria: { type: 'custom', threshold: 1 },
-  pointsReward: 100,
-  metadata: { customEvent: 'partner_link_established' },
-  displayOrder: 1,
-};
-
-export const SAFE_HARBOR: Badge = {
-  id: 'safe_harbor',
-  name: 'Safe Harbor',
-  description: 'You have supported your partner through difficult moments.',
-  category: 'partner_sync',
-  unlockCriteria: { type: 'custom', threshold: 3 },
-  pointsReward: 150,
-  metadata: { customEvent: 'sos_responded' },
-  displayOrder: 2,
-};
-
-// ─── SPECIAL CATEGORY ─────────────────────────────────────────────────────
-
-export const EVERGREEN: Badge = {
-  id: 'evergreen',
-  name: 'Evergreen',
-  description: 'Consistent as the seasons - 90 days of check-ins.',
-  category: 'special',
-  tier: 1,
-  hidden: true,
-  unlockCriteria: { type: 'checkin_streak', threshold: 90 },
-  pointsReward: 300,
-  displayOrder: 1,
-};
-
-export const EVERGREEN_2: Badge = {
-  id: 'evergreen_2',
-  name: 'Evergreen Enduring',
-  description: 'Six months of daily check-ins - a steadfast commitment.',
-  category: 'special',
-  tier: 2,
-  hidden: true,
-  unlockCriteria: { type: 'checkin_streak', threshold: 180 },
-  pointsReward: 400,
-  displayOrder: 2,
-};
-
-export const EVERGREEN_3: Badge = {
-  id: 'evergreen_3',
-  name: 'Evergreen Eternal',
-  description: 'A full year of unbroken check-ins - true dedication.',
-  category: 'special',
-  tier: 3,
-  hidden: true,
-  unlockCriteria: { type: 'checkin_streak', threshold: 365 },
-  pointsReward: 500,
-  displayOrder: 3,
-};
-
-export const ETERNAL_BOND: Badge = {
-  id: 'eternal_bond',
-  name: 'Eternal Bond',
-  description: 'You have unlocked the deepest levels of connection.',
-  category: 'special',
-  hidden: true,
-  unlockCriteria: { type: 'level_reached', threshold: 30 },
-  pointsReward: 350,
-  displayOrder: 4,
-};
-
-export const SACRED_VOW: Badge = {
-  id: 'sacred_vow',
-  name: 'Sacred Vow',
-  description: 'You have reached level 50 - a legendary milestone in your love story.',
-  category: 'special',
-  hidden: true,
-  unlockCriteria: { type: 'level_reached', threshold: 50 },
-  pointsReward: 500,
-  displayOrder: 5,
-};
-
-// ─── MOOD CATEGORY ────────────────────────────────────────────────────────
-
-export const FINDING_CALM: Badge = {
-  id: 'finding_calm',
-  name: 'Finding Calm',
-  description: 'You have logged calm moments 20 times - peace together.',
-  category: 'mood',
-  tier: 1,
-  unlockCriteria: { type: 'mood_logged', threshold: 20 },
-  pointsReward: 100,
-  metadata: { moodType: 'Calm' },
-  displayOrder: 1,
-};
-
-export const FINDING_CALM_2: Badge = {
-  id: 'finding_calm_2',
-  name: 'Serenity Seeker',
-  description: 'You have recorded 50 instances of calm - mastering inner peace together.',
-  category: 'mood',
-  tier: 2,
-  unlockCriteria: { type: 'mood_logged', threshold: 50 },
-  pointsReward: 200,
-  metadata: { moodType: 'Calm' },
-  displayOrder: 2,
-};
-
-// ─── MEDIA CATEGORY ───────────────────────────────────────────────────────
-
-export const EMERALD_SOUL: Badge = {
-  id: 'emerald_soul',
-  name: 'Emerald Soul',
-  description: 'You have attached media to 15 memories - capturing moments visually.',
-  category: 'media',
-  tier: 1,
-  unlockCriteria: { type: 'media_attachments', threshold: 15 },
-  pointsReward: 100,
-  displayOrder: 1,
-};
-
-export const EMERALD_SOUL_2: Badge = {
-  id: 'emerald_soul_2',
-  name: 'Emerald Legacy',
-  description: '50 memories with media - your story, richly documented.',
-  category: 'media',
-  tier: 2,
-  unlockCriteria: { type: 'media_attachments', threshold: 50 },
-  pointsReward: 200,
-  displayOrder: 2,
-};
-
-export const GOLDEN_HEART: Badge = {
-  id: 'golden_heart',
-  name: 'Golden Heart',
-  description: 'You have created 5 videos together - moments worth capturing.',
-  category: 'media',
-  tier: 3,
-  unlockCriteria: { type: 'media_attachments', threshold: 75 },
-  pointsReward: 250,
-  displayOrder: 3,
-};
-
-export const GOLDEN_HEART_2: Badge = {
-  id: 'golden_heart_2',
-  name: 'Golden Director',
-  description: 'You have created 15 videos together - a cinematic love story.',
-  category: 'media',
-  tier: 4,
-  unlockCriteria: { type: 'media_attachments', threshold: 150 },
-  pointsReward: 350,
-  displayOrder: 4,
-};
-
-// ─── PROGRESSION CATEGORY ─────────────────────────────────────────────────
-
-// Note: LEVEL_UP is defined above in GAMES CATEGORY
 
 // ─── BADGE REGISTRY ───────────────────────────────────────────────────────
 
 /**
- * Complete registry of all badges.
+ * Complete registry of all badges, grouped by category.
  * Used for validation, filtering, and display across the app.
  */
 export const ALL_BADGES: Badge[] = [
-  // Hugs
-  FIRST_EMBRACE,
-  FIRST_EMBRACE_2,
-  HUG_COLLECTOR,
+  // ── HUGS ────────────────────────────────────────────────────────────────
+  {
+    id: 'first_embrace',
+    name: 'First Embrace',
+    description: 'Send 10 hugs and let your partner feel your warmth, even from afar.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'hugs_sent', threshold: 10 },
+    pointsReward: 50,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'first_embrace2',
+    name: 'First Embrace II',
+    description: 'Fifty hugs sent. Your affection is becoming a beautiful habit.',
+    category: 'hugs',
+    tier: 2,
+    unlockCriteria: { type: 'hugs_sent', threshold: 50 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 2,
+  },
+  {
+    id: 'hug_collector',
+    name: 'Hug Collector',
+    description: 'A hundred hugs shared, so your partner never has to wonder if they are loved.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'hugs_sent', threshold: 100 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 3,
+  },
+  {
+    id: 'golden_heart',
+    name: 'Golden Heart',
+    description: 'Send 250 hugs. Your heart gives freely and it shows.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'hugs_sent', threshold: 250 },
+    pointsReward: 250,
+    hidden: false,
+    displayOrder: 4,
+  },
+  {
+    id: 'golden_heart2',
+    name: 'Golden Heart II',
+    description: 'Send 500 hugs. A truly golden heart, glowing for the one you love.',
+    category: 'hugs',
+    tier: 2,
+    unlockCriteria: { type: 'hugs_sent', threshold: 500 },
+    pointsReward: 400,
+    hidden: false,
+    displayOrder: 5,
+  },
+  {
+    id: 'hug_back',
+    name: 'Hug Back',
+    description: 'Answer a hug within five minutes, ten times. Love, returned in a heartbeat.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'hug_replies_fast', threshold: 10, metadata: { withinMinutes: 5 } },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 6,
+  },
+  {
+    id: 'hug_marathon',
+    name: 'Hug Marathon',
+    description: 'Send a hug seven days in a row. A whole week of showing up with love.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'hug_streak_days', threshold: 7 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 7,
+  },
+  {
+    id: 'long_distance_hugger',
+    name: 'Long Distance Hugger',
+    description: 'Send a hug while one of you is travelling or in a different time zone. Distance cannot hold love back.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: {
+      type: 'long_distance_hugs',
+      threshold: 1,
+      metadata: { condition: 'traveling_or_different_timezone' },
+    },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 8,
+  },
+  {
+    id: 'midnight_hug',
+    name: 'Midnight Hug',
+    description: 'Send a hug between midnight and 4am. Some love keeps watch through the night.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'night_hugs', threshold: 1, metadata: { fromHour: 0, toHour: 4 } },
+    pointsReward: 100,
+    hidden: true,
+    displayOrder: 9,
+  },
+  {
+    id: 'both_ways',
+    name: 'Both Ways',
+    description: 'Both of you send a hug on the same day, ten times. Love flowing in both directions.',
+    category: 'hugs',
+    tier: 1,
+    unlockCriteria: { type: 'mutual_hug_days', threshold: 10 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 10,
+  },
 
-  // Check-ins
-  DAILY_STREAK,
-  DAILY_STREAK_2,
-  FIRST_LIGHT,
-  MORNING_RITUAL,
-  NIGHT_WHISPERS,
+  // ── CHECK-INS ───────────────────────────────────────────────────────────
+  {
+    id: 'first_light',
+    name: 'First Light',
+    description: 'Complete your first morning check-in and begin the day with each other in mind.',
+    category: 'checkins',
+    tier: 1,
+    unlockCriteria: { type: 'morning_checkins', threshold: 1 },
+    pointsReward: 50,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'morning_ritual',
+    name: 'Morning Ritual',
+    description: 'Complete 10 morning check-ins. A sunrise habit worth keeping.',
+    category: 'checkins',
+    tier: 1,
+    unlockCriteria: { type: 'morning_checkins', threshold: 10 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 2,
+  },
+  {
+    id: 'night_whispers',
+    name: 'Night Whispers',
+    description: 'Complete 10 evening check-ins. End each day close, even when it is quiet.',
+    category: 'checkins',
+    tier: 1,
+    unlockCriteria: { type: 'evening_checkins', threshold: 10 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 3,
+  },
+  {
+    id: 'daily_streak',
+    name: 'Daily Streak',
+    description: 'Check in seven days in a row. Small moments, steadily kept.',
+    category: 'checkins',
+    tier: 1,
+    unlockCriteria: { type: 'checkin_streak', threshold: 7 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 4,
+  },
+  {
+    id: 'daily_streak2',
+    name: 'Daily Streak II',
+    description: 'A 30-day check-in streak. A whole month of showing up for each other.',
+    category: 'checkins',
+    tier: 2,
+    unlockCriteria: { type: 'checkin_streak', threshold: 30 },
+    pointsReward: 200,
+    hidden: false,
+    displayOrder: 5,
+  },
+  {
+    id: 'evergreen',
+    name: 'Evergreen',
+    description: 'A 100-day check-in streak. Steady, loyal and ever green.',
+    category: 'checkins',
+    tier: 1,
+    unlockCriteria: { type: 'checkin_streak', threshold: 100 },
+    pointsReward: 300,
+    hidden: false,
+    displayOrder: 6,
+  },
+  {
+    id: 'evergreen2',
+    name: 'Evergreen II',
+    description: 'A 250-day check-in streak. Your routine has grown deep roots.',
+    category: 'checkins',
+    tier: 2,
+    unlockCriteria: { type: 'checkin_streak', threshold: 250 },
+    pointsReward: 400,
+    hidden: false,
+    displayOrder: 7,
+  },
+  {
+    id: 'evergreen3',
+    name: 'Evergreen III',
+    description: 'A 365-day check-in streak. A full year, through every season, together.',
+    category: 'checkins',
+    tier: 3,
+    unlockCriteria: { type: 'checkin_streak', threshold: 365 },
+    pointsReward: 500,
+    hidden: false,
+    displayOrder: 8,
+  },
 
-  // Memory & Vault
-  MEMORY_KEEPER,
+  // ── MEMORY VAULT ────────────────────────────────────────────────────────
+  {
+    id: 'memory_keeper',
+    name: 'Memory Keeper',
+    description: 'Save your first memory and keep a treasured moment safe.',
+    category: 'memory_vault',
+    tier: 1,
+    unlockCriteria: { type: 'memories_saved_to_vault', threshold: 1 },
+    pointsReward: 50,
+    hidden: false,
+    displayOrder: 1,
+  },
 
-  // Messages
-  WORDS_THAT_MATTER,
-  WORDS_THAT_MATTER_2,
-  OPEN_HEART,
+  // ── MESSAGES (Let's Chat) ───────────────────────────────────────────────
+  {
+    id: 'words_that_matter',
+    name: 'Words That Matter',
+    description: 'Have a conversation of 20 or more messages. Every word counts when it is heartfelt.',
+    category: 'messages',
+    tier: 1,
+    unlockCriteria: { type: 'conversations_completed', threshold: 1, metadata: { minMessages: 20 } },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'words_that_matter2',
+    name: 'Words That Matter II',
+    description: 'Hold ten conversations of 20 or more messages. You always find the words.',
+    category: 'messages',
+    tier: 2,
+    unlockCriteria: { type: 'conversations_completed', threshold: 10, metadata: { minMessages: 20 } },
+    pointsReward: 250,
+    hidden: false,
+    displayOrder: 2,
+  },
 
-  // Timeline
-  SHARED_HORIZONS,
-  SHARED_HORIZONS_2,
-  TOGETHER_FOREVER,
+  // ── TIMELINE ────────────────────────────────────────────────────────────
+  {
+    id: 'shared_horizons',
+    name: 'Shared Horizons',
+    description: 'Add your first milestone to the timeline and start charting your story.',
+    category: 'timeline',
+    tier: 1,
+    unlockCriteria: { type: 'timeline_events_added', threshold: 1 },
+    pointsReward: 50,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'shared_horizons2',
+    name: 'Shared Horizons II',
+    description: 'Add 10 milestones to your timeline. Look how far you have come together.',
+    category: 'timeline',
+    tier: 2,
+    unlockCriteria: { type: 'timeline_events_added', threshold: 10 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 2,
+  },
+  {
+    id: 'together_forever',
+    name: 'Together Forever',
+    description: 'Reach your one-year anniversary. This one arrives on its own, just by loving each other for a year.',
+    category: 'timeline',
+    tier: 1,
+    unlockCriteria: {
+      type: 'anniversary_reached',
+      threshold: 1,
+      metadata: { years: 1, automatic: true },
+    },
+    pointsReward: 300,
+    hidden: false,
+    displayOrder: 3,
+  },
 
-  // Vision Board
-  DREAM_BUILDERS,
-  DREAM_BUILDERS_2,
+  // ── VISION BOARD ────────────────────────────────────────────────────────
+  {
+    id: 'dream_builders',
+    name: 'Dream Builders',
+    description: 'Add 10 items to your vision board and dream out loud together.',
+    category: 'vision_board',
+    tier: 1,
+    unlockCriteria: { type: 'vision_board_items_added', threshold: 10 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'dream_builders2',
+    name: 'Dream Builders II',
+    description: 'Mark a vision board item as achieved. Proof that shared dreams come true.',
+    category: 'vision_board',
+    tier: 2,
+    unlockCriteria: { type: 'vision_board_items_achieved', threshold: 1 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 2,
+  },
 
-  // Bucket List
-  BUCKET_LIST_BUDDY,
-  BUCKET_LIST_BUDDY_2,
+  // ── BUCKET LIST / WISHLIST ──────────────────────────────────────────────
+  {
+    id: 'bucket_list_buddy',
+    name: 'Bucket List Buddy',
+    description: 'Complete your first bucket list item together. The first adventure, ticked off.',
+    category: 'bucket_list',
+    tier: 1,
+    unlockCriteria: { type: 'bucket_list_items_completed', threshold: 1 },
+    pointsReward: 50,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'bucket_list_buddy2',
+    name: 'Bucket List Buddy II',
+    description: 'Complete 10 bucket list items. Adventure after adventure, side by side.',
+    category: 'bucket_list',
+    tier: 2,
+    unlockCriteria: { type: 'bucket_list_items_completed', threshold: 10 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 2,
+  },
 
-  // Games
-  CURIOUS_MIND,
-  CURIOUS_MIND_2,
-  LEVEL_UP,
+  // ── GAMES ───────────────────────────────────────────────────────────────
+  {
+    id: 'curious_mind',
+    name: 'Curious Mind',
+    description: 'Finish your first game of Quiz, Would You Rather, or Hidden Objects and learn something new about each other.',
+    category: 'games',
+    tier: 1,
+    unlockCriteria: {
+      type: 'games_played',
+      threshold: 1,
+      metadata: { games: ['quiz', 'would_you_rather', 'hidden_objects'] },
+    },
+    pointsReward: 50,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'curious_mind2',
+    name: 'Curious Mind II',
+    description: 'Score 100% on a partner quiz. You really do know each other.',
+    category: 'games',
+    tier: 2,
+    unlockCriteria: { type: 'partner_quiz_perfect_scores', threshold: 1 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 2,
+  },
 
-  // Partner Sync
-  GROWING_TOGETHER,
-  SAFE_HARBOR,
+  // ── PARTNER SYNC ────────────────────────────────────────────────────────
+  {
+    id: 'growing_together',
+    name: 'Growing Together',
+    description: 'Agree on 10 sync questions. You are growing in the same direction.',
+    category: 'partner_sync',
+    tier: 1,
+    unlockCriteria: { type: 'sync_questions_agreed', threshold: 10 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'open_heart',
+    name: 'Open Heart',
+    description: 'Respond to a partner request within 10 minutes, ten times. Showing up when it counts.',
+    category: 'partner_sync',
+    tier: 1,
+    unlockCriteria: {
+      type: 'partner_request_fast_responses',
+      threshold: 10,
+      metadata: { withinMinutes: 10 },
+    },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 2,
+  },
+  {
+    id: 'safe_harbor',
+    name: 'Safe Harbor',
+    description: 'Support your partner after they log a low mood. Be the calm they can come home to.',
+    category: 'partner_sync',
+    tier: 1,
+    unlockCriteria: { type: 'partner_low_mood_support', threshold: 1 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 3,
+  },
 
-  // Special
-  EVERGREEN,
-  EVERGREEN_2,
-  EVERGREEN_3,
-  ETERNAL_BOND,
-  SACRED_VOW,
+  // ── MOOD TRACKING ───────────────────────────────────────────────────────
+  {
+    id: 'finding_calm',
+    name: 'Finding Calm',
+    description: 'Log your mood seven days in a row. Noticing how you feel is a gentle kind of care.',
+    category: 'mood',
+    tier: 1,
+    unlockCriteria: { type: 'mood_streak_days', threshold: 7 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'finding_calm2',
+    name: 'Finding Calm II',
+    description: 'Log five different moods. Every feeling is welcome here.',
+    category: 'mood',
+    tier: 2,
+    unlockCriteria: { type: 'distinct_moods_logged', threshold: 5 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 2,
+  },
 
-  // Mood
-  FINDING_CALM,
-  FINDING_CALM_2,
+  // ── MEDIA ───────────────────────────────────────────────────────────────
+  {
+    id: 'emerald_soul',
+    name: 'Emerald Soul',
+    description: 'Share 10 photos, voice notes, or links. Little pieces of your world, given freely.',
+    category: 'media',
+    tier: 1,
+    unlockCriteria: { type: 'media_shared', threshold: 10 },
+    pointsReward: 100,
+    hidden: false,
+    displayOrder: 1,
+  },
+  {
+    id: 'emerald_soul2',
+    name: 'Emerald Soul II',
+    description: 'Share 100 photos, voice notes, or links. Your story, richly told.',
+    category: 'media',
+    tier: 2,
+    unlockCriteria: { type: 'media_shared', threshold: 100 },
+    pointsReward: 250,
+    hidden: false,
+    displayOrder: 2,
+  },
 
-  // Media
-  EMERALD_SOUL,
-  EMERALD_SOUL_2,
-  GOLDEN_HEART,
-  GOLDEN_HEART_2,
+  // ── SPECIAL (hidden) ────────────────────────────────────────────────────
+  {
+    id: 'sacred_vow',
+    name: 'Sacred Vow',
+    description: 'Save a memory on your relationship anniversary. A quiet promise, renewed.',
+    category: 'special',
+    tier: 1,
+    unlockCriteria: { type: 'memory_saved_on_anniversary', threshold: 1 },
+    pointsReward: 300,
+    hidden: true,
+    displayOrder: 1,
+  },
+  {
+    id: 'eternal_bond',
+    name: 'Eternal Bond',
+    description: 'Unlock at least one badge in every category. A bond woven through every part of your life together.',
+    category: 'special',
+    tier: 1,
+    unlockCriteria: {
+      type: 'categories_unlocked',
+      threshold: ETERNAL_BOND_CATEGORIES.length,
+      metadata: { categories: ETERNAL_BOND_CATEGORIES },
+    },
+    pointsReward: 500,
+    hidden: true,
+    // Stays hidden until the user is one category away, then the UI can reveal it.
+    metadata: { revealWhenRemaining: 1 },
+    displayOrder: 2,
+  },
+
+  // ── PROGRESSION ─────────────────────────────────────────────────────────
+  // The Level Up art is reused for later level milestones (10, 15, 20 ...).
+  {
+    id: 'level_up',
+    name: 'Level Up',
+    description: 'Reach level 5. Every level is another step deeper into your story.',
+    category: 'progression',
+    tier: 1,
+    unlockCriteria: { type: 'level_reached', threshold: 5 },
+    pointsReward: 150,
+    hidden: false,
+    displayOrder: 1,
+  },
 ];
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────
 
 /**
  * Get badge by ID

@@ -163,20 +163,27 @@ export const userPointsStore = {
     if (!force && hasLoaded) return Promise.resolve();
     if (inFlight) return inFlight;
 
-    // TODO: Replace with actual API call to GET /api/users/me/points
-    // For now, we'll initialize with default values or hydrate from storage
     inFlight = Promise.resolve()
       .then(() => {
-        // Initialize with defaults if not already loaded
+        // Fetch user points from API
+        // Using dynamic import to avoid circular dependencies
+        const { pointsService } = require('../../services/api/pointsService');
+        return pointsService.getPoints();
+      })
+      .then((data: { totalPoints: number; level: number }) => {
+        userPointsStore.set({
+          totalPoints: data.totalPoints,
+          level: data.level,
+        });
+      })
+      .catch(() => {
+        // On error, initialize with defaults if not already loaded
         if (!current) {
           userPointsStore.set({
             totalPoints: 0,
             level: 1,
           });
         }
-      })
-      .catch(() => {
-        // Leave cache alone on error
       })
       .finally(() => {
         inFlight = null;
