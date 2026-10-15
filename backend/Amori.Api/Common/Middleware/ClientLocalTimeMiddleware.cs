@@ -1,6 +1,10 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Amori.Api.Common.Exceptions;
 using Amori.Api.Common.Time;
+using Amori.Api.Data.Context;
+using Amori.Api.Infrastructure.Authentication;
+using Microsoft.EntityFrameworkCore;
 
 namespace Amori.Api.Common.Middleware;
 
@@ -21,10 +25,50 @@ namespace Amori.Api.Common.Middleware;
 /// </summary>
 public sealed class ClientLocalTimeMiddleware(RequestDelegate next, ILogger<ClientLocalTimeMiddleware> logger)
 {
-    public async Task InvokeAsync(HttpContext context, TimeProvider clock, IClientLocalTimeAccessor accessor)
+    /// <summary>
+    /// Offsets already written per user, so the database is only touched when
+    /// a user's offset actually changes (travel, DST), not on every request.
+    /// Per-process; a restart just costs one extra write per user.
+    /// </summary>
+    private static readonly ConcurrentDictionary<Guid, int> RememberedOffsets = new();
+
+    public async Task InvokeAsync(
+        HttpContext context,
+        TimeProvider clock,
+        IClientLocalTimeAccessor accessor,
+        ICurrentUserService currentUser,
+        AmoriDbContext db)
     {
-        ((ClientLocalTimeAccessor)accessor).Set(Resolve(context, clock));
+        var localTime = Resolve(context, clock);
+        ((ClientLocalTimeAccessor)accessor).Set(localTime);
+        await RememberOffsetAsync(currentUser.UserId, localTime, db, context.RequestAborted);
         await next(context);
+    }
+
+    /// <summary>
+    /// Keep <c>User.LastKnownUtcOffsetMinutes</c> current, so a hug can tell
+    /// whether the partners are in different time zones. Best-effort: a
+    /// failure here must never fail the request.
+    /// </summary>
+    private async Task RememberOffsetAsync(
+        Guid? userId, ClientLocalTime localTime, AmoriDbContext db, CancellationToken ct)
+    {
+        if (userId is not { } id || !localTime.WasReported) return;
+
+        var offset = localTime.UtcOffsetMinutes;
+        if (RememberedOffsets.TryGetValue(id, out var known) && known == offset) return;
+
+        try
+        {
+            await db.Users
+                .Where(u => u.Id == id && u.LastKnownUtcOffsetMinutes != offset)
+                .ExecuteUpdateAsync(set => set.SetProperty(u => u.LastKnownUtcOffsetMinutes, offset), ct);
+            RememberedOffsets[id] = offset;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not record UTC offset for user {UserId}.", id);
+        }
     }
 
     private ClientLocalTime Resolve(HttpContext context, TimeProvider clock)

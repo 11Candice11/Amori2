@@ -21,6 +21,15 @@ public sealed class Hug : BaseEntity
 
     public DateTime? AcknowledgedAt { get; set; }
 
+    /// <summary>The sender's UTC offset (minutes) when they sent it, if their device reported one.</summary>
+    public int? SenderUtcOffsetMinutes { get; set; }
+
+    /// <summary>
+    /// The recipient's last known UTC offset (minutes) at send time. When both
+    /// offsets are known and differ, the hug crossed time zones.
+    /// </summary>
+    public int? RecipientUtcOffsetMinutes { get; set; }
+
     // Navigation
     public Relationship Relationship { get; set; } = null!;
     public User Sender { get; set; } = null!;

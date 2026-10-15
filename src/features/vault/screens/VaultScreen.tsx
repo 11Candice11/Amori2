@@ -36,9 +36,7 @@ import type { MainTabParamList } from '../../../navigation/types';
 // The reward listener reports catalogue badges (constants/badges), not the
 // server's BadgeResponse rows — the modal only needs the catalogue id.
 import type { Badge } from '../../../constants/badges';
-import { pointsService } from '../../../services/api/pointsService';
-import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
-import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
+import { useSaveBadge } from '../../profile/hooks/useSaveBadge';
 import { useBadgeRewardListener } from '../hooks/useBadgeRewardListener';
 
 function VaultGlyph({ size = 40 }: { size?: number }) {
@@ -255,23 +253,17 @@ export function VaultScreen() {
     loadGifts();
   }, [loadGifts]);
 
+  const saveBadge = useSaveBadge();
   const handleSaveBadgeToVault = useCallback(
     async (badgeId: string) => {
-      try {
-        // badgeId is the catalogue slug (e.g. "first_embrace"); the server
-        // checks it's really unlocked before saving it.
-        await pointsService.archiveBadge(badgeId);
-        showSuccessOverlay('Badge saved to your vault');
-        setShowBadgeModal(false);
-        setRewardedBadge(null);
-      } catch (err) {
-        console.error('Failed to save badge:', err);
-        showErrorOverlay("Couldn't save the badge");
-        // Rethrow so the modal stays open and the user can try again.
-        throw err;
-      }
+      // badgeId is the catalogue slug (e.g. "first_embrace"); the server checks
+      // it's really unlocked, and the first save earns its points. Rejects on
+      // failure so the modal stays open for a retry.
+      await saveBadge(badgeId);
+      setShowBadgeModal(false);
+      setRewardedBadge(null);
     },
-    []
+    [saveBadge]
   );
 
   // Listen for badge rewards

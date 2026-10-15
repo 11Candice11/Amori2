@@ -60,6 +60,22 @@ public interface IPointsService
     Task<BadgeResponse> ArchiveBadgeToVaultAsync(Guid userId, string badgeKey, CancellationToken ct = default);
 
     /// <summary>
+    /// Credit, once ever, the points for activity from before server-side
+    /// awarding (hugs, check-ins, SOS, vision/bucket-list/to-do items, gift
+    /// cards), skipping anything already credited. Safe to call on every app
+    /// open: only the first call does anything, and only it reports FirstRun.
+    /// </summary>
+    Task<CatchUpResponse> RunHistoryBackfillAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Save several catalogue badges at once. Earned ones are saved (first
+    /// save pays each badge's points, in one transaction); unknown or unearned
+    /// slugs are returned as skipped rather than failing the batch.
+    /// </summary>
+    Task<ArchiveBadgesResponse> ArchiveCatalogueBadgesAsync(
+        Guid userId, IReadOnlyCollection<string> slugs, CancellationToken ct = default);
+
+    /// <summary>
     /// Get the points history/audit log for a user (admin/debugging only).
     /// </summary>
     Task<List<PointsHistoryEntryResponse>> GetPointsHistoryAsync(

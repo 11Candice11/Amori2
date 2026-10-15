@@ -1,6 +1,7 @@
 namespace Amori.Api.Features.Users.Services;
 using System.Collections.Frozen;
 using Amori.Api.Common.Exceptions;
+using Amori.Api.Common.Responses;
 using Amori.Api.Common.Time;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
@@ -11,10 +12,11 @@ using Microsoft.EntityFrameworkCore;
 /// <summary>
 /// Service for managing user gamification (points and badges).
 /// </summary>
-public sealed class PointsService(
+public sealed partial class PointsService(
     AmoriDbContext db,
     TimeProvider clock,
-    IBadgeStatsService badgeStats) : IPointsService
+    IBadgeStatsService badgeStats,
+    IClientLocalTimeAccessor localTime) : IPointsService
 {
     /// <summary>
     /// What each activity is worth. The server owns these: a client that asks
@@ -121,14 +123,27 @@ public sealed class PointsService(
 
     // ─── The one write path ──────────────────────────────────────────────────
 
-    private async Task<PointsAwardResult> ApplyAsync(
+    /// <summary>One line of points to credit: an activity, its amount and audit detail.</summary>
+    private sealed record PointsEntry(
+        ActivityType ActivityType, int Amount, DateOnly LocalDate, Guid? ReferenceId, string? Metadata);
+
+    private Task<PointsAwardResult> ApplyAsync(
         Guid userId,
         ActivityType activityType,
         int amount,
         DateOnly localDate,
         Guid? referenceId,
         string? metadata,
-        CancellationToken ct)
+        CancellationToken ct) =>
+        ApplyAsync(userId, [new PointsEntry(activityType, amount, localDate, referenceId, metadata)], ct);
+
+    /// <summary>
+    /// Credit one or more entries in a single <c>SaveChangesAsync</c>, together
+    /// with anything else the caller has already queued on the context (e.g.
+    /// the badge rows being saved). One history row per entry.
+    /// </summary>
+    private async Task<PointsAwardResult> ApplyAsync(
+        Guid userId, IReadOnlyList<PointsEntry> entries, CancellationToken ct)
     {
         if (!await db.Users.AnyAsync(u => u.Id == userId, ct))
             throw new NotFoundException("User", userId);
@@ -147,23 +162,29 @@ public sealed class PointsService(
         }
 
         var previousLevel = CalculateLevel(userPoints.TotalPoints);
+        var awarded = 0;
 
-        // Floor at zero so a negative manual adjustment can't drive a user into
-        // debt, which CalculateLevel has no sensible answer for.
-        userPoints.TotalPoints = Math.Max(0, userPoints.TotalPoints + amount);
+        foreach (var entry in entries)
+        {
+            // Floor at zero so a negative manual adjustment can't drive a user
+            // into debt, which CalculateLevel has no sensible answer for.
+            userPoints.TotalPoints = Math.Max(0, userPoints.TotalPoints + entry.Amount);
+            awarded += entry.Amount;
+
+            db.PointsHistory.Add(new PointsHistory
+            {
+                UserId = userId,
+                ActivityType = entry.ActivityType,
+                PointsAwarded = entry.Amount,
+                TotalPointsAfter = userPoints.TotalPoints,
+                LocalDate = entry.LocalDate,
+                ReferenceId = entry.ReferenceId,
+                Metadata = entry.Metadata,
+            });
+        }
+
         userPoints.Level = CalculateLevel(userPoints.TotalPoints);
         userPoints.LastPointsAddedAt = clock.GetUtcNow().UtcDateTime;
-
-        db.PointsHistory.Add(new PointsHistory
-        {
-            UserId = userId,
-            ActivityType = activityType,
-            PointsAwarded = amount,
-            TotalPointsAfter = userPoints.TotalPoints,
-            LocalDate = localDate,
-            ReferenceId = referenceId,
-            Metadata = metadata,
-        });
 
         // Every threshold crossed, not just the level landed on. A single
         // award can span several levels, and the old code only looked at the
@@ -176,12 +197,21 @@ public sealed class PointsService(
 
         return new PointsAwardResult(
             Awarded: true,
-            PointsAwarded: amount,
+            PointsAwarded: awarded,
             TotalPoints: userPoints.TotalPoints,
             PreviousLevel: previousLevel,
             NewLevel: userPoints.Level,
             NewBadges: newBadges);
     }
+
+    private static RewardsResponse ToRewards(PointsAwardResult award) => new()
+    {
+        PointsAwarded = award.PointsAwarded,
+        TotalPoints = award.TotalPoints,
+        LeveledUp = award.LeveledUp,
+        NewLevel = award.LeveledUp ? award.NewLevel : null,
+        NewBadges = [],
+    };
 
     /// <summary>
     /// Queue up a badge for every threshold between the old and new level.
@@ -287,6 +317,11 @@ public sealed class PointsService(
     /// /badge-stats, so the server has no row for one until it's saved. Before
     /// creating that row the same counters are checked against the badge's
     /// rule here — a client can't vault a badge it hasn't earned.
+    ///
+    /// The first save also pays the badge's <see cref="BadgeCatalog.Entry.PointsReward"/>
+    /// (as <see cref="ActivityType.BadgeSaved"/>), committed in the same save as
+    /// the badge row: the unique (user, slug) index is what makes it once-only.
+    /// Repeat saves return the badge with no reward.
     /// </summary>
     private async Task<BadgeResponse> ArchiveCatalogueBadgeAsync(
         Guid userId, string slug, CancellationToken ct)
@@ -318,14 +353,27 @@ public sealed class PointsService(
 
         try
         {
-            await db.SaveChangesAsync(ct);
-            return ToBadgeResponse(badge);
+            // ApplyAsync's single SaveChangesAsync commits the badge row, the
+            // points, the history entry and any level badges together.
+            var award = await ApplyAsync(
+                userId,
+                ActivityType.BadgeSaved,
+                entry.PointsReward,
+                localTime.Current.LocalDate,
+                badge.Id,
+                metadata: entry.Slug,
+                ct);
+
+            var response = ToBadgeResponse(badge);
+            response.Rewards = ToRewards(award);
+            return response;
         }
         catch (DbUpdateException)
         {
             // Two saves raced (a double tap): the unique (user, slug) index let
-            // exactly one through. Return that row rather than an error.
-            db.Entry(badge).State = EntityState.Detached;
+            // exactly one through, and only that one paid out. Drop everything
+            // this attempt queued (badge, points, history) and return the winner.
+            db.ChangeTracker.Clear();
             var winner = await db.Badges
                 .FirstOrDefaultAsync(b => b.UserId == userId && b.Slug == entry.Slug, ct);
             if (winner is null) throw;

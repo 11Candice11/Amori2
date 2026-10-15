@@ -17,6 +17,8 @@ public sealed class HugConfiguration : IEntityTypeConfiguration<Hug>
         builder.Property(h => h.RecipientId).HasColumnName("recipient_id").IsRequired();
         builder.Property(h => h.Whisper).HasColumnName("whisper").HasMaxLength(500);
         builder.Property(h => h.HoldDurationMs).HasColumnName("hold_duration_ms");
+        builder.Property(h => h.SenderUtcOffsetMinutes).HasColumnName("sender_utc_offset_minutes");
+        builder.Property(h => h.RecipientUtcOffsetMinutes).HasColumnName("recipient_utc_offset_minutes");
         builder.Property(h => h.AcknowledgedAt).HasColumnName("acknowledged_at");
         builder.Property(h => h.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(h => h.UpdatedAt).HasColumnName("updated_at");

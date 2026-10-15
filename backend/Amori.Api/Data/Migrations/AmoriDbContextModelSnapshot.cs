@@ -841,6 +841,10 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_id");
 
+                    b.Property<int?>("RecipientUtcOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("recipient_utc_offset_minutes");
+
                     b.Property<Guid>("RelationshipId")
                         .HasColumnType("uuid")
                         .HasColumnName("relationship_id");
@@ -848,6 +852,10 @@ namespace Amori.Api.Data.Migrations
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uuid")
                         .HasColumnName("sender_id");
+
+                    b.Property<int?>("SenderUtcOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("sender_utc_offset_minutes");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1284,6 +1292,11 @@ namespace Amori.Api.Data.Migrations
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_points_history_user_id");
+
+                    b.HasIndex("UserId", "ActivityType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_points_history_user_history_backfill")
+                        .HasFilter("activity_type = 12");
 
                     b.HasIndex("UserId", "ActivityType", "LocalDate")
                         .HasDatabaseName("IX_points_history_user_activity_local_date");
@@ -2650,6 +2663,10 @@ namespace Amori.Api.Data.Migrations
                     b.Property<DateTime?>("LastActiveAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_active_at");
+
+                    b.Property<int?>("LastKnownUtcOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_known_utc_offset_minutes");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

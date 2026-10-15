@@ -16,6 +16,8 @@ export type BadgeDisplayProps = {
   showName?: boolean;
   showLocked?: boolean;
   isLocked?: boolean;
+  /** Saved to the vault — shows a small gold marker on the badge. */
+  isSaved?: boolean;
 };
 
 function PlaceholderBadge() {
@@ -33,6 +35,7 @@ export function BadgeDisplay({
   showName = false,
   showLocked = true,
   isLocked = false,
+  isSaved = false,
 }: BadgeDisplayProps) {
   const badge = getBadgeById(badgeId);
   const badgeImage = getBadgeImage(badgeId);
@@ -48,6 +51,13 @@ export function BadgeDisplay({
   };
 
   const size = sizeMap[variant];
+  // A locked badge can't be in the vault; guard anyway so stale data never
+  // shows a "saved" lock.
+  const showSaved = isSaved && !isLocked;
+  const markerSize = Math.max(18, Math.round(size * 0.3));
+
+  const status = isLocked ? 'locked' : showSaved ? 'earned, saved to vault' : 'earned';
+  const a11yLabel = `${badge.name}, ${status}`;
 
   return (
     <Pressable
@@ -58,37 +68,56 @@ export function BadgeDisplay({
         pressed && styles.pressed,
       ]}
       disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={a11yLabel}
     >
-      <View
-        style={[
-          styles.badgeFrame,
-          { width: size, height: size, borderRadius: size / 2 },
-          isLocked && styles.lockedFrame,
-        ]}
-      >
-        {badgeImage ? (
-          <Image
-            source={badgeImage}
-            style={[
-              styles.badgeImage,
-              { width: size - 8, height: size - 8 },
-              isLocked && styles.lockedImage,
-            ]}
-            resizeMode="contain"
-          />
-        ) : (
-          <PlaceholderBadge />
-        )}
+      <View style={{ width: size, height: size }}>
+        <View
+          style={[
+            styles.badgeFrame,
+            { width: size, height: size, borderRadius: size / 2 },
+            isLocked && styles.lockedFrame,
+          ]}
+        >
+          {badgeImage ? (
+            <Image
+              source={badgeImage}
+              style={[
+                styles.badgeImage,
+                { width: size - 8, height: size - 8 },
+                isLocked && styles.lockedImage,
+              ]}
+              resizeMode="contain"
+            />
+          ) : (
+            <PlaceholderBadge />
+          )}
 
-        {/* Locked overlay */}
-        {isLocked && showLocked && (
+          {/* Locked overlay */}
+          {isLocked && showLocked && (
+            <View
+              style={[
+                styles.lockedOverlay,
+                { width: size, height: size, borderRadius: size / 2 },
+              ]}
+            >
+              <Text style={styles.lockIcon}>🔒</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Saved-to-vault marker. Sits outside the circular frame (which clips)
+            so it can overlap the rim. */}
+        {showSaved && (
           <View
             style={[
-              styles.lockedOverlay,
-              { width: size, height: size, borderRadius: size / 2 },
+              styles.savedMarker,
+              { width: markerSize, height: markerSize, borderRadius: markerSize / 2 },
             ]}
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
           >
-            <Text style={styles.lockIcon}>🔒</Text>
+            <Text style={[styles.savedMarkerText, { fontSize: markerSize * 0.55 }]}>✓</Text>
           </View>
         )}
       </View>
@@ -161,6 +190,22 @@ const styles = StyleSheet.create({
 
   lockIcon: {
     fontSize: 24,
+  },
+
+  savedMarker: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    backgroundColor: colors.gold,
+    borderWidth: 2,
+    borderColor: colors.surfaceCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  savedMarkerText: {
+    color: colors.background,
+    fontWeight: '700',
   },
 
   badgeName: {

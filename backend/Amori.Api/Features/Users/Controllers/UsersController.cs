@@ -97,6 +97,26 @@ public sealed class UsersController(
         [FromRoute] string badgeId, CancellationToken ct) =>
         Ok(await pointsService.ArchiveBadgeToVaultAsync(RequireUserId(), badgeId, ct));
 
+    /// <summary>
+    /// Save several catalogue badges to the vault at once (the "Save all" in the
+    /// app's catch-up summary). Unknown or unearned slugs are skipped.
+    /// </summary>
+    [HttpPost("me/badges/archive-all")]
+    [ProducesResponseType(typeof(ArchiveBadgesResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ArchiveBadges(
+        [FromBody] ArchiveBadgesRequest request, CancellationToken ct) =>
+        Ok(await pointsService.ArchiveCatalogueBadgesAsync(RequireUserId(), request.Slugs, ct));
+
+    /// <summary>
+    /// One-off catch-up: credits points for activity from before server-side
+    /// awarding. Idempotent; the app calls it on every launch and shows its
+    /// "already earned" summary only when <c>firstRun</c> is true.
+    /// </summary>
+    [HttpPost("me/catch-up")]
+    [ProducesResponseType(typeof(CatchUpResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CatchUp(CancellationToken ct) =>
+        Ok(await pointsService.RunHistoryBackfillAsync(RequireUserId(), ct));
+
     /// <summary>Get the current user's points history (debug/admin).</summary>
     [HttpGet("me/points/history")]
     [ProducesResponseType(typeof(List<PointsHistoryEntryResponse>), StatusCodes.Status200OK)]

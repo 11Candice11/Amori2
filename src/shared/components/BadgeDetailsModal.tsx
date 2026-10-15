@@ -8,9 +8,19 @@
  * - Category, tier, points
  * - Unlock criteria
  * - Hidden badge indicator
+ * - Saved-to-vault status, and a Save action for earned badges not yet saved
  */
-import React from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../theme';
 import {
@@ -29,6 +39,14 @@ type BadgeDetailsModalProps = {
   onDismiss: () => void;
   isUnlocked?: boolean;
   userStats?: Record<string, number>;
+  /** Already saved to the vault. */
+  isSaved?: boolean;
+  /**
+   * Save the badge to the vault. When provided, an earned-but-unsaved badge
+   * shows a "Save to vault" action. Should reject on failure (and tell the
+   * user); the modal then stays open so they can retry.
+   */
+  onSaveToVault?: (badgeId: string) => Promise<void>;
 };
 
 function CloseIcon() {
@@ -51,7 +69,10 @@ export function BadgeDetailsModal({
   onDismiss,
   isUnlocked: isUnlockedProp,
   userStats = {},
+  isSaved = false,
+  onSaveToVault,
 }: BadgeDetailsModalProps) {
+  const [saving, setSaving] = useState(false);
   const badge = badgeId ? getBadgeById(badgeId) : null;
   const badgeImage = badgeId ? getBadgeImage(badgeId) : null;
 
@@ -59,6 +80,20 @@ export function BadgeDetailsModal({
   const isUnlocked = isUnlockedProp ?? (badge ? isBadgeUnlocked(badge, userStats) : false);
 
   if (!badge) return null;
+
+  const canSave = isUnlocked && !isSaved && !!onSaveToVault;
+
+  const handleSave = async () => {
+    if (!onSaveToVault || saving) return;
+    setSaving(true);
+    try {
+      await onSaveToVault(badge.id);
+    } catch {
+      // The caller already reported the failure; stay open for a retry.
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // "5 / 10 hugs sent" — hidden entirely when the criteria isn't measured yet.
   const progress = getBadgeProgress(badge, userStats);
@@ -174,6 +209,15 @@ export function BadgeDetailsModal({
                   {isUnlocked ? '✓ Unlocked' : '🔒 Locked'}
                 </Text>
               </View>
+
+              {isUnlocked && (
+                <View style={styles.metadataRow}>
+                  <Text style={styles.metadataLabel}>Vault</Text>
+                  <Text style={[styles.metadataValue, isSaved && styles.savedText]}>
+                    {isSaved ? '✓ Saved to vault' : 'Not saved yet'}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Unlock criteria */}
@@ -187,12 +231,39 @@ export function BadgeDetailsModal({
             )}
           </ScrollView>
 
+          {canSave && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.actionButtonPressed,
+                saving && styles.actionButtonDisabled,
+              ]}
+              onPress={handleSave}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel={`Save ${badge.name} to vault, earns ${badge.pointsReward} points`}
+              accessibilityState={{ disabled: saving, busy: saving }}
+            >
+              {saving ? (
+                <ActivityIndicator color={colors.background} />
+              ) : (
+                <Text style={styles.actionButtonText}>
+                  Save to vault · +{badge.pointsReward} pts
+                </Text>
+              )}
+            </Pressable>
+          )}
+
           {/* Close button at bottom */}
           <Pressable
-            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+            style={({ pressed }) => [
+              canSave ? styles.secondaryButton : styles.actionButton,
+              pressed && styles.actionButtonPressed,
+            ]}
             onPress={onDismiss}
+            accessibilityRole="button"
           >
-            <Text style={styles.actionButtonText}>Done</Text>
+            <Text style={canSave ? styles.secondaryButtonText : styles.actionButtonText}>Done</Text>
           </Pressable>
         </View>
       </View>
@@ -385,6 +456,10 @@ const styles = StyleSheet.create({
     color: colors.emergency,
   },
 
+  savedText: {
+    color: colors.gold,
+  },
+
   criteriaSection: {
     marginBottom: spacing.lg,
   },
@@ -420,6 +495,26 @@ const styles = StyleSheet.create({
 
   actionButtonPressed: {
     opacity: 0.8,
+  },
+
+  actionButtonDisabled: {
+    opacity: 0.6,
+  },
+
+  secondaryButton: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    alignItems: 'center',
+  },
+
+  secondaryButtonText: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 16,
   },
 
   actionButtonText: {

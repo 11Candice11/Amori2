@@ -31,6 +31,15 @@ public sealed class PointsHistoryConfiguration : IEntityTypeConfiguration<Points
         builder.HasIndex(h => new { h.UserId, h.ActivityType, h.LocalDate })
             .HasDatabaseName("IX_points_history_user_activity_local_date");
 
+        // The history backfill runs once per user, ever. 12 = ActivityType.HistoryBackfill
+        // (stored as int); a concurrent second run hits this and is discarded.
+        // Keyed on (user, activity) rather than user alone: EF would otherwise
+        // treat it as the same index as IX_points_history_user_id and replace it.
+        builder.HasIndex(h => new { h.UserId, h.ActivityType })
+            .IsUnique()
+            .HasFilter("activity_type = 12")
+            .HasDatabaseName("IX_points_history_user_history_backfill");
+
         builder.HasOne(h => h.User)
             .WithMany(u => u.PointsHistory)
             .HasForeignKey(h => h.UserId)
