@@ -116,6 +116,9 @@ export function BadgeRewardModal({
       setTimeout(() => {
         onDismiss();
       }, 500);
+    } catch {
+      // The parent already told the user it failed; stay open so they can
+      // retry or choose "Later".
     } finally {
       setSavingTmp(false);
     }

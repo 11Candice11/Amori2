@@ -23,7 +23,7 @@ export interface SavedGift {
   /** The original memory ID this gift references (null if this is a vision gift) */
   memoryId: string | null;
   /** The original vision board item ID this gift references (null if this is a memory gift) */
-  visionId: string | null;
+  visionBoardItemId: string | null;
   /** Memory or vision title */
   title: string;
   /** Memory or vision description/body text */
@@ -55,13 +55,15 @@ export interface SavedGift {
  * and location from the memory or vision itself, so the client can't save content the
  * user isn't entitled to.
  *
- * Exactly one of memoryId or visionId must be provided.
+ * Exactly one of memoryId or visionBoardItemId must be provided. The names
+ * must match the backend SaveVaultGiftRequest exactly — the server silently
+ * ignores unknown fields and then rejects the request as having neither id.
  */
 export interface SaveGiftRequest {
   /** The memory ID to save (omit if saving a vision) */
   memoryId?: string;
   /** The vision board item ID to save (omit if saving a memory) */
-  visionId?: string;
+  visionBoardItemId?: string;
   /** The card number (1-10) the gift was revealed in. */
   cardNumber: number;
 }

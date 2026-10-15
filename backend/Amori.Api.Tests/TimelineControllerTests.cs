@@ -34,14 +34,14 @@ public sealed class TimelineControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Update_AsThePartner_Returns401AndLeavesTheMilestoneUnchanged()
+    public async Task Update_AsThePartner_Returns403AndLeavesTheMilestoneUnchanged()
     {
         var couple = await CreateLinkedCoupleAsync();
         var eventId = await CreateEventAsync(couple.PartnerA, "First kiss");
 
         var attempt = await couple.PartnerB.PatchAsync($"/api/timeline/{eventId}",
             Json(new UpdateTimelineEventRequest { Title = "Edited by the partner" }));
-        Assert.Equal(HttpStatusCode.Unauthorized, attempt.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, attempt.StatusCode);
 
         var current = await ReadEventAsync(couple.PartnerA, eventId);
         Assert.Equal("First kiss", current.GetProperty("title").GetString());
@@ -62,13 +62,13 @@ public sealed class TimelineControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Delete_AsThePartner_Returns401AndLeavesTheMilestoneInPlace()
+    public async Task Delete_AsThePartner_Returns403AndLeavesTheMilestoneInPlace()
     {
         var couple = await CreateLinkedCoupleAsync();
         var eventId = await CreateEventAsync(couple.PartnerA, "Anniversary");
 
         var attempt = await couple.PartnerB.DeleteAsync($"/api/timeline/{eventId}");
-        Assert.Equal(HttpStatusCode.Unauthorized, attempt.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, attempt.StatusCode);
 
         var stillThere = await couple.PartnerA.GetAsync($"/api/timeline/{eventId}");
         Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
@@ -88,7 +88,7 @@ public sealed class TimelineControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task AddMedia_AsThePartner_Returns401()
+    public async Task AddMedia_AsThePartner_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var eventId = await CreateEventAsync(couple.PartnerA, "First conversation");
@@ -96,7 +96,7 @@ public sealed class TimelineControllerTests(AmoriWebApplicationFactory factory)
         var attempt = await couple.PartnerB.PostAsync($"/api/timeline/{eventId}/media",
             Json(new AddTimelineMediaRequest { PhotoKey = "uploads/whatever.jpg" }));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, attempt.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, attempt.StatusCode);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class TimelineControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task RemoveMedia_AsThePartner_Returns401()
+    public async Task RemoveMedia_AsThePartner_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var eventId = await CreateEventAsync(couple.PartnerA, "Picnic");
@@ -149,7 +149,7 @@ public sealed class TimelineControllerTests(AmoriWebApplicationFactory factory)
         var attempt = await couple.PartnerB.DeleteAsync(
             $"/api/timeline/{eventId}/media?photoKey={Uri.EscapeDataString("key-x.jpg")}");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, attempt.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, attempt.StatusCode);
     }
 
     [Fact]

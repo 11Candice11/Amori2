@@ -42,6 +42,10 @@ public sealed class ExceptionHandlingMiddleware(
                 (StatusCodes.Status401Unauthorized,
                  ApiResponse.Fail(ex.Message)),
 
+            ForbiddenException ex =>
+                (StatusCodes.Status403Forbidden,
+                 ApiResponse.Fail(ex.Message)),
+
             Exceptions.ValidationException ex =>
                 (StatusCodes.Status422UnprocessableEntity,
                  ApiResponse.Fail(ex.Message, ex.Errors)),

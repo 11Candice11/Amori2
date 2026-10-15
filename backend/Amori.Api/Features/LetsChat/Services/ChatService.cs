@@ -74,7 +74,7 @@ public sealed class ChatService(
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException("Conversation", id);
 
-        if (c.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (c.RelationshipId != rel.Id) throw new ForbiddenException();
         // A private draft is only visible to its author, never the partner.
         if (c.IsPrivate && c.SenderId != userId) throw new NotFoundException("Conversation", id);
 
@@ -119,7 +119,7 @@ public sealed class ChatService(
             ?? throw new NotFoundException("Conversation", id);
 
         if (c.SenderId != userId)
-            throw new UnauthorizedException("Only the author can edit this message.");
+            throw new ForbiddenException("Only the author can edit this message.");
         // Once sent, the message is immutable — you can't retro-edit what the
         // partner has already received.
         if (!IsPrivateState(c.Status))
@@ -161,7 +161,7 @@ public sealed class ChatService(
             ?? throw new NotFoundException("Conversation", id);
 
         if (c.SenderId != userId)
-            throw new UnauthorizedException("Only the author can send this message.");
+            throw new ForbiddenException("Only the author can send this message.");
 
         // Idempotent / duplicate-send protection: a message that's already left
         // the private state was already sent — return it unchanged rather than
@@ -210,9 +210,9 @@ public sealed class ChatService(
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException("Conversation", id);
 
-        if (c.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (c.RelationshipId != rel.Id) throw new ForbiddenException();
         if (c.RecipientId != userId)
-            throw new UnauthorizedException("Only the recipient can mark a message as read.");
+            throw new ForbiddenException("Only the recipient can mark a message as read.");
         // Can't read a message that was never sent.
         if (IsPrivateState(c.Status))
             throw new ConflictException("This message hasn't been sent yet.");
@@ -230,7 +230,7 @@ public sealed class ChatService(
             ?? throw new NotFoundException("Conversation", id);
 
         if (c.SenderId != userId)
-            throw new UnauthorizedException("Only the author can delete this message.");
+            throw new ForbiddenException("Only the author can delete this message.");
         // A sent message is part of the shared record; only unsent drafts/private
         // messages can be discarded.
         if (!IsPrivateState(c.Status))

@@ -19,74 +19,75 @@
 
 // ─── BADGE IMAGES ─────────────────────────────────────────────────────────
 // Static require() for every badge image, keyed by badge id (= filename).
+// NOTE: Several badge art files are not yet in images/badges/. Those entries
+// fall back to an existing image as PLACEHOLDER ART so the app bundles and runs.
+// Drop the real PNG in images/badges/ and point the require() back at it.
 const BADGE_IMAGES = {
   // Hugs
   first_embrace: require('../../images/badges/first_embrace.png'),
-  first_embrace2: require('../../images/badges/first_embrace2.png'),
+  first_embrace2: require('../../images/badges/first_embrace.png'), // PLACEHOLDER (first_embrace2.png missing)
   hug_collector: require('../../images/badges/hug_collector.png'),
   golden_heart: require('../../images/badges/golden_heart.png'),
-  golden_heart2: require('../../images/badges/golden_heart2.png'),
-  hug_back: require('../../images/badges/hug_back.png'),
+  golden_heart2: require('../../images/badges/golden_heart.png'), // PLACEHOLDER (golden_heart2.png missing)
+  hug_back: require('../../images/badges/hug_collector.png'), // PLACEHOLDER (hug_back.png missing)
   hug_marathon: require('../../images/badges/hug_marathon.png'),
-  long_distance_hugger: require('../../images/badges/long_distance_hugger.png'),
-  midnight_hug: require('../../images/badges/midnight_hug.png'),
-  both_ways: require('../../images/badges/both_ways.png'),
+  long_distance_hugger: require('../../images/badges/hug_collector.png'), // PLACEHOLDER (long_distance_hugger.png missing)
+  midnight_hug: require('../../images/badges/hug_collector.png'), // PLACEHOLDER (midnight_hug.png missing)
+  both_ways: require('../../images/badges/hug_collector.png'), // PLACEHOLDER (both_ways.png missing)
 
   // Check-ins
   first_light: require('../../images/badges/first_light.png'),
   morning_ritual: require('../../images/badges/morning_ritual.png'),
-  night_whispers: require('../../images/badges/night_whispers.png'),
+  night_whispers: require('../../images/badges/first_light.png'), // PLACEHOLDER (night_whispers.png missing)
   daily_streak: require('../../images/badges/daily_streak.png'),
-  daily_streak2: require('../../images/badges/daily_streak2.png'),
+  daily_streak2: require('../../images/badges/daily_streak.png'), // PLACEHOLDER (daily_streak2.png missing)
   evergreen: require('../../images/badges/evergreen.png'),
-  // PLACEHOLDER ART: evergreen2.png is currently a copy of shared_horizons2.png.
-  evergreen2: require('../../images/badges/evergreen2.png'),
-  evergreen3: require('../../images/badges/evergreen3.png'),
+  evergreen2: require('../../images/badges/evergreen.png'), // PLACEHOLDER (evergreen2.png missing)
+  evergreen3: require('../../images/badges/evergreen.png'), // PLACEHOLDER (evergreen3.png missing)
 
   // Memory vault
   memory_keeper: require('../../images/badges/memory_keeper.png'),
 
   // Messages (Let's Chat)
   words_that_matter: require('../../images/badges/words_that_matter.png'),
-  words_that_matter2: require('../../images/badges/words_that_matter2.png'),
+  words_that_matter2: require('../../images/badges/words_that_matter.png'), // PLACEHOLDER (words_that_matter2.png missing)
 
   // Timeline
-  shared_horizons: require('../../images/badges/shared_horizons.png'),
-  shared_horizons2: require('../../images/badges/shared_horizons2.png'),
-  together_forever: require('../../images/badges/together_forever.png'),
+  shared_horizons: require('../../images/badges/eternal_bond.png'), // PLACEHOLDER (shared_horizons.png missing)
+  shared_horizons2: require('../../images/badges/eternal_bond.png'), // PLACEHOLDER (shared_horizons2.png missing)
+  together_forever: require('../../images/badges/eternal_bond.png'), // PLACEHOLDER (together_forever.png missing)
 
   // Vision board
   dream_builders: require('../../images/badges/dream_builders.png'),
-  dream_builders2: require('../../images/badges/dream_builders2.png'),
+  dream_builders2: require('../../images/badges/dream_builders.png'), // PLACEHOLDER (dream_builders2.png missing)
 
   // Bucket list / wishlist
   bucket_list_buddy: require('../../images/badges/bucket_list_buddy.png'),
-  // PLACEHOLDER ART: bucket_list_buddy2.png is currently a copy of shared_horizons2.png.
-  bucket_list_buddy2: require('../../images/badges/bucket_list_buddy2.png'),
+  bucket_list_buddy2: require('../../images/badges/bucket_list_buddy.png'), // PLACEHOLDER (bucket_list_buddy2.png missing)
 
   // Games
   curious_mind: require('../../images/badges/curious_mind.png'),
-  curious_mind2: require('../../images/badges/curious_mind2.png'),
+  curious_mind2: require('../../images/badges/curious_mind.png'), // PLACEHOLDER (curious_mind2.png missing)
 
   // Partner sync
-  growing_together: require('../../images/badges/growing_together.png'),
+  growing_together: require('../../images/badges/open_heart.png'), // PLACEHOLDER (growing_together.png missing)
   open_heart: require('../../images/badges/open_heart.png'),
-  safe_harbor: require('../../images/badges/safe_harbor.png'),
+  safe_harbor: require('../../images/badges/open_heart.png'), // PLACEHOLDER (safe_harbor.png missing)
 
   // Mood tracking
   finding_calm: require('../../images/badges/finding_calm.png'),
-  finding_calm2: require('../../images/badges/finding_calm2.png'),
+  finding_calm2: require('../../images/badges/finding_calm.png'), // PLACEHOLDER (finding_calm2.png missing)
 
   // Media
   emerald_soul: require('../../images/badges/emerald_soul.png'),
-  emerald_soul2: require('../../images/badges/emerald_soul2.png'),
+  emerald_soul2: require('../../images/badges/emerald_soul.png'), // PLACEHOLDER (emerald_soul2.png missing)
 
   // Special
-  sacred_vow: require('../../images/badges/sacred_vow.png'),
+  sacred_vow: require('../../images/badges/eternal_bond.png'), // PLACEHOLDER (sacred_vow.png missing)
   eternal_bond: require('../../images/badges/eternal_bond.png'),
 
   // Progression
-  level_up: require('../../images/badges/level_up.png'),
+  level_up: require('../../images/badges/completionist.png'), // PLACEHOLDER (level_up.png missing)
 };
 
 // ─── TYPES ────────────────────────────────────────────────────────────────
@@ -735,6 +736,248 @@ export function isBadgeUnlocked(badge: Badge, userStats: Record<string, number>)
   const { type, threshold } = badge.unlockCriteria;
   const currentValue = userStats[type] ?? 0;
   return currentValue >= threshold;
+}
+
+export interface BadgeProgress {
+  /** How much the user has done, capped at the target (e.g. 5) */
+  current: number;
+  /** How much the badge asks for (e.g. 10) */
+  target: number;
+  /** Completion from 0-100, rounded */
+  percentage: number;
+  /** True once the target is met */
+  isComplete: boolean;
+  /**
+   * False when we have no counter for this criteria — some badges (travel
+   * aware hugs, one-off surprises) aren't measured yet, and a bar stuck at
+   * zero would read as "you've done nothing" rather than "we can't tell".
+   */
+  isTracked: boolean;
+}
+
+/**
+ * Work out how far along a badge is, for a progress bar like "5 / 10 hugs".
+ *
+ * `current` is clamped to the target so a badge asking for 10 hugs reads
+ * "10 / 10" rather than "137 / 10" long after it was earned.
+ */
+export function getBadgeProgress(
+  badge: Badge,
+  userStats: Record<string, number>,
+): BadgeProgress {
+  const { type, threshold } = badge.unlockCriteria;
+  const target = Math.max(threshold, 1);
+  const tracked = userStats[type] !== undefined;
+  const rawCurrent = Math.max(userStats[type] ?? 0, 0);
+  const current = Math.min(rawCurrent, target);
+
+  return {
+    current,
+    target,
+    percentage: Math.round((current / target) * 100),
+    isComplete: rawCurrent >= target,
+    isTracked: tracked,
+  };
+}
+
+/** "1 hug" / "10 hugs" */
+function plural(count: number, singular: string, pluralForm?: string): string {
+  return count === 1 ? singular : (pluralForm ?? `${singular}s`);
+}
+
+/** 0 -> "midnight", 12 -> "noon", 4 -> "4am", 21 -> "9pm" */
+function formatHour(hour: number): string {
+  const wrapped = ((hour % 24) + 24) % 24;
+  if (wrapped === 0) return 'midnight';
+  if (wrapped === 12) return 'noon';
+  return wrapped < 12 ? `${wrapped}am` : `${wrapped - 12}pm`;
+}
+
+/**
+ * Plain-language description of what earns a badge, for the "How to Unlock"
+ * section. Every criteria type is covered — an unlocked badge should never show
+ * an internal name like "conversations_completed" to the person using the app.
+ */
+export function getUnlockCriteriaText(badge: Badge): string {
+  const { type, threshold, metadata } = badge.unlockCriteria;
+  const n = threshold;
+
+  switch (type) {
+    // ── Hugs ──
+    case 'hugs_sent':
+      return `Send ${n} ${plural(n, 'hug')}`;
+    case 'hug_replies_fast': {
+      const minutes = (metadata?.withinMinutes as number) ?? 5;
+      return `Reply to ${n} ${plural(n, 'hug')} within ${minutes} ${plural(minutes, 'minute')}`;
+    }
+    case 'hug_streak_days':
+      return `Send a hug every day for ${n} ${plural(n, 'day')}`;
+    case 'long_distance_hugs':
+      return n === 1
+        ? 'Send a hug while you are apart — travelling, or in different time zones'
+        : `Send ${n} hugs while you are apart`;
+    case 'night_hugs': {
+      const from = formatHour((metadata?.fromHour as number) ?? 0);
+      const to = formatHour((metadata?.toHour as number) ?? 4);
+      return `Send a hug between ${from} and ${to}`;
+    }
+    case 'mutual_hug_days':
+      return `Hug each other on ${n} different ${plural(n, 'day')}`;
+
+    // ── Check-ins ──
+    case 'checkins_completed':
+      return `Complete ${n} ${plural(n, 'check-in')}`;
+    case 'checkin_streak':
+      return `Check in every day for ${n} ${plural(n, 'day')}`;
+    case 'morning_checkins':
+      return `Complete ${n} morning ${plural(n, 'check-in')}`;
+    case 'evening_checkins':
+      return `Complete ${n} evening ${plural(n, 'check-in')}`;
+
+    // ── Memories ──
+    case 'memories_created':
+      return `Create ${n} ${plural(n, 'memory', 'memories')}`;
+    case 'memories_saved_to_vault':
+      return `Save ${n} ${plural(n, 'memory', 'memories')} to the vault`;
+    case 'memory_saved_on_anniversary':
+      return 'Save a memory on your anniversary';
+
+    // ── Messages ──
+    case 'messages_sent':
+      return `Send ${n} ${plural(n, 'message')}`;
+    case 'conversations_completed': {
+      const min = (metadata?.minMessages as number) ?? 20;
+      return n === 1
+        ? `Have a conversation of ${min} or more messages`
+        : `Have ${n} conversations of ${min} or more messages`;
+    }
+
+    // ── Timeline ──
+    case 'timeline_events_added':
+      return `Add ${n} ${plural(n, 'moment')} to your timeline`;
+    case 'anniversary_reached': {
+      const years = (metadata?.years as number) ?? n;
+      return `Reach ${years} ${plural(years, 'year')} together`;
+    }
+
+    // ── Vision board & bucket list ──
+    case 'vision_board_items_added':
+      return `Add ${n} ${plural(n, 'item')} to your vision board`;
+    case 'vision_board_items_achieved':
+      return `Make ${n} vision board ${plural(n, 'dream')} happen`;
+    case 'bucket_list_items_added':
+      return `Add ${n} bucket list ${plural(n, 'item')}`;
+    case 'bucket_list_items_completed':
+      return `Tick off ${n} bucket list ${plural(n, 'item')}`;
+
+    // ── Games ──
+    case 'games_played':
+      return `Play ${n} ${plural(n, 'game')} together`;
+    case 'quizzes_completed':
+      return `Complete ${n} ${plural(n, 'quiz', 'quizzes')}`;
+    case 'would_you_rather_answered':
+      return `Answer ${n} Would You Rather ${plural(n, 'question')}`;
+    case 'hidden_objects_solved':
+      return `Solve ${n} hidden object ${plural(n, 'puzzle')}`;
+    case 'partner_quiz_perfect_scores':
+      return `Score full marks on ${n} partner ${plural(n, 'quiz', 'quizzes')}`;
+
+    // ── Partner sync ──
+    case 'sync_questions_agreed':
+      return `Give the same answer as your partner on ${n} ${plural(n, 'question')}`;
+    case 'partner_request_fast_responses': {
+      const minutes = (metadata?.withinMinutes as number) ?? 10;
+      return `Answer ${n} of your partner's ${plural(n, 'request')} within ${minutes} ${plural(minutes, 'minute')}`;
+    }
+    case 'partner_low_mood_support':
+      return n === 1
+        ? 'Reach out when your partner is having a hard day'
+        : `Reach out ${n} times when your partner is having a hard day`;
+    case 'partner_response_time':
+      return `Answer your partner within ${n} ${plural(n, 'minute')}`;
+
+    // ── Mood ──
+    case 'mood_logged':
+      return `Log how you feel ${n} ${plural(n, 'time')}`;
+    case 'mood_streak_days':
+      return `Log how you feel every day for ${n} ${plural(n, 'day')}`;
+    case 'distinct_moods_logged':
+      return `Log ${n} different ${plural(n, 'mood')}`;
+
+    // ── Media ──
+    case 'media_attachments':
+      return `Attach ${n} ${plural(n, 'photo or clip', 'photos or clips')}`;
+    case 'media_shared':
+      return `Share ${n} ${plural(n, 'photo or clip', 'photos or clips')}`;
+
+    // ── Meta / progression ──
+    case 'categories_unlocked':
+      return `Earn a badge in all ${n} categories`;
+    case 'perfect_attendance':
+      return `Show up every day for ${n} ${plural(n, 'day')}`;
+    case 'level_reached':
+      return `Reach level ${n}`;
+    case 'custom':
+      return 'A special achievement — you will know it when it happens';
+
+    default: {
+      // Unreachable: every criteria type is handled above. Assigning to never
+      // makes TypeScript fail the build if a new type is added without
+      // wording, and the fallback keeps the UI readable either way.
+      const unhandled: never = type;
+      void unhandled;
+      return badge.description;
+    }
+  }
+}
+
+/**
+ * Short label for what a criteria counts, used next to progress numbers
+ * ("5 / 10 hugs sent"). Falls back to no unit when we don't have wording.
+ */
+export function getCriteriaUnitLabel(type: UnlockCriteriaType): string {
+  const labels: Partial<Record<UnlockCriteriaType, string>> = {
+    hugs_sent: 'hugs sent',
+    hug_replies_fast: 'quick replies',
+    hug_streak_days: 'day streak',
+    long_distance_hugs: 'long-distance hugs',
+    night_hugs: 'late-night hugs',
+    mutual_hug_days: 'days hugged both ways',
+    checkins_completed: 'check-ins',
+    checkin_streak: 'day streak',
+    morning_checkins: 'morning check-ins',
+    evening_checkins: 'evening check-ins',
+    memories_created: 'memories',
+    memories_saved_to_vault: 'memories in the vault',
+    memory_saved_on_anniversary: 'anniversary memories',
+    messages_sent: 'messages sent',
+    conversations_completed: 'conversations',
+    timeline_events_added: 'timeline moments',
+    anniversary_reached: 'years together',
+    vision_board_items_added: 'vision board items',
+    vision_board_items_achieved: 'dreams achieved',
+    bucket_list_items_added: 'bucket list items',
+    bucket_list_items_completed: 'items ticked off',
+    games_played: 'games played',
+    quizzes_completed: 'quizzes',
+    would_you_rather_answered: 'answers',
+    hidden_objects_solved: 'puzzles solved',
+    partner_quiz_perfect_scores: 'perfect scores',
+    sync_questions_agreed: 'answers in sync',
+    partner_request_fast_responses: 'fast responses',
+    partner_low_mood_support: 'times you showed up',
+    partner_response_time: 'minutes',
+    mood_logged: 'moods logged',
+    mood_streak_days: 'day streak',
+    distinct_moods_logged: 'different moods',
+    media_attachments: 'media items',
+    media_shared: 'media shared',
+    categories_unlocked: 'categories',
+    perfect_attendance: 'days',
+    level_reached: 'levels',
+  };
+
+  return labels[type] ?? '';
 }
 
 /**

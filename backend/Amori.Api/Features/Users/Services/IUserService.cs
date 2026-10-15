@@ -17,7 +17,7 @@ public interface IUserService
 
     /// <summary>
     /// Change the user's password after verifying their current one. Throws
-    /// <see cref="Common.Exceptions.UnauthorizedException"/> if the current
+    /// <see cref="Common.Exceptions.ForbiddenException"/> (403) if the current
     /// password is wrong, or <see cref="Common.Exceptions.ValidationException"/>
     /// if the new password fails validation.
     /// </summary>

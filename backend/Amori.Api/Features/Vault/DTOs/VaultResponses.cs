@@ -65,4 +65,10 @@ public sealed class SendGiftResult
 
     /// <summary>Display name of the partner the gift was delivered to.</summary>
     public string RecipientName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Points and badges sending this gift earned. Empty when it earned nothing.
+    /// </summary>
+    public Common.Responses.RewardsResponse Rewards { get; set; } =
+        Common.Responses.RewardsResponse.None;
 }

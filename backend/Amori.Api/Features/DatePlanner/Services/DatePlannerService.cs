@@ -29,7 +29,7 @@ public sealed class DatePlannerService(
         var idea = await db.DateIdeas.Include(d => d.CreatedBy)
             .FirstOrDefaultAsync(d => d.Id == ideaId, ct)
             ?? throw new NotFoundException("Date idea", ideaId);
-        if (idea.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (idea.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, idea);
     }
 
@@ -91,7 +91,7 @@ public sealed class DatePlannerService(
     public async Task DeleteAsync(Guid userId, Guid dateId, CancellationToken ct = default)
     {
         var (_, idea) = await LoadAsync(userId, dateId, ct);
-        if (idea.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this.");
+        if (idea.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this.");
         db.DateIdeas.Remove(idea);
         await db.SaveChangesAsync(ct);
     }

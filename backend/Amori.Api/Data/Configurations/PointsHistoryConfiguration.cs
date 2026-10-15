@@ -18,6 +18,7 @@ public sealed class PointsHistoryConfiguration : IEntityTypeConfiguration<Points
         builder.Property(h => h.TotalPointsAfter).HasColumnName("total_points_after").IsRequired();
         builder.Property(h => h.ReferenceId).HasColumnName("reference_id");
         builder.Property(h => h.Metadata).HasColumnName("metadata").HasMaxLength(1000);
+        builder.Property(h => h.LocalDate).HasColumnName("local_date");
         
         // Audit fields
         builder.Property(h => h.CreatedAt).HasColumnName("created_at").IsRequired();
@@ -25,6 +26,10 @@ public sealed class PointsHistoryConfiguration : IEntityTypeConfiguration<Points
 
         builder.HasIndex(h => h.UserId).HasDatabaseName("IX_points_history_user_id");
         builder.HasIndex(h => h.CreatedAt).HasDatabaseName("IX_points_history_created_at");
+
+        // Backs the once-a-day guard, which looks up (user, activity, local date).
+        builder.HasIndex(h => new { h.UserId, h.ActivityType, h.LocalDate })
+            .HasDatabaseName("IX_points_history_user_activity_local_date");
 
         builder.HasOne(h => h.User)
             .WithMany(u => u.PointsHistory)

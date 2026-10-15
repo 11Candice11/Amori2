@@ -33,7 +33,7 @@ public sealed class CalendarService(
         var ev = await db.CalendarEvents.Include(e => e.CreatedBy)
             .FirstOrDefaultAsync(e => e.Id == eventId, ct)
             ?? throw new NotFoundException("Calendar event", eventId);
-        if (ev.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (ev.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, ev);
     }
 
@@ -126,7 +126,7 @@ public sealed class CalendarService(
     public async Task<CalendarEventResponse> UpdateAsync(Guid userId, Guid eventId, UpdateCalendarEventRequest request, CancellationToken ct = default)
     {
         var (_, ev) = await LoadAsync(userId, eventId, ct);
-        if (ev.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can update this event.");
+        if (ev.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can update this event.");
         if (request.Title != null) ev.Title = request.Title.Trim();
         if (request.Description != null) ev.Description = request.Description;
         if (request.EventDate.HasValue) ev.EventDate = request.EventDate.Value;
@@ -144,7 +144,7 @@ public sealed class CalendarService(
     public async Task DeleteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
     {
         var (_, ev) = await LoadAsync(userId, eventId, ct);
-        if (ev.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this event.");
+        if (ev.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this event.");
         db.CalendarEvents.Remove(ev);
         await db.SaveChangesAsync(ct);
     }

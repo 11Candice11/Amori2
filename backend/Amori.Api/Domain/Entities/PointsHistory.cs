@@ -25,6 +25,20 @@ public sealed class PointsHistory : BaseEntity
     /// <summary>Optional additional data (e.g., card number for card collection).</summary>
     public string? Metadata { get; set; }
 
+    /// <summary>
+    /// The calendar date on the user's own device when this was earned.
+    ///
+    /// Once-a-day rules (the daily check-in, opening the daily gift) are
+    /// enforced against this rather than <see cref="BaseEntity.CreatedAt"/>,
+    /// which is UTC and routinely falls on a different day to the one the user
+    /// is looking at. Stored rather than derived because the user's UTC offset
+    /// can change between two awards — travel, or daylight saving — and
+    /// converting an old timestamp through a new offset lands on the wrong day.
+    ///
+    /// Null for rows written before this column existed.
+    /// </summary>
+    public DateOnly? LocalDate { get; set; }
+
     // Navigation
     public User User { get; set; } = null!;
 }

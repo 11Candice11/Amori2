@@ -228,8 +228,9 @@ export const dailyGiftService = {
         vaultService.getAll().catch(() => []),
         dailyGiftStore.getRecentMemoryIds(),
       ]);
-      const savedMemoryIds = new Set(savedGifts.map((g) => g.memoryId).filter(Boolean));
-      const savedVisionIds = new Set(savedGifts.map((g) => g.visionId).filter(Boolean));
+      const isId = (id: string | null): id is string => !!id;
+      const savedMemoryIds = new Set(savedGifts.map((g) => g.memoryId).filter(isId));
+      const savedVisionIds = new Set(savedGifts.map((g) => g.visionBoardItemId).filter(isId));
 
       const eligibleMemories = chooseEligible(memories, savedMemoryIds, recentMemoryIds);
       const eligibleVisions = visionItems.filter((v) => !savedVisionIds.has(v.id));

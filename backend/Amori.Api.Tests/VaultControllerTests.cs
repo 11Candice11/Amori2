@@ -120,7 +120,7 @@ public sealed class VaultControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task SaveGift_WithAMemoryFromAnotherRelationship_Returns401()
+    public async Task SaveGift_WithAMemoryFromAnotherRelationship_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var outsider = await CreateLinkedCoupleAsync();
@@ -129,7 +129,7 @@ public sealed class VaultControllerTests(AmoriWebApplicationFactory factory)
         var response = await couple.PartnerA.PostAsync("/api/vault/gifts",
             Json(new SaveVaultGiftRequest { MemoryId = foreignMemoryId, CardNumber = 1 }));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Theory]

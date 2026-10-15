@@ -34,11 +34,13 @@ export interface UseBadgesResult {
 
 export function useBadges(): UseBadgesResult {
   const [unlockedBadges, setUnlockedBadges] = useState<Set<string>>(new Set());
+  const [userStats, setUserStats] = useState<Record<string, number>>(() =>
+    badgeService.getUserStats(),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const user = userSettingsStore.get();
-  const stats = badgeService.getUserStats();
 
   useEffect(() => {
     // Load badges and user settings
@@ -50,9 +52,10 @@ export function useBadges(): UseBadgesResult {
         // Load user settings if not already loaded
         await userSettingsStore.load();
 
-        // Load earned badges from API
+        // Load badge progress from API
         const earned = await badgeService.loadEarned();
         setUnlockedBadges(earned);
+        setUserStats(badgeService.getUserStats());
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to load badges'));
       } finally {
@@ -62,9 +65,11 @@ export function useBadges(): UseBadgesResult {
 
     loadData();
 
-    // Subscribe to badge updates
+    // Subscribe to badge updates — progress counters move even when no new
+    // badge is earned, so refresh both from the same event.
     const unsubscribe = badgeService.subscribe((badges) => {
       setUnlockedBadges(new Set(badges));
+      setUserStats(badgeService.getUserStats());
     });
 
     return unsubscribe;
@@ -74,7 +79,7 @@ export function useBadges(): UseBadgesResult {
     unlockedBadges,
     earnedBadges: badgeService.getEarnedBadges(),
     nearbyBadges: badgeService.getNearbadges(3),
-    userStats: stats,
+    userStats,
     totalPoints: user?.totalPoints ?? 0,
     level: user?.level ?? 1,
     loading,

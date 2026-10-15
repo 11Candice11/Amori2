@@ -69,9 +69,9 @@ public sealed class HiddenObjectService(
             .FirstOrDefaultAsync(p => p.Id == puzzleId, ct)
             ?? throw new NotFoundException("Hidden object puzzle", puzzleId);
 
-        if (puzzle.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (puzzle.RelationshipId != rel.Id) throw new ForbiddenException();
         if (puzzle.CreatedByUserId != userId)
-            throw new UnauthorizedException("Only the creator can delete this puzzle.");
+            throw new ForbiddenException("Only the creator can delete this puzzle.");
 
         db.HiddenObjectPuzzles.Remove(puzzle);
         await db.SaveChangesAsync(ct);

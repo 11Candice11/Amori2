@@ -209,7 +209,8 @@ These apply to every feature. Validate them once thoroughly, then assume them el
 | Server exception | HTTP | Typical message |
 |------------------|------|-----------------|
 | NotFound | **404** | `"Memory with id '…' was not found."`, `"You don't have a linked partner yet."` |
-| Unauthorized | **401** | `"Invalid email or password."`, **and also permission denials** such as `"Only the creator can delete this memory."` (see §9 BUG-07) |
+| Unauthorized | **401** | Identity failures only: missing/invalid token, `"Invalid email or password."`, refresh-token errors. The app refreshes the token once on a 401. |
+| Forbidden | **403** | Signed in but not allowed: `"Only the creator can delete this memory."`, records from another relationship, `"Current password is incorrect."`. No token refresh. |
 | Validation | **422** | Single message (e.g. `"Title is required."`) or `"One or more validation errors occurred."` with an `errors` array |
 | Conflict | **409** | `"A sent message can no longer be edited."`, `"Only in-progress sessions can be completed."` |
 | Unhandled | **500** | `"An unexpected error occurred."` (prod), raw message (dev) |
@@ -272,7 +273,7 @@ sequenceDiagram
 | AUTH-07 | One silent refresh + retry on 401; concurrent 401s share one refresh call. | Fire several requests with an expired token → exactly one `/auth/refresh`. |
 | AUTH-08 | Refresh rejected (401/403) → signed out. Network failure during refresh or launch → **not** signed out. | Offline launch with stored token stays authenticated. |
 | AUTH-09 | Refresh errors: `"Refresh token is required."`, `"Invalid refresh token."`, `"Refresh token has expired."` | API-level tests. |
-| AUTH-10 | Logout deregisters the push device, revokes the refresh token server-side, clears tokens, and resets cached settings, notifications and support profile. | Log out A, log in B on same device → B sees none of A's settings or inbox. Also check A's **local chat drafts** and **daily gift pin** (not reset on logout, see §9 BUG-06). |
+| AUTH-10 | Logout (and a rejected token at launch) deregisters the push device, revokes the refresh token, clears tokens, and wipes all per-user local data: settings, notifications, support profile, points, badges, **Let's Chat drafts, custom splitting triggers, daily gift pin**. Theme is kept. | A writes a chat draft and adds a custom trigger, logs out; B logs in on same device → B sees none of A's data. |
 
 **Endpoints:** `POST /api/auth/register {name,email,password}`, `POST /api/auth/login {email,password}`, `POST /api/auth/refresh {refreshToken}`, `POST /api/auth/logout`, `GET /api/users/me`.
 
@@ -338,24 +339,24 @@ stateDiagram-v2
 
 #### 5.4.1 Notification catalogue
 
-Tapping is handled in **two places** with different code: the OS push banner (`App.tsx` / `pushHandlers.ts`) and a row in the in-app Notifications inbox (`NotificationsScreen.tsx`). They do not behave the same; test both.
+Tapping an OS push banner and tapping a row in the in-app Notifications inbox both go through one router (`src/navigation/notificationRouting.ts`), so they land in the same place. Still test both entry points.
 
-| `type` | Trigger | Recipient | Push gated by | Push tap opens | Inbox row tap opens |
-|--------|---------|-----------|---------------|----------------|---------------------|
-| `Hug` | Partner sends a hug | Partner | Hug notifications | Hugs → HugSent | Hugs → HugSent |
-| `Incident` | Assign/reassign, start investigation, awaiting response, resolved, closed, reopened, SLA breach | Other member (assignee for assign; **both** for SLA breach) | Master only | Desk → IncidentDetail | Desk → IncidentDetail |
-| `LetsChat` | Partner sends a Let's Chat message (body never included) | Partner | Master only | Chat → ChatReceived | Chat → ChatReceived |
-| `Gift` | Partner sends a vault gift | Partner | Partner activity | Vault, **auto-opens that gift** | Vault (gift **not** auto-opened) |
-| `VisionBoardItemAdded` / `VisionBoardItemCompleted` | Partner adds / achieves a vision | Partner | Partner activity | Together → VisionBoardItemDetail | ⚠️ Nothing (inbox checks `VisionBoardItem`) — §9 BUG-12 |
-| `MemoryAdded` | Partner adds a memory | Partner | Partner activity | Together → Memories | ⚠️ Nothing — §9 BUG-12 |
-| `CalendarEventAdded` | Partner adds a calendar event | Partner | Partner activity | Together → Calendar | ⚠️ Nothing (inbox checks `CalendarEvent`) — §9 BUG-12 |
-| `BucketListItemAdded` | Partner adds a bucket-list item | Partner | Partner activity | Together → DateIdeas (§9 BUG-11) | ⚠️ Nothing — §9 BUG-12 |
-| `WishlistItemAdded` | Partner adds a wishlist item | Partner | Partner activity | Together → Wishlist | ⚠️ Nothing — §9 BUG-12 |
-| `PartnerLinkRequest` | Link request received | Target | Master only | Profile → Link Partner modal | Profile → Link Partner modal |
-| `PartnerLinkAccepted` / `PartnerLinkDeclined` / `PartnerUnlinked` | Link lifecycle | Other party | Master only | Nothing | Nothing |
-| `PartnerActivity` | Support profile "notify partner" (API only, no UI) | Partner | Partner activity | Nothing | Nothing |
-| `Emergency` | Emergency request (API only) | Partner | Emergency notifications | Nothing | Nothing |
-| `CheckInReminder`, `DailyDigest` | Defined, but **no server code sends them** | — | Check-in reminders / Daily digest | — | — |
+| `type` | Trigger | Recipient | Push gated by | Push / inbox tap opens |
+|--------|---------|-----------|---------------|------------------------|
+| `Hug` | Partner sends a hug | Partner | Hug notifications | Hugs → HugSent |
+| `Incident` | Assign/reassign, start investigation, awaiting response, resolved, closed, reopened, SLA breach | Other member (assignee for assign; **both** for SLA breach) | Master only | Desk → IncidentDetail |
+| `LetsChat` | Partner sends a Let's Chat message (body never included) | Partner | Master only | Chat → ChatReceived |
+| `Gift` | Partner sends a vault gift | Partner | Partner activity | Vault, auto-opens that gift |
+| `VisionBoardItemAdded` / `VisionBoardItemCompleted` | Partner adds / achieves a vision | Partner | Partner activity | Together → VisionBoardItemDetail |
+| `MemoryAdded` | Partner adds a memory | Partner | Partner activity | Together → Memories |
+| `CalendarEventAdded` | Partner adds a calendar event | Partner | Partner activity | Together → Calendar |
+| `BucketListItemAdded` | Partner adds a bucket-list item | Partner | Partner activity | Together → DateIdeas (§9 BUG-11) |
+| `WishlistItemAdded` | Partner adds a wishlist item | Partner | Partner activity | Together → Wishlist |
+| `PartnerLinkRequest` | Link request received | Target | Master only | Profile → Link Partner modal |
+| `PartnerLinkAccepted` / `PartnerLinkDeclined` / `PartnerUnlinked` | Link lifecycle | Other party | Master only | Nothing |
+| `PartnerActivity` | Support profile "notify partner" (API only, no UI) | Partner | Partner activity | Nothing |
+| `Emergency` | Emergency request (API only) | Partner | Emergency notifications | Nothing |
+| `CheckInReminder`, `DailyDigest` | Defined, but **no server code sends them** | — | Check-in reminders / Daily digest | — |
 
 Every inbox tap marks the row read, even when it doesn't navigate.
 
@@ -425,9 +426,9 @@ These survive app restarts but **not** reinstall, and are not shared with the pa
 | Data | Store | Cleared on logout? |
 |------|-------|--------------------|
 | Access + refresh tokens | `@amori/auth-token`, `@amori/refresh-token` | Yes |
-| Let's Chat local drafts (mirror of server draft + step index) | `@amori:chat:drafts` | **No** — `chatDraftStore.reset()` exists but isn't called (§9 BUG-06) |
-| Splitting custom triggers | customTriggerStore | No |
-| Daily gift pin for today + recent-gift history; "opened today" flag | dailyGiftStore, artifactStore | No |
+| Let's Chat local drafts (mirror of server draft + step index) | `@amori:chat:drafts` | Yes |
+| Splitting custom triggers | `@amori:splitting:custom_triggers` | Yes |
+| Daily gift pin for today + recent-gift history; "opened today" flag | dailyGiftStore, artifactStore | Yes |
 | Theme preference | themeStore | No (device preference) |
 | Check-in reminder schedule | expo-notifications (local) | No |
 
@@ -488,7 +489,7 @@ flowchart TD
 | GIFT-05 | Memory gift body: description, `📍 location`, `🗓 <Month D, YYYY>`, `— <creator>`. Vision gift body: description, `📍`, `🎯 target date`, `💰 budget (USD)`, notes, `— <creator>`. | Field-by-field rendering incl. missing optional fields. |
 | GIFT-06 | Tearing open (accessibility `"Tear open"`) marks it opened; the button persists as **Open Vault** for the rest of the day. | |
 | GIFT-07 | Saving shows `"Saved to your vault"`; already-saved items cannot be saved again. Server save is idempotent. | Double-tap Save → one vault entry. Failure → `"Couldn't save to your vault"`. |
-| GIFT-08 | ⚠️ Saving a **vision** gift currently fails (payload field mismatch). | See §9 BUG-02. |
+| GIFT-08 | Saving a **vision** gift sends `visionBoardItemId` and succeeds; a saved vision is excluded from later daily gifts. | Retest (§9 BUG-02 fixed). |
 
 ### 6.3 Mood check-in ✅
 
@@ -688,7 +689,7 @@ Invalid transitions → **422** `"Cannot transition from '<Current>' to '<Next>'
 | Open | Assign to Me · Assign to Partner (only if partner linked; confirm dialog "Reassign to partner?") | → Assigned |
 | Assigned | Start Investigation · Reassign to Partner | → Investigating / assignee changes, status unchanged |
 | Investigating | Add Response · Add Investigation Note · Mark Awaiting Response · Reassign to Partner · Resolve Incident | as diagram |
-| **Reopened** | **Same buttons as Investigating** | ⚠️ "Mark Awaiting Response" and "Resolve" are **rejected** (Reopened → Investigating only). No "Start Investigation" button. See §9 BUG-04. |
+| **Reopened** | Restart Investigation · Add Response · Add Investigation Note · Reassign to Partner | Restart → Investigating, after which Resolve / Awaiting Response are available again (§9 BUG-04 fixed). |
 | AwaitingResponse | Add Response · Resume Investigation · Reassign to Partner | |
 | Resolved | Close Incident · Write Review · Reopen | |
 | Closed | View Lessons Learned · Write Review · Reopen | |
@@ -976,7 +977,7 @@ sequenceDiagram
 | VAULT-07 | No partner → 409 `"Your relationship does not have a second partner yet."` | |
 | VAULT-08 | Gift-only memories do not appear in Memories (MEM-07). | |
 | VAULT-09 | Remove a gift from your vault (`DELETE /api/vault/gifts/{id}`). | |
-| VAULT-10 | ⚠️ Vision-based gifts can't be saved/excluded correctly due to a field-name mismatch. | §9 BUG-02 |
+| VAULT-10 | Vision-based gifts save and are recognised as already-saved. | Retest (§9 BUG-02 fixed). |
 
 **Endpoints:** `GET /api/vault/gifts`, `GET /api/vault/gifts/{id}`, `POST /api/vault/gifts`, `POST /api/vault/gifts/create`, 🔌 `POST /api/vault/gifts/send {memoryId|visionBoardItemId, cardNumber}` (send an existing item; not used by the app), `DELETE /api/vault/gifts/{id}`.
 
@@ -1153,22 +1154,22 @@ erDiagram
 
 ## 9. Known issues & risks found during analysis
 
-Found by reading code and running `npx tsc --noEmit` at the baseline commit. Please confirm each with a test and raise tickets as appropriate. Severity is a suggestion.
+Found by reading code and running `npx tsc --noEmit` at the baseline commit. Rows marked ✅ Fixed were fixed on 2026-10-15 — **retest them** rather than raising tickets; the fixed behaviour is described in the feature sections. Severity is a suggestion.
 
 | ID | Severity | Area | Finding | How to reproduce / verify |
 |----|----------|------|---------|---------------------------|
-| BUG-01 | High | Achievements / Vault | `src/services/api/pointsService.ts` imports `apiClient` from `./client`, which doesn't exist (tsc error TS2305). Every `pointsService` call throws, so earned badges never load and **archiving a badge from the Vault fails**. | Open Achievements → all locked. Vault → archive a badge → error. |
-| BUG-02 | High | Daily Gift / Vault | Client sends `visionId`; server expects `visionBoardItemId`. Response returns `visionBoardItemId`; client reads `visionId`. | Get a **vision** daily gift → Save → 422 `"Either MemoryId or VisionBoardItemId is required."` / `"Couldn't save to your vault"`. Saved visions also aren't excluded from future gifts. |
+| BUG-01 | ⚠️ Partly fixed | Achievements / Vault | `src/services/api/pointsService.ts` imports `apiClient` from `./client`, which doesn't exist (tsc error TS2305). Every `pointsService` call throws, so earned badges never load and **archiving a badge from the Vault fails**. | Open Achievements → all locked. Vault → archive a badge → error. |
+| BUG-02 | ✅ Fixed | Daily Gift / Vault | Client sends `visionId`; server expects `visionBoardItemId`. Response returns `visionBoardItemId`; client reads `visionId`. | Get a **vision** daily gift → Save → 422 `"Either MemoryId or VisionBoardItemId is required."` / `"Couldn't save to your vault"`. Saved visions also aren't excluded from future gifts. |
 | BUG-03 | Medium | Points | The client never awards points (`POST /api/users/me/points` is never called) and `userPointsStore.load()` is a TODO that sets 0 pts / Level 1. | Do activities → level badge never moves. |
-| BUG-04 | Medium | Help Desk | For status **Reopened**, the detail screen shows Investigating-state buttons. Server only allows Reopened → Investigating, so "Mark Awaiting Response" and "Resolve Incident" fail with 422, and there's no "Start Investigation" button to recover. | Resolve → Reopen → try Resolve. |
+| BUG-04 | ✅ Fixed | Help Desk | For status **Reopened**, the detail screen shows Investigating-state buttons. Server only allows Reopened → Investigating, so "Mark Awaiting Response" and "Resolve Incident" fail with 422, and there's no "Start Investigation" button to recover. | Resolve → Reopen → try Resolve. |
 | BUG-05 | Medium | Weekly Reflection | No date-range mood endpoint is wired; the week's mood distribution reflects only the latest check-in. | Check in on 3 different days → reflection shows 1. |
-| BUG-06 | Medium (privacy) | Logout | `chatDraftStore.reset()` is never called on sign-out; daily-gift pins aren't cleared. A second user on the same device can see the first user's **local draft text** in ChatDrafts. | A writes a draft, logs out; B logs in → ChatDrafts. |
-| BUG-07 | Medium | API contract | Permission denials (e.g. `"Only the creator can delete this memory."`, `"Current password is incorrect."`) return **401**, which the client treats as "token expired": it refreshes tokens and retries before showing the error. Suggest 403. | Proxy log shows `/api/auth/refresh` right after a forbidden action. |
+| BUG-06 | ✅ Fixed | Logout | `chatDraftStore.reset()` is never called on sign-out; daily-gift pins aren't cleared. A second user on the same device can see the first user's **local draft text** in ChatDrafts. | A writes a draft, logs out; B logs in → ChatDrafts. |
+| BUG-07 | ✅ Fixed | API contract | Permission denials (e.g. `"Only the creator can delete this memory."`, `"Current password is incorrect."`) return **401**, which the client treats as "token expired": it refreshes tokens and retries before showing the error. Suggest 403. | Proxy log shows `/api/auth/refresh` right after a forbidden action. |
 | BUG-08 | Low | Register | Multi-error validation responses show only the generic `"One or more validation errors occurred."`; the `errors[]` detail (e.g. `"Password must be at least 8 characters."`) isn't displayed. The client doesn't pre-check password length on register. | Register with a 5-char password. |
 | BUG-09 | Low | Calendar / notifications | Calendar `reminderEnabled` / `reminderMinutesBefore` are stored, but nothing delivers them. `CheckInReminder` and `DailyDigest` types are never sent by the server. | Create event with "Remind us" → no reminder. |
 | BUG-10 | Product question | Let's Chat | Acknowledgement shortcuts on ChatReceived ("I hear you" etc.) only show a local banner; nothing reaches the sender. | Confirm intended behaviour. |
 | BUG-11 | Low | Push routing | `BucketListItemAdded` push tap opens **Date Ideas**, but the bucket list lives inline on Together home. | Tap that push. |
-| BUG-12 | Medium | Inbox routing | Inbox handler checks `VisionBoardItem` and `CalendarEvent`, but the server sends `VisionBoardItemAdded/Completed` and `CalendarEventAdded`. `MemoryAdded`, `BucketListItemAdded`, `WishlistItemAdded` aren't handled. Tapping these rows does nothing. Gift rows open the Vault without the specific gift. | Tap each row type in the inbox. |
+| BUG-12 | ✅ Fixed | Inbox routing | Inbox handler checks `VisionBoardItem` and `CalendarEvent`, but the server sends `VisionBoardItemAdded/Completed` and `CalendarEventAdded`. `MemoryAdded`, `BucketListItemAdded`, `WishlistItemAdded` aren't handled. Tapping these rows does nothing. Gift rows open the Vault without the specific gift. | Tap each row type in the inbox. |
 | BUG-13 | Low | Navigation | Orphan screens: MonthlySnapshot, IncidentSla, IncidentHistory, IncidentConversation are registered but unreachable. | — |
 | BUG-14 | Low | Code health | `tsc --noEmit` reports type errors in `dailyGiftService.ts`, `MemoryLocationMap.tsx`, `NotificationsScreen.tsx`, `ProfileStackNavigator.tsx`, `AchievementsScreen.tsx`, `ProfileScreen.tsx`, `badgeService.ts`, `VisionBoardScreen.tsx` (missing `sectionGroup` style), `MainTabNavigator.tsx`, `pushHandlers.ts`. Jest test files also lack `@types/jest`. | Run `npx tsc --noEmit`. |
 | BUG-15 | Info | Testability | The app has **0 `testID` props**. There are ~316 `accessibilityLabel`s. See §10.3. | — |

@@ -10,6 +10,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { rewardsEvents } from './rewards';
 
 // ── API origin selection ──────────────────────────────────────────────────────
 // The hosted backend is reachable over HTTPS on a real domain (nginx terminates
@@ -122,8 +123,9 @@ export const tokenStore = {
 
 /**
  * Error thrown for any non-2xx API response. Carries the HTTP status so callers
- * can distinguish an authentication failure (401/403) from a transient network
- * or server error — important so we don't sign a user out on a flaky launch.
+ * can distinguish an authentication failure (401) from a permission denial
+ * (403) or a transient network/server error — important so we don't sign a
+ * user out on a flaky launch, or because they tried to edit a partner's item.
  */
 export class ApiError extends Error {
   readonly status: number;
@@ -134,9 +136,14 @@ export class ApiError extends Error {
     this.status = status;
   }
 
-  /** True for 401/403 — the token is missing, invalid, or expired. */
+  /** True for 401 — the token is missing, invalid, or expired. */
   get isAuthError(): boolean {
-    return this.status === 401 || this.status === 403;
+    return this.status === 401;
+  }
+
+  /** True for 403 — signed in, but not allowed to do this (e.g. not the creator). */
+  get isForbidden(): boolean {
+    return this.status === 403;
   }
 }
 
@@ -247,6 +254,47 @@ function refreshAccessToken(): Promise<boolean> {
   return attempt;
 }
 
+// ─── Device date ──────────────────────────────────────────────────────────────
+
+/**
+ * Headers telling the server what day it is here.
+ *
+ * Anything that happens once a day — the check-in, opening the daily gift, a
+ * streak — has to agree with the calendar on the user's own phone. The server
+ * can't work that out from a UTC timestamp: at 1am in Auckland it is already
+ * tomorrow, and at 11pm in Los Angeles it is still yesterday.
+ *
+ * Sent on every request from here rather than per call site, so a new endpoint
+ * can't quietly forget them and fall back to the UTC day.
+ */
+const LOCAL_DATE_HEADER = 'X-Amori-Local-Date';
+const UTC_OFFSET_HEADER = 'X-Amori-Utc-Offset-Minutes';
+
+/** Today on this device, as "YYYY-MM-DD" in local time (never UTC). */
+function localDateHeaderValue(now: Date): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Minutes this device is *ahead* of UTC. `getTimezoneOffset()` reports the
+ * opposite sign (minutes behind), hence the negation — and it reflects the
+ * offset in force right now, so it follows daylight saving automatically.
+ */
+function utcOffsetHeaderValue(now: Date): string {
+  return String(-now.getTimezoneOffset());
+}
+
+function deviceDateHeaders(): Record<string, string> {
+  const now = new Date();
+  return {
+    [LOCAL_DATE_HEADER]: localDateHeaderValue(now),
+    [UTC_OFFSET_HEADER]: utcOffsetHeaderValue(now),
+  };
+}
+
 // ─── Core request helper ──────────────────────────────────────────────────────
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -259,6 +307,7 @@ async function performRequest(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...deviceDateHeaders(),
   };
 
   const token = tokenStore.get();
@@ -306,6 +355,10 @@ export async function apiRequest<T>(
     throw new ApiError(response.status, message);
   }
 
+  // Actions that earn points carry a `rewards` envelope; hand it on so the
+  // level badge and progress bar update immediately (see rewards.ts).
+  rewardsEvents.publishFrom(data);
+
   return data as T;
 }
 
@@ -331,7 +384,10 @@ export async function apiUpload<T>(
   fieldName = 'file',
 ): Promise<T> {
   const send = (): Promise<Response> => {
-    const headers: Record<string, string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      ...deviceDateHeaders(),
+    };
     const token = tokenStore.get();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 

@@ -35,7 +35,7 @@ public sealed class VoiceNoteService(
             ?? throw new NotFoundException("You are not a member of any relationship.");
         var v = await db.VoiceNotes.FirstOrDefaultAsync(x => x.Id == voiceNoteId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Voice note", voiceNoteId);
-        if (v.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (v.RelationshipId != rel.Id) throw new ForbiddenException();
         return Map(v);
     }
 
@@ -61,7 +61,7 @@ public sealed class VoiceNoteService(
     {
         var v = await db.VoiceNotes.FirstOrDefaultAsync(x => x.Id == voiceNoteId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Voice note", voiceNoteId);
-        if (v.UserId != userId) throw new UnauthorizedException();
+        if (v.UserId != userId) throw new ForbiddenException();
         if (request.Title != null) v.Title = request.Title.Trim();
         if (request.Category.HasValue) v.Category = request.Category.Value;
         await db.SaveChangesAsync(ct);
@@ -72,7 +72,7 @@ public sealed class VoiceNoteService(
     {
         var v = await db.VoiceNotes.FirstOrDefaultAsync(x => x.Id == voiceNoteId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Voice note", voiceNoteId);
-        if (v.UserId != userId) throw new UnauthorizedException();
+        if (v.UserId != userId) throw new ForbiddenException();
         v.IsDeleted = true;
         await db.SaveChangesAsync(ct);
     }
@@ -83,7 +83,7 @@ public sealed class VoiceNoteService(
             ?? throw new NotFoundException("You are not a member of any relationship.");
         var v = await db.VoiceNotes.FirstOrDefaultAsync(x => x.Id == voiceNoteId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Voice note", voiceNoteId);
-        if (v.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (v.RelationshipId != rel.Id) throw new ForbiddenException();
         v.IsFavorite = true;
         await db.SaveChangesAsync(ct);
         return Map(v);
@@ -95,7 +95,7 @@ public sealed class VoiceNoteService(
             ?? throw new NotFoundException("You are not a member of any relationship.");
         var v = await db.VoiceNotes.FirstOrDefaultAsync(x => x.Id == voiceNoteId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Voice note", voiceNoteId);
-        if (v.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (v.RelationshipId != rel.Id) throw new ForbiddenException();
         v.IsFavorite = false;
         await db.SaveChangesAsync(ct);
         return Map(v);

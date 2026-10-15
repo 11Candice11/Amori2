@@ -24,7 +24,7 @@
  */
 import { Platform } from 'react-native';
 
-type NotificationData = Record<string, unknown>;
+export type NotificationData = Record<string, unknown>;
 
 export interface PushHandlerCallbacks {
   /** Called when the user taps a hug notification. Receives the hug id. */
@@ -57,7 +57,8 @@ export interface PushHandlerCallbacks {
   /**
    * Called when the user taps a Vision Board item notification (partner shared
    * or completed an item). Opens the item's detail screen. Backend sends these
-   * with data.type === "VisionBoardItem" and data.referenceId === <itemId>.
+   * with data.type === "VisionBoardItemAdded" or "VisionBoardItemCompleted"
+   * and data.referenceId === <itemId>.
    */
   onOpenVisionBoardItem?: (itemId: string) => void;
   /**
@@ -92,12 +93,6 @@ export interface PushHandlerCallbacks {
    * If eventDate is absent the handler falls back to today's date.
    */
   onOpenCalendarEvent?: (eventDate: string) => void;
-  /**
-   * Called when the user taps a Vision Board item notification (partner shared
-   * or completed an item). Opens the item's detail screen. Backend sends these
-   * with data.type === "VisionBoardItem" and data.referenceId === <itemId>.
-   */
-  onOpenVisionBoardItem?: (itemId: string) => void;
 }
 
 /**
@@ -219,61 +214,72 @@ function extractCalendarEventDate(data: NotificationData | undefined): string | 
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Route a tapped notification's data payload to the right callback. */
-function dispatchTap(data: NotificationData | undefined, callbacks: PushHandlerCallbacks): void {
+/**
+ * Route a tapped notification's data payload to the right callback.
+ *
+ * Used for both OS push taps and in-app inbox taps (via
+ * navigation/notificationRouting), so the two always agree. Returns true when
+ * the payload matched a known type and a callback ran.
+ */
+export function routeNotificationTap(
+  data: NotificationData | undefined,
+  callbacks: PushHandlerCallbacks,
+): boolean {
   const hugId = extractHugId(data);
-  if (hugId) {
-    callbacks.onOpenHug?.(hugId);
-    return;
+  if (hugId && callbacks.onOpenHug) {
+    callbacks.onOpenHug(hugId);
+    return true;
   }
   const incidentId = extractIncidentId(data);
-  if (incidentId) {
-    callbacks.onOpenIncident?.(incidentId);
-    return;
+  if (incidentId && callbacks.onOpenIncident) {
+    callbacks.onOpenIncident(incidentId);
+    return true;
   }
-  if (isPartnerLinkRequest(data)) {
-    callbacks.onOpenPartnerLink?.();
-    return;
+  if (isPartnerLinkRequest(data) && callbacks.onOpenPartnerLink) {
+    callbacks.onOpenPartnerLink();
+    return true;
   }
   const giftId = extractGiftId(data);
-  if (giftId) {
-    callbacks.onOpenGift?.(giftId);
-    return;
+  if (giftId && callbacks.onOpenGift) {
+    callbacks.onOpenGift(giftId);
+    return true;
   }
   const chatId = extractChatId(data);
-  if (chatId) {
-    callbacks.onOpenChat?.(chatId);
-    return;
+  if (chatId && callbacks.onOpenChat) {
+    callbacks.onOpenChat(chatId);
+    return true;
   }
   const memoryId = extractMemoryId(data);
-  if (memoryId) {
-    callbacks.onOpenMemory?.(memoryId);
-    return;
+  if (memoryId && callbacks.onOpenMemory) {
+    callbacks.onOpenMemory(memoryId);
+    return true;
   }
   const calendarEventCreatedId = extractCalendarEventCreatedId(data);
-  if (calendarEventCreatedId) {
-    callbacks.onOpenCalendarEventCreated?.(calendarEventCreatedId);
-    return;
+  if (calendarEventCreatedId && callbacks.onOpenCalendarEventCreated) {
+    callbacks.onOpenCalendarEventCreated(calendarEventCreatedId);
+    return true;
   }
   const bucketListItemId = extractBucketListItemId(data);
-  if (bucketListItemId) {
-    callbacks.onOpenBucketListItem?.(bucketListItemId);
-    return;
+  if (bucketListItemId && callbacks.onOpenBucketListItem) {
+    callbacks.onOpenBucketListItem(bucketListItemId);
+    return true;
   }
   const wishlistItemId = extractWishlistItemId(data);
-  if (wishlistItemId) {
-    callbacks.onOpenWishlistItem?.(wishlistItemId);
-    return;
+  if (wishlistItemId && callbacks.onOpenWishlistItem) {
+    callbacks.onOpenWishlistItem(wishlistItemId);
+    return true;
   }
   const visionItemId = extractVisionBoardItemId(data);
-  if (visionItemId) {
-    callbacks.onOpenVisionBoardItem?.(visionItemId);
-    return;
+  if (visionItemId && callbacks.onOpenVisionBoardItem) {
+    callbacks.onOpenVisionBoardItem(visionItemId);
+    return true;
   }
   const calendarEventDate = extractCalendarEventDate(data);
-  if (calendarEventDate) {
-    callbacks.onOpenCalendarEvent?.(calendarEventDate);
+  if (calendarEventDate && callbacks.onOpenCalendarEvent) {
+    callbacks.onOpenCalendarEvent(calendarEventDate);
+    return true;
   }
+  return false;
 }
 
 /**
@@ -307,7 +313,7 @@ export function registerNotificationListeners(callbacks: PushHandlerCallbacks): 
   // User tapped a notification (app foreground/background/quit  opened).
   const responseSub = Notifications.addNotificationResponseReceivedListener(response => {
     const data = response.notification.request.content.data as NotificationData | undefined;
-    dispatchTap(data, callbacks);
+    routeNotificationTap(data, callbacks);
   });
 
   // If the app was launched by tapping a notification while fully quit, handle
@@ -315,7 +321,7 @@ export function registerNotificationListeners(callbacks: PushHandlerCallbacks): 
   Notifications.getLastNotificationResponseAsync?.().then(response => {
     if (!response) return;
     const data = response.notification.request.content.data as NotificationData | undefined;
-    dispatchTap(data, callbacks);
+    routeNotificationTap(data, callbacks);
   }).catch(() => { /* ignore */ });
 
   return () => {

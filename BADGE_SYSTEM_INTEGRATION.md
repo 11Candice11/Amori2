@@ -264,6 +264,35 @@ await sendNotification({
 ```
 
 ### 4. User Profile/Stats
+
+#### Progress
+
+`userStats` comes from `GET /api/users/me/badge-stats`, computed by
+`BadgeStatsService` from the user's real activity (hugs, check-ins, memories,
+messages, timeline, vision board, bucket list, games, SOS responses, points).
+The app reaches it through `badgeService.getUserStats()`, which caches the
+response for 30s, adds the locally derived `categories_unlocked`, and uses it to
+decide which badges are unlocked.
+
+Every criteria used by a badge is counted except `long_distance_hugs` — a hug
+record carries no location or timezone, so there is nothing to measure. It is
+**omitted** from the response rather than returned as 0, so the UI can tell
+"nothing yet" from "we don't measure this" and hide the progress bar instead of
+drawing an empty one. (`hidden_objects_solved`, `perfect_attendance`,
+`partner_response_time` and `custom` are also uncounted, but no badge uses them.)
+
+Two criteria are interpreted rather than stored directly:
+
+- `sync_questions_agreed` — Would You Rather questions where both partners
+  picked the same option.
+- `partner_low_mood_support` — the partner shared a hard-day mood and the user
+  sent a hug or message within the following 24 hours.
+
+Streak criteria report the *longest* run of consecutive days, so a badge that
+was already earned never looks un-earned after a quiet week. Couples with no
+anniversary date set fall back to the day their relationship was created, so
+`anniversary_reached` still has something to show.
+
 Track unlock progress:
 
 ```typescript
@@ -372,6 +401,11 @@ const unlockedBadges = ALL_BADGES
 - `isUnlocked?` (boolean) - Unlock state
 - `userStats?` (Record) - User stats for criteria
 
+The modal also shows a progress bar ("5 / 10 hugs sent") built from
+`userStats`, via `getBadgeProgress(badge, userStats)` in `constants/badges.ts`.
+Criteria missing from `userStats` are treated as not measured, and the bar is
+hidden rather than drawn at zero.
+
 ### BadgeRewardModal
 - `visible` (boolean) - Show modal
 - `badgeId` (string | null) - Earned badge ID
@@ -386,7 +420,7 @@ const unlockedBadges = ALL_BADGES
 3. ✅ UI components created (Display, Grid, Modals)
 4. ✅ BadgeRewardModal updated to use new system
 5. ✅ AchievementsScreen created
-6. 📋 Connect to user stats API
+6. ✅ Connect to user stats API (`GET /api/users/me/badge-stats`, see Progress below)
 7. 📋 Integrate unlock tracking in features
 8. 📋 Add navigation to AchievementsScreen
 9. 📋 Track badge earnings and notify users

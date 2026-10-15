@@ -21,6 +21,7 @@ import type { MoodStackParamList } from '../../../navigation/MoodStackParamList'
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
 import { dailyGiftService, type DailyGift } from '../../home/services/dailyGiftService';
 import { vaultService } from '../../vault/services/vaultService';
+import type { SaveGiftRequest } from '../../vault/types/vault.types';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'MoodGift'>;
 type Rt = RouteProp<MoodStackParamList, 'MoodGift'>;
@@ -54,7 +55,7 @@ export function MoodGiftScreen() {
         ? savedGifts.some((savedGift) => 
             gift.type === 'memory' 
               ? savedGift.memoryId === gift.memory?.id
-              : savedGift.visionId === gift.vision?.id
+              : savedGift.visionBoardItemId === gift.vision?.id
           )
         : false;
       setAlreadySaved(isAlreadySaved);
@@ -73,10 +74,10 @@ export function MoodGiftScreen() {
     if (!dailyGift || alreadySaved) return;
 
     try {
-      const payload =
+      const payload: SaveGiftRequest =
         dailyGift.type === 'memory'
           ? { memoryId: dailyGift.memory!.id, cardNumber: dailyGift.cardNumber }
-          : { visionId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
+          : { visionBoardItemId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
 
       await vaultService.save(payload);
       setAlreadySaved(true);

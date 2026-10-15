@@ -123,7 +123,7 @@ public sealed class UserService(
         // Verify the current password before allowing a change — a valid session
         // alone isn't enough to reset the password.
         if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            throw new UnauthorizedException("Current password is incorrect.");
+            throw new ForbiddenException("Current password is incorrect.");
 
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
         await db.SaveChangesAsync(ct);

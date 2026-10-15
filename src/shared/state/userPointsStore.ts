@@ -13,6 +13,7 @@
  * (e.g., Level 2 needs 200 points, Level 3 needs 300 points, etc.)
  */
 import { useEffect, useState } from 'react';
+import { rewardsEvents, type Rewards } from '../../services/api/rewards';
 
 type Listener = () => void;
 
@@ -134,6 +135,39 @@ export const userPointsStore = {
   },
 
   /**
+   * Apply what the server says an action just earned. The server's
+   * `totalPoints` is authoritative, so it replaces the cache outright (even
+   * before the first load) rather than being added to a possibly stale value.
+   */
+  applyRewards(rewards: Rewards): void {
+    if (rewards.totalPoints == null) return;
+
+    const totalPoints = rewards.totalPoints;
+    const level = rewards.newLevel ?? calculateLevel(totalPoints);
+    userPointsStore.set({ totalPoints, level });
+
+    // /users/me also carries points and level, and badge progress reads them
+    // from there — keep it in step. Lazy requires avoid import cycles (both
+    // modules sit above the API client).
+    try {
+      const { userSettingsStore } = require('./userSettingsStore');
+      userSettingsStore.merge({ totalPoints, level });
+    } catch (err) {
+      console.warn('Could not sync points into user settings:', err);
+    }
+
+    // The action that earned points usually moved a badge counter too (a hug
+    // sent, a check-in), so re-read progress now: a newly unlocked badge
+    // shows its reward modal straight away instead of on the next poll.
+    try {
+      const { badgeService } = require('../../features/profile/services/badgeService');
+      void badgeService.refresh();
+    } catch (err) {
+      console.warn('Could not refresh badges after a reward:', err);
+    }
+  },
+
+  /**
    * Add points for an activity. Updates locally and returns the new level
    * if the user leveled up.
    */
@@ -175,6 +209,10 @@ export const userPointsStore = {
           totalPoints: data.totalPoints,
           level: data.level,
         });
+        
+        // Also refresh badges when points are loaded
+        const { badgeService } = require('../../features/profile/services/badgeService');
+        return badgeService.refresh();
       })
       .catch(() => {
         // On error, initialize with defaults if not already loaded
@@ -250,3 +288,7 @@ export function useUserLevel(): {
 export function getLevel(totalPoints: number): number {
   return calculateLevel(totalPoints);
 }
+
+// Every API response that carries a `rewards` envelope (hug, check-in, SOS,
+// vision / bucket-list / to-do added, gift card) updates points immediately.
+rewardsEvents.subscribe(rewards => userPointsStore.applyRewards(rewards));

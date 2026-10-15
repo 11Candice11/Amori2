@@ -4,6 +4,7 @@ using Amori.Api.Domain.Entities;
 using Amori.Api.Domain.Enums;
 using Amori.Api.Features.Notifications;
 using Amori.Api.Features.Notifications.Services;
+using Amori.Api.Features.Users.Services;
 using Amori.Api.Features.VisionBoard.DTOs;
 using Amori.Api.Infrastructure.Relationships;
 using Amori.Api.Infrastructure.Storage;
@@ -20,7 +21,8 @@ public sealed class VisionBoardService(
     AmoriDbContext db,
     IRelationshipAccessService relAccess,
     IFileStorageService storage,
-    INotificationService notifications) : IVisionBoardService
+    INotificationService notifications,
+    IRewardService rewards) : IVisionBoardService
 {
     /// <summary>
     /// The default shelves seeded for a new relationship, in display order,
@@ -147,7 +149,7 @@ public sealed class VisionBoardService(
             .Include(i => i.CreatedBy)
             .FirstOrDefaultAsync(i => i.Id == itemId && !i.IsDeleted, ct)
             ?? throw new NotFoundException("Vision board item", itemId);
-        if (item.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (item.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel, item);
     }
 
@@ -157,7 +159,7 @@ public sealed class VisionBoardService(
         var section = await db.VisionBoardSections
             .FirstOrDefaultAsync(s => s.Id == sectionId && !s.IsDeleted, ct)
             ?? throw new NotFoundException("Vision board section", sectionId);
-        if (section.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (section.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel, section);
     }
 
@@ -260,7 +262,11 @@ public sealed class VisionBoardService(
             item.Id,
             ct);
 
-        return MapItem(item);
+        var response = MapItem(item);
+        response.Rewards = await rewards.GrantAsync(
+            userId, RewardRequest.For(ActivityType.VisionAdded, item.Id), ct);
+
+        return response;
     }
 
     public async Task<VisionBoardItemResponse> UpdateItemAsync(Guid userId, Guid itemId, UpdateVisionBoardItemRequest request, CancellationToken ct = default)
@@ -344,7 +350,7 @@ public sealed class VisionBoardService(
         var target = await db.VisionBoardSections
             .FirstOrDefaultAsync(s => s.Id == request.SectionId && !s.IsDeleted, ct)
             ?? throw new NotFoundException("Vision board section", request.SectionId);
-        if (target.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (target.RelationshipId != rel.Id) throw new ForbiddenException();
 
         if (item.SectionId != target.Id)
         {

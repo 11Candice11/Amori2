@@ -3,13 +3,16 @@
  *
  * Handles all communication with the gamification endpoints:
  * - POST /api/users/me/points - Award points for activities
+ * - GET  /api/users/me/points - Points and level
+ * - GET  /api/users/me/badges - Badges earned
+ * - GET  /api/users/me/badge-stats - Progress towards each badge
  * - POST /api/users/me/badges/{badgeId}/archive - Save badges to vault
  */
-import { apiClient } from './client';
-import type { ActivityType } from '../../services/api/types';
+import { api } from './client';
 
 export interface AddPointsPayload {
-  activityType: string; // ActivityType enum
+  /** ActivityType enum name, e.g. "HugSent". */
+  activityType: string;
   amount: number;
   referenceId?: string;
   metadata?: string;
@@ -29,13 +32,7 @@ export interface AddPointsResult {
     imageUrl?: string | null;
     earnedAt: string;
   } | null;
-  points?: {
-    totalPoints: number;
-    level: number;
-    pointsInCurrentLevel: number;
-    pointsNeededForLevel: number;
-    progressPercentage: number;
-  };
+  points?: UserPointsResult;
 }
 
 export interface BadgeResponse {
@@ -48,43 +45,56 @@ export interface BadgeResponse {
   earnedAt: string;
 }
 
+export interface UserPointsResult {
+  totalPoints: number;
+  level: number;
+  pointsInCurrentLevel: number;
+  pointsNeededForLevel: number;
+  progressPercentage: number;
+}
+
+/**
+ * Progress counters keyed by badge unlock criteria, e.g. `{ hugs_sent: 5 }`.
+ * Criteria the backend doesn't track are absent rather than zero.
+ */
+export type BadgeStatsResponse = Record<string, number>;
+
 export const pointsService = {
   /**
    * Award points to the current user for completing an activity.
    * Returns updated points/level and any badges earned.
    */
-  async addPoints(payload: AddPointsPayload): Promise<AddPointsResult> {
-    const response = await apiClient.post('/users/me/points', payload);
-    return response.data;
+  addPoints(payload: AddPointsPayload): Promise<AddPointsResult> {
+    return api.post<AddPointsResult>('/api/users/me/points', payload);
   },
 
   /**
    * Archive a badge to the user's vault.
    */
-  async archiveBadge(badgeId: string): Promise<BadgeResponse> {
-    const response = await apiClient.post(`/users/me/badges/${badgeId}/archive`, {});
-    return response.data;
+  archiveBadge(badgeId: string): Promise<BadgeResponse> {
+    return api.post<BadgeResponse>(`/api/users/me/badges/${badgeId}/archive`);
   },
 
   /**
    * Get all badges earned by the user.
    */
-  async getBadges(): Promise<BadgeResponse[]> {
-    const response = await apiClient.get('/users/me/badges');
-    return response.data;
+  getBadges(): Promise<BadgeResponse[]> {
+    return api.get<BadgeResponse[]>('/api/users/me/badges');
+  },
+
+  /**
+   * Get how far the user has come on each badge criteria (e.g. hugs sent),
+   * used to show "5 / 10" progress against a badge's threshold.
+   */
+  async getBadgeStats(): Promise<BadgeStatsResponse> {
+    const stats = await api.get<BadgeStatsResponse | null>('/api/users/me/badge-stats');
+    return stats ?? {};
   },
 
   /**
    * Get the user's points and level info.
    */
-  async getPoints(): Promise<{
-    totalPoints: number;
-    level: number;
-    pointsInCurrentLevel: number;
-    pointsNeededForLevel: number;
-    progressPercentage: number;
-  }> {
-    const response = await apiClient.get('/users/me/points');
-    return response.data;
+  getPoints(): Promise<UserPointsResult> {
+    return api.get<UserPointsResult>('/api/users/me/points');
   },
 };

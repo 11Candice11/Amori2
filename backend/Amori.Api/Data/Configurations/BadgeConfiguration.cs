@@ -13,6 +13,7 @@ public sealed class BadgeConfiguration : IEntityTypeConfiguration<Badge>
         builder.HasKey(b => b.Id);
         builder.Property(b => b.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(b => b.UserId).HasColumnName("user_id").IsRequired();
+        builder.Property(b => b.Slug).HasColumnName("slug").HasMaxLength(64);
         builder.Property(b => b.BadgeName).HasColumnName("badge_name").HasMaxLength(255).IsRequired();
         builder.Property(b => b.Description).HasColumnName("description").HasMaxLength(500).IsRequired();
         builder.Property(b => b.AwardedAtLevel).HasColumnName("awarded_at_level").IsRequired();
@@ -26,7 +27,17 @@ public sealed class BadgeConfiguration : IEntityTypeConfiguration<Badge>
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at");
 
         builder.HasIndex(b => b.UserId).HasDatabaseName("IX_badges_user_id");
-        builder.HasIndex(b => new { b.UserId, b.AwardedAtLevel }).IsUnique().HasDatabaseName("IX_badges_user_level");
+        // Two kinds of badge share this table, each unique within its own key:
+        // level milestones by level (slug null), catalogue badges by slug. The
+        // filters stop every catalogue badge (all at level 0) colliding.
+        builder.HasIndex(b => new { b.UserId, b.AwardedAtLevel })
+            .IsUnique()
+            .HasFilter("slug IS NULL")
+            .HasDatabaseName("IX_badges_user_level");
+        builder.HasIndex(b => new { b.UserId, b.Slug })
+            .IsUnique()
+            .HasFilter("slug IS NOT NULL")
+            .HasDatabaseName("IX_badges_user_slug");
 
         builder.HasOne(b => b.User)
             .WithMany(u => u.Badges)

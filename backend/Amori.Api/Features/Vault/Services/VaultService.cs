@@ -9,6 +9,7 @@ using Amori.Api.Features.Vault.DTOs;
 using Amori.Api.Features.Memories.DTOs;
 using Amori.Api.Features.Notifications;
 using Amori.Api.Features.Notifications.Services;
+using Amori.Api.Features.Users.Services;
 
 namespace Amori.Api.Features.Vault.Services;
 
@@ -16,7 +17,8 @@ public sealed class VaultService(
     AmoriDbContext db,
     IRelationshipAccessService relAccess,
     IFileStorageService storage,
-    INotificationService notifications) : IVaultService
+    INotificationService notifications,
+    IRewardService rewards) : IVaultService
 {
     /// <summary>The number of collectible card designs the client ships.</summary>
     private const int CardCount = 10;
@@ -126,7 +128,7 @@ public sealed class VaultService(
                 ?? throw new NotFoundException("Memory", request.MemoryId!.Value);
 
             // You may only keep a memory from your own relationship.
-            if (memory.RelationshipId != rel.Id) throw new UnauthorizedException();
+            if (memory.RelationshipId != rel.Id) throw new ForbiddenException();
 
             // Saving twice is a no-op rather than an error.
             var existing = await db.VaultGifts
@@ -155,7 +157,7 @@ public sealed class VaultService(
                 ?? throw new NotFoundException("Vision board item", request.VisionBoardItemId!.Value);
 
             // You may only keep a vision from your own relationship.
-            if (vision.RelationshipId != rel.Id) throw new UnauthorizedException();
+            if (vision.RelationshipId != rel.Id) throw new ForbiddenException();
 
             // Saving twice is a no-op rather than an error.
             var existing = await db.VaultGifts
@@ -207,7 +209,7 @@ public sealed class VaultService(
                 .FirstOrDefaultAsync(m => m.Id == request.MemoryId && !m.IsDeleted, ct)
                 ?? throw new NotFoundException("Memory", request.MemoryId!.Value);
 
-            if (memory.RelationshipId != rel.Id) throw new UnauthorizedException();
+            if (memory.RelationshipId != rel.Id) throw new ForbiddenException();
 
             // Idempotent: sending the same memory twice doesn't create a duplicate.
             var existing = await db.VaultGifts
@@ -239,7 +241,7 @@ public sealed class VaultService(
                 .FirstOrDefaultAsync(v => v.Id == request.VisionBoardItemId && !v.IsDeleted, ct)
                 ?? throw new NotFoundException("Vision board item", request.VisionBoardItemId!.Value);
 
-            if (vision.RelationshipId != rel.Id) throw new UnauthorizedException();
+            if (vision.RelationshipId != rel.Id) throw new ForbiddenException();
 
             // Idempotent: sending the same vision twice doesn't create a duplicate.
             var existing = await db.VaultGifts
@@ -281,6 +283,8 @@ public sealed class VaultService(
             MemoryId = hasMemory ? request.MemoryId!.Value : Guid.Empty,
             GiftId = gift!.Id,
             RecipientName = partner.DisplayName,
+            Rewards = await rewards.GrantAsync(
+                userId, RewardRequest.For(ActivityType.CardCollected, gift.Id), ct),
         };
     }
 
@@ -360,6 +364,8 @@ public sealed class VaultService(
             MemoryId = memory.Id,
             GiftId = gift.Id,
             RecipientName = partner.DisplayName,
+            Rewards = await rewards.GrantAsync(
+                userId, RewardRequest.For(ActivityType.CardCollected, gift.Id), ct),
         };
     }
 

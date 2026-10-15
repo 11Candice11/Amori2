@@ -28,6 +28,7 @@ import { hugService } from '../../hugs/services/hugService';
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
 import { dailyGiftService, type DailyGift } from '../../home/services/dailyGiftService';
 import { vaultService } from '../../vault/services/vaultService';
+import type { SaveGiftRequest } from '../../vault/types/vault.types';
 
 type Nav = NativeStackNavigationProp<SplittingStackParamList, 'CompassionBridge'>;
 type Rt = RouteProp<SplittingStackParamList, 'CompassionBridge'>;
@@ -78,7 +79,7 @@ export function CompassionBridgeScreen() {
           const isAlreadySaved = savedGifts.some((savedGift) =>
             gift.type === 'memory'
               ? savedGift.memoryId === gift.memory?.id
-              : savedGift.visionId === gift.vision?.id
+              : savedGift.visionBoardItemId === gift.vision?.id
           );
           setGiftAlreadySaved(isAlreadySaved);
         }
@@ -128,10 +129,10 @@ export function CompassionBridgeScreen() {
     if (!dailyGift || giftAlreadySaved) return;
 
     try {
-      const payload =
+      const payload: SaveGiftRequest =
         dailyGift.type === 'memory'
           ? { memoryId: dailyGift.memory!.id, cardNumber: dailyGift.cardNumber }
-          : { visionId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
+          : { visionBoardItemId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
 
       await vaultService.save(payload);
       setGiftAlreadySaved(true);

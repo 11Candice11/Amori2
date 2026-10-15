@@ -43,7 +43,7 @@ public sealed class TimelineService(
         var ev = await db.TimelineEvents.Include(e => e.CreatedBy)
             .FirstOrDefaultAsync(e => e.Id == eventId, ct)
             ?? throw new NotFoundException("Timeline event", eventId);
-        if (ev.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (ev.RelationshipId != rel.Id) throw new ForbiddenException();
 
         // Respect the author's "Share timeline" setting. Their own events always
         // stay visible to them; for the partner a withheld event reads as absent.
@@ -99,7 +99,7 @@ public sealed class TimelineService(
     public async Task<TimelineEventResponse> UpdateAsync(Guid userId, Guid eventId, UpdateTimelineEventRequest request, CancellationToken ct = default)
     {
         var ev = await LoadAsync(userId, eventId, ct);
-        if (ev.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can update this event.");
+        if (ev.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can update this event.");
         if (request.Title != null) ev.Title = request.Title.Trim();
         if (request.Description != null) ev.Description = request.Description;
         if (request.EventDate.HasValue) ev.EventDate = request.EventDate.Value;
@@ -114,7 +114,7 @@ public sealed class TimelineService(
     public async Task DeleteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
     {
         var ev = await LoadAsync(userId, eventId, ct);
-        if (ev.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this event.");
+        if (ev.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this event.");
         db.TimelineEvents.Remove(ev);
         await db.SaveChangesAsync(ct);
     }
@@ -122,7 +122,7 @@ public sealed class TimelineService(
     public async Task<TimelineEventResponse> AddMediaAsync(Guid userId, Guid eventId, AddTimelineMediaRequest request, CancellationToken ct = default)
     {
         var ev = await LoadAsync(userId, eventId, ct);
-        if (ev.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can add photos to this event.");
+        if (ev.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can add photos to this event.");
         if (string.IsNullOrWhiteSpace(request.PhotoKey)) throw new ValidationException("PhotoKey is required.");
         // Reassign (rather than mutate in place) so EF's change tracker reliably
         // detects the JSONB column change — an in-place List.Add can be missed.
@@ -134,7 +134,7 @@ public sealed class TimelineService(
     public async Task<TimelineEventResponse> RemoveMediaAsync(Guid userId, Guid eventId, string photoKey, CancellationToken ct = default)
     {
         var ev = await LoadAsync(userId, eventId, ct);
-        if (ev.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can remove photos from this event.");
+        if (ev.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can remove photos from this event.");
         if (string.IsNullOrWhiteSpace(photoKey)) throw new ValidationException("PhotoKey is required.");
         // Reassign the list so EF's change tracker sees the JSONB column change.
         ev.PhotoKeys = ev.PhotoKeys.Where(k => k != photoKey).ToList();

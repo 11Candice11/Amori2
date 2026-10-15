@@ -5,12 +5,14 @@ using Amori.Api.Domain.Enums;
 using Amori.Api.Infrastructure.Relationships;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.Splitting.DTOs;
+using Amori.Api.Features.Users.Services;
 
 namespace Amori.Api.Features.Splitting.Services;
 
 public sealed class SplittingService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : ISplittingService
+    IRelationshipAccessService relAccess,
+    IRewardService rewards) : ISplittingService
 {
     private static SplittingSessionResponse Map(SplittingSession s) => new()
     {
@@ -38,7 +40,7 @@ public sealed class SplittingService(
     {
         var s = await db.SplittingSessions.FindAsync([sessionId], ct)
             ?? throw new NotFoundException("Session", sessionId);
-        if (s.UserId != userId) throw new UnauthorizedException();
+        if (s.UserId != userId) throw new ForbiddenException();
         return s;
     }
 
@@ -94,7 +96,14 @@ public sealed class SplittingService(
         s.Status = SplittingSessionStatus.Completed;
         s.CompletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return Map(s);
+
+        // Only in-progress sessions can be completed (guarded above), so this
+        // credits once per session without needing its own guard.
+        var response = Map(s);
+        response.Rewards = await rewards.GrantAsync(
+            userId, RewardRequest.For(ActivityType.SosFlowCompleted, s.Id), ct);
+
+        return response;
     }
 
     public async Task<SplittingSessionResponse> CancelAsync(Guid userId, Guid sessionId, CancellationToken ct = default)

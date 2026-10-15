@@ -45,7 +45,7 @@ public sealed class ImportantDateService(
         var date = await db.ImportantDates.Include(d => d.CreatedBy)
             .FirstOrDefaultAsync(d => d.Id == dateId, ct)
             ?? throw new NotFoundException("Important date", dateId);
-        if (date.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (date.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, date);
     }
 
@@ -87,7 +87,7 @@ public sealed class ImportantDateService(
     public async Task<ImportantDateResponse> UpdateAsync(Guid userId, Guid dateId, UpdateImportantDateRequest request, CancellationToken ct = default)
     {
         var (_, date) = await LoadAsync(userId, dateId, ct);
-        if (date.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can update this.");
+        if (date.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can update this.");
         if (request.Name != null) date.Name = request.Name.Trim();
         if (request.Date.HasValue) date.Date = request.Date.Value;
         if (request.IsRecurring.HasValue) date.IsRecurring = request.IsRecurring.Value;
@@ -102,7 +102,7 @@ public sealed class ImportantDateService(
     public async Task DeleteAsync(Guid userId, Guid dateId, CancellationToken ct = default)
     {
         var (_, date) = await LoadAsync(userId, dateId, ct);
-        if (date.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this.");
+        if (date.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this.");
         db.ImportantDates.Remove(date);
         await db.SaveChangesAsync(ct);
     }

@@ -33,14 +33,14 @@ public sealed class MemoriesControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Update_AsThePartner_Returns401AndLeavesTheMemoryUnchanged()
+    public async Task Update_AsThePartner_Returns403AndLeavesTheMemoryUnchanged()
     {
         var couple = await CreateLinkedCoupleAsync();
         var memoryId = await CreateMemoryAsync(couple.PartnerA, "First kiss");
 
         var attempt = await couple.PartnerB.PatchAsync($"/api/memories/{memoryId}",
             Json(new UpdateMemoryRequest { Title = "Edited by the partner" }));
-        Assert.Equal(HttpStatusCode.Unauthorized, attempt.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, attempt.StatusCode);
 
         // The title the partner tried to write must not have stuck.
         var current = await ReadMemoryAsync(couple.PartnerA, memoryId);
@@ -62,13 +62,13 @@ public sealed class MemoriesControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Delete_AsThePartner_Returns401AndLeavesTheMemoryInPlace()
+    public async Task Delete_AsThePartner_Returns403AndLeavesTheMemoryInPlace()
     {
         var couple = await CreateLinkedCoupleAsync();
         var memoryId = await CreateMemoryAsync(couple.PartnerA, "Anniversary dinner");
 
         var attempt = await couple.PartnerB.DeleteAsync($"/api/memories/{memoryId}");
-        Assert.Equal(HttpStatusCode.Unauthorized, attempt.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, attempt.StatusCode);
 
         // Still readable by the creator — the soft-delete never happened.
         var stillThere = await couple.PartnerA.GetAsync($"/api/memories/{memoryId}");
@@ -90,7 +90,7 @@ public sealed class MemoriesControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Update_AMemoryFromAnotherRelationship_Returns401()
+    public async Task Update_AMemoryFromAnotherRelationship_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var outsider = await CreateLinkedCoupleAsync();
@@ -99,7 +99,7 @@ public sealed class MemoriesControllerTests(AmoriWebApplicationFactory factory)
         var response = await couple.PartnerA.PatchAsync($"/api/memories/{foreignMemoryId}",
             Json(new UpdateMemoryRequest { Title = "Trying to reach across" }));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

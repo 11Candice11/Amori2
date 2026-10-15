@@ -148,7 +148,7 @@ public sealed class PartnerLinkService(
 
         // Only the invitee may accept.
         if (!string.Equals(invitation.InviteeEmail, user.Email, StringComparison.OrdinalIgnoreCase))
-            throw new UnauthorizedException();
+            throw new ForbiddenException();
 
         if (invitation.Status != MemberInviteStatus.Pending)
             throw new ConflictException("This link request is no longer pending.");
@@ -232,7 +232,7 @@ public sealed class PartnerLinkService(
             ?? throw new NotFoundException("Link request", requestId);
 
         if (!string.Equals(invitation.InviteeEmail, user.Email, StringComparison.OrdinalIgnoreCase))
-            throw new UnauthorizedException();
+            throw new ForbiddenException();
 
         if (invitation.Status != MemberInviteStatus.Pending)
             throw new ConflictException("This link request is no longer pending.");
@@ -256,7 +256,7 @@ public sealed class PartnerLinkService(
             ?? throw new NotFoundException("Link request", requestId);
 
         if (invitation.InvitedByUserId != userId)
-            throw new UnauthorizedException();
+            throw new ForbiddenException();
 
         if (invitation.Status != MemberInviteStatus.Pending)
             throw new ConflictException("This link request is no longer pending.");

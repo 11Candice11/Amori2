@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar, View, StyleSheet, Text } from 'react-native';
 
@@ -7,9 +7,9 @@ import { MainTabNavigator } from '../navigation/MainTabNavigator';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { tokenStore, ApiError } from '../services/api/client';
 import { authService } from '../services/auth/authService';
+import { clearLocalUserData } from '../services/auth/clearLocalUserData';
 import { notificationService } from '../services/notifications/notificationService';
 import { userSettingsStore } from '../shared/state/userSettingsStore';
-import { notificationStore } from '../shared/state/notificationStore';
 import { supportProfileStore } from '../features/supportProfile/services/supportProfileStore';
 import {
   configureForegroundBehavior,
@@ -19,7 +19,7 @@ import {
   scheduleDailyCheckInReminder,
   cancelDailyCheckInReminder,
 } from '../services/notifications/localReminderService';
-import type { MainTabParamList } from '../navigation/types';
+import { navigationRef, notificationRoutes } from '../navigation/notificationRouting';
 import {
   colors,
   ThemeProvider,
@@ -45,141 +45,6 @@ function ThemedStatusBar() {
   );
 }
 
-/** App-wide navigation ref so notification taps can navigate from outside screens. */
-export const navigationRef = createNavigationContainerRef<MainTabParamList>();
-
-/**
- * Navigate into the Hug flow and open a specific delivered hug.
- *
- * The Hug flow lives on the hidden "Hugs" tab (a nested stack with no
- * bottom-bar button). Tapping a hug notification opens the confirmation screen.
- */
-function openHug(hugId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Hugs', {
-    screen: 'HugSent',
-    params: { hugId, deliveryMs: 0 },
-  } as never);
-}
-
-/**
- * Navigate to an incident's detail screen. Incident notifications (SLA breach,
- * reassignment, status change, close) carry the incident id and open the
- * ticket on the "Desk" tab's IncidentDetail screen.
- */
-function openIncident(incidentId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Desk', {
-    screen: 'IncidentDetail',
-    params: { incidentId },
-  } as never);
-}
-
-/**
- * Open the Link Partner screen on the Profile tab. Tapping a partner
- * link-request notification lands the user where they can accept or decline.
- * The `openLink` nonce changes each time so ProfileScreen re-opens the modal
- * even when the Profile tab is already focused.
- */
-function openPartnerLink() {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Profile', { openLink: Date.now() } as never);
-}
-
-/**
- * Open the Hearth Vault. Tapping a "gift received" notification lands the
- * recipient on their vault and opens the specific gift that was received.
- */
-function openGift(giftId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Vault', { giftId } as never);
-}
-
-/**
- * Open a received "Let's Chat" message. Tapping a Let's Chat notification lands
- * the recipient on the message so they can read it (which marks it read). The
- * flow lives on the hidden "Chat" tab (a nested stack with no bottom-bar button).
- */
-function openChat(conversationId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Chat', {
-    screen: 'ChatReceived',
-    params: { conversationId },
-  } as never);
-}
-
-/**
- * Open a Vision Board item. Tapping a "VisionBoardItem" notification (partner
- * shared or completed an item) lands the user on the item's detail screen.
- * The Vision Board lives in the hidden "Together" tab.
- */
-function openVisionBoardItem(itemId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Together', {
-    screen: 'VisionBoardItemDetail',
-    params: { itemId },
-  } as never);
-}
-
-/**
- * Open a memory that the partner just added. Tapping a "MemoryAdded"
- * notification navigates to the Memories screen on the Together tab.
- * The memory details can be viewed from the memories list.
- */
-function openMemory(memoryId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Together', {
-    screen: 'Memories',
-  } as never);
-}
-
-/**
- * Open the calendar when the partner adds an event. Tapping a "CalendarEventAdded"
- * notification navigates to the calendar screen on the Together tab.
- */
-function openCalendarEventCreated(eventId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Together', {
-    screen: 'Calendar',
-  } as never);
-}
-
-/**
- * Open the bucket list when the partner adds an item. Tapping a "BucketListItemAdded"
- * notification navigates to the Date Ideas (bucket list) screen on the Together tab.
- */
-function openBucketListItem(itemId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Together', {
-    screen: 'DateIdeas',
-  } as never);
-}
-
-/**
- * Open the wishlist when the partner adds an item. Tapping a "WishlistItemAdded"
- * notification navigates to the Wishlist screen on the Together tab.
- */
-function openWishlistItem(itemId: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Together', {
-    screen: 'Wishlist',
-  } as never);
-}
-
-/**
- * Open the CalendarDay view for a specific date. Tapping a "CalendarEvent"
- * notification (partner created an event, or a reminder fired) lands the user
- * on the day so they can see the event in context.
- * eventDate must be "YYYY-MM-DD".
- */
-function openCalendarEvent(eventDate: string) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate('Together', {
-    screen: 'CalendarDay',
-    params: { date: eventDate },
-  } as never);
-}
-
 type AuthState = 'checking' | 'unauthenticated' | 'authenticated' | 'error';
 
 // Expose the logout callback app-wide without prop drilling
@@ -196,13 +61,10 @@ export default function App() {
   const [initialTheme, setInitialTheme] = useState<ThemePreference | null>(null);
 
   const handleLogout = useCallback(() => {
-    // Drop cached settings so the next user doesn't inherit this one's.
-    userSettingsStore.reset();
-    // Drop cached notifications too, for the same reason.
-    notificationStore.reset();
-    // Drop cached Support Preferences (own + partner) so the next user on this
-    // device can't inherit them, and no partner data leaks across accounts.
-    supportProfileStore.reset();
+    // Drop every cache and on-device store tied to this user (settings,
+    // notifications, support profile, points, chat drafts, custom triggers,
+    // daily gift) so the next person on this device inherits nothing.
+    void clearLocalUserData();
     try {
       // Best-effort: remove this device so the ex-user stops getting pushes.
       notificationService.deregisterDevice().finally(() => {
@@ -250,7 +112,7 @@ export default function App() {
           });
           setAuthState('authenticated');
         } catch (authErr) {
-          // Only sign the user out if the token is genuinely rejected (401/403).
+          // Only sign the user out if the token is genuinely rejected (401).
           // A network error or backend hiccup at launch must NOT end an
           // otherwise-valid session — the user stays signed in until they
           // explicitly sign out. We keep the persisted token and let them in;
@@ -259,6 +121,8 @@ export default function App() {
           if (authErr instanceof ApiError && authErr.isAuthError) {
             console.warn('Auth token rejected, signing out:', authErr);
             tokenStore.clear();
+            // Same as an explicit sign-out: whoever signs in next starts clean.
+            void clearLocalUserData();
             setAuthState('unauthenticated');
           } else {
             console.warn('Session validation failed (keeping session):', authErr);
@@ -305,19 +169,8 @@ export default function App() {
 
     try {
       notificationService.registerDevice();
-      const unsubscribe = registerNotificationListeners({
-        onOpenHug: openHug,
-        onOpenIncident: openIncident,
-        onOpenPartnerLink: openPartnerLink,
-        onOpenGift: openGift,
-        onOpenChat: openChat,
-        onOpenVisionBoardItem: openVisionBoardItem,
-        onOpenMemory: openMemory,
-        onOpenCalendarEventCreated: openCalendarEventCreated,
-        onOpenBucketListItem: openBucketListItem,
-        onOpenWishlistItem: openWishlistItem,
-        onOpenCalendarEvent: openCalendarEvent,
-      });
+      // Same routes as tapping a row in the in-app Notifications inbox.
+      const unsubscribe = registerNotificationListeners(notificationRoutes);
       return unsubscribe;
     } catch (err) {
       console.warn('Notification registration error:', err);

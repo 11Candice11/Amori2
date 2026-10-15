@@ -322,7 +322,9 @@ const styles = StyleSheet.create({
   },
 
   levelText: {
-    ...typography.headlineMd,
+    // headlineMd isn't in the scale; the size is overridden below anyway, so
+    // this is purely about getting the serif font back.
+    ...typography.headlineLg,
     color: colors.gold,
     fontSize: 36,
   },

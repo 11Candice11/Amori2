@@ -120,18 +120,92 @@ export function CheckInStep2Screen({
     }
   }, [selectedMood, onConfirm]);
 
-  // Arrange all 80 moods in a 5x5 grid (25 moods per view, can scroll to see all)
-  const moodGrid: (MoodOption | null)[][] = [];
-  const moodsPerRow = 5;
-  
-  for (let i = 0; i < MOOD_OPTIONS.length; i += moodsPerRow) {
-    const row: (MoodOption | null)[] = [];
-    for (let j = 0; j < moodsPerRow; j++) {
-      const index = i + j;
-      row.push(index < MOOD_OPTIONS.length ? MOOD_OPTIONS[index] : null);
+  // Arrange all 80 moods in a 2x2 quadrant grid layout with 10 bridge moods between each
+  const quadrants: { key: MoodQuadrant; moods: MoodOption[] }[] = [
+    {
+      key: 'HIGH_PLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'HIGH_PLEASANT'),
+    },
+    {
+      key: 'HIGH_UNPLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'HIGH_UNPLEASANT'),
+    },
+    {
+      key: 'LOW_PLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'LOW_PLEASANT'),
+    },
+    {
+      key: 'LOW_UNPLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'LOW_UNPLEASANT'),
+    },
+  ];
+
+  // Add 10 bridge moods between each pair of adjacent quadrants
+  // High Energy: 20 + 10 bridge to Low Energy + 10 bridge from Low Energy = 40 moods per side
+  // Create 5x8 grids (40 moods per quadrant zone including bridges)
+  const createQuadrantGrid = (
+    mainMoods: MoodOption[],
+    adjacentMoods1: MoodOption[],
+    adjacentMoods2: MoodOption[]
+  ): (MoodOption | null)[][] => {
+    const allMoods = [
+      ...mainMoods.slice(0, 20),
+      ...adjacentMoods1.slice(0, 10),
+      ...adjacentMoods2.slice(0, 10),
+    ];
+
+    const grid: (MoodOption | null)[][] = [];
+    for (let i = 0; i < Math.ceil(allMoods.length / 5); i++) {
+      const row: (MoodOption | null)[] = [];
+      for (let j = 0; j < 5; j++) {
+        const index = i * 5 + j;
+        row.push(index < allMoods.length ? allMoods[index] : null);
+      }
+      grid.push(row);
     }
-    moodGrid.push(row);
-  }
+    return grid;
+  };
+
+  // Build grids for each quadrant with bridge moods
+  const highEnergyUnpleasantMoods = quadrants[1].moods; // RED
+  const highEnergyPleasantMoods = quadrants[0].moods; // YELLOW
+  const lowEnergyUnpleasantMoods = quadrants[3].moods; // BLUE
+  const lowEnergyPleasantMoods = quadrants[2].moods; // GREEN
+
+  const quadrantGrids = [
+    {
+      quadrant: 'HIGH_UNPLEASANT',
+      grid: createQuadrantGrid(
+        highEnergyUnpleasantMoods,
+        highEnergyPleasantMoods,
+        lowEnergyUnpleasantMoods
+      ),
+    },
+    {
+      quadrant: 'HIGH_PLEASANT',
+      grid: createQuadrantGrid(
+        highEnergyPleasantMoods,
+        highEnergyUnpleasantMoods,
+        lowEnergyPleasantMoods
+      ),
+    },
+    {
+      quadrant: 'LOW_UNPLEASANT',
+      grid: createQuadrantGrid(
+        lowEnergyUnpleasantMoods,
+        highEnergyUnpleasantMoods,
+        lowEnergyPleasantMoods
+      ),
+    },
+    {
+      quadrant: 'LOW_PLEASANT',
+      grid: createQuadrantGrid(
+        lowEnergyPleasantMoods,
+        highEnergyPleasantMoods,
+        lowEnergyUnpleasantMoods
+      ),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -164,7 +238,7 @@ export function CheckInStep2Screen({
           </Text>
         </View>
 
-        {/* Mood grid - 5x5 visible, scrollable */}
+        {/* Mood grid - 2x2 quadrant layout */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.gridScroll}
@@ -172,22 +246,93 @@ export function CheckInStep2Screen({
           scrollEnabled={true}
           showsVerticalScrollIndicator={true}
         >
-          {moodGrid.map((row, rowIndex) => (
-            <View key={`row-${rowIndex}`} style={styles.gridRow}>
-              {row.map((mood, colIndex) =>
-                mood ? (
-                  <BubbleMood
-                    key={mood.id}
-                    mood={mood}
-                    isSelected={selectedMoodId === mood.id}
-                    onPress={() => handleBubbleSelect(mood.id)}
-                  />
-                ) : (
-                  <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
-                )
-              )}
+          <View style={styles.quadrantGridContainer}>
+            {/* Top row: High Energy moods */}
+            <View style={styles.quadrantRow}>
+              {/* Top-left: High Energy Unpleasant (Red) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[0].grid.map((row, rowIndex) => (
+                  <View key={`red-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
+
+              {/* Top-right: High Energy Pleasant (Yellow) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[1].grid.map((row, rowIndex) => (
+                  <View key={`yellow-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
             </View>
-          ))}
+
+            {/* Bottom row: Low Energy moods */}
+            <View style={styles.quadrantRow}>
+              {/* Bottom-left: Low Energy Unpleasant (Blue) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[2].grid.map((row, rowIndex) => (
+                  <View key={`blue-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
+
+              {/* Bottom-right: Low Energy Pleasant (Green) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[3].grid.map((row, rowIndex) => (
+                  <View key={`green-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Description at bottom */}
@@ -339,20 +484,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gridContent: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  quadrantGridContainer: {
+    flexDirection: 'column',
+  },
+  quadrantRow: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  quadrantBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(197,163,101,0.1)',
   },
   gridRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.xs,
-    height: '20%',  // 5 rows = 100%, so each row is 20%
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 0,
+    paddingHorizontal: 0,
   },
   bubbleSpacing: {
-    width: '20%',  // 5 columns = 100%, so each column is 20%
+    width: '20%',
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 2,
   },
   bubble: {
     width: '100%',

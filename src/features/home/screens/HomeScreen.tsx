@@ -39,11 +39,13 @@ import { splittingService } from '../../splitting/services/splittingService';
 import { artifactStore } from '../services/artifactStore';
 import { dailyGiftService } from '../services/dailyGiftService';
 import { vaultService } from '../../vault/services/vaultService';
+import type { SaveGiftRequest } from '../../vault/types/vault.types';
 import type { DailyGift } from '../services/dailyGiftService';
 import { getDashboardBackground } from '../../../utils/backgroundImages';
 import { isSunday } from '../../weeklyReflection/utils/weekRange';
 import { moodLabel } from '../../../utils/moodUtils';
 import { formatRelativeDate } from '../../../utils/dateUtils';
+import { userPointsStore } from '../../../shared/state/userPointsStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,7 +98,7 @@ export function HomeScreen() {
       setArtifactOpened(opened);
       setDailyGift(gift);
       setSavedMemoryIds(new Set(savedGifts.map((g) => g.memoryId).filter((id): id is string => id !== null)));
-      setSavedVisionIds(new Set(savedGifts.map((g) => g.visionId).filter((id): id is string => id !== null)));
+      setSavedVisionIds(new Set(savedGifts.map((g) => g.visionBoardItemId).filter((id): id is string => id !== null)));
     } catch (error) {
       console.error('Failed to load artifact data:', error);
     }
@@ -285,10 +287,10 @@ export function HomeScreen() {
     try {
       // Save the item to the vault. The server reads the gift's details from
       // the memory or vision itself, so only the reference goes over the wire.
-      const payload =
+      const payload: SaveGiftRequest =
         dailyGift.type === 'memory'
           ? { memoryId: dailyGift.memory!.id, cardNumber: dailyGift.cardNumber }
-          : { visionId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
+          : { visionBoardItemId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
 
       await vaultService.save(payload);
 
@@ -298,6 +300,10 @@ export function HomeScreen() {
       } else {
         setSavedVisionIds((prev) => new Set(prev).add(dailyGift.vision!.id));
       }
+      
+      // Refresh points after saving to vault
+      userPointsStore.load(true);
+      
       showSuccessOverlay('Saved to your vault');
     } catch (error) {
       console.error('Failed to save gift to vault:', error);

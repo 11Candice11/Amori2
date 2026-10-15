@@ -21,7 +21,7 @@ public sealed class ReminderService(AmoriDbContext db) : IReminderService
     {
         var r = await db.Reminders.FindAsync([reminderId], ct)
             ?? throw new NotFoundException("Reminder", reminderId);
-        if (r.UserId != userId) throw new UnauthorizedException();
+        if (r.UserId != userId) throw new ForbiddenException();
         return r;
     }
 

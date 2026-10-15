@@ -47,7 +47,7 @@ public sealed class MemoryService(
             .Include(m => m.CreatedBy).Include(m => m.Media)
             .FirstOrDefaultAsync(m => m.Id == memoryId && !m.IsDeleted, ct)
             ?? throw new NotFoundException("Memory", memoryId);
-        if (memory.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (memory.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, memory);
     }
 
@@ -131,7 +131,7 @@ public sealed class MemoryService(
     public async Task<MemoryResponse> UpdateAsync(Guid userId, Guid memoryId, UpdateMemoryRequest request, CancellationToken ct = default)
     {
         var (_, memory) = await LoadAsync(userId, memoryId, ct);
-        if (memory.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can update this memory.");
+        if (memory.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can update this memory.");
         if (request.Title != null) memory.Title = request.Title.Trim();
         if (request.Description != null) memory.Description = request.Description;
         if (request.Category.HasValue) memory.Category = request.Category.Value;
@@ -147,7 +147,7 @@ public sealed class MemoryService(
     public async Task DeleteAsync(Guid userId, Guid memoryId, CancellationToken ct = default)
     {
         var (_, memory) = await LoadAsync(userId, memoryId, ct);
-        if (memory.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this memory.");
+        if (memory.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this memory.");
         memory.IsDeleted = true;
         await db.SaveChangesAsync(ct);
     }
@@ -194,7 +194,7 @@ public sealed class MemoryService(
     public async Task DeleteMediaAsync(Guid userId, Guid memoryId, Guid mediaId, CancellationToken ct = default)
     {
         var (_, memory) = await LoadAsync(userId, memoryId, ct);
-        if (memory.CreatedByUserId != userId) throw new UnauthorizedException();
+        if (memory.CreatedByUserId != userId) throw new ForbiddenException();
         var media = memory.Media.FirstOrDefault(m => m.Id == mediaId)
             ?? throw new NotFoundException("Media", mediaId);
         db.MemoryMedia.Remove(media);

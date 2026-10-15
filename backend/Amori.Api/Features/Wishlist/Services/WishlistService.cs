@@ -31,7 +31,7 @@ public sealed class WishlistService(
         var item = await db.WishlistItems.Include(w => w.AddedBy)
             .FirstOrDefaultAsync(w => w.Id == itemId, ct)
             ?? throw new NotFoundException("Wishlist item", itemId);
-        if (item.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (item.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, item);
     }
 
@@ -119,7 +119,7 @@ public sealed class WishlistService(
             request.ImageKey != null || request.Price.HasValue || request.Url != null ||
             request.Priority.HasValue || request.Notes != null;
         if (editsContent && item.AddedByUserId != userId)
-            throw new UnauthorizedException("Only the owner can update this item.");
+            throw new ForbiddenException("Only the owner can update this item.");
 
         if (request.Name != null) item.Name = request.Name.Trim();
         if (request.Description != null) item.Description = request.Description;
@@ -141,7 +141,7 @@ public sealed class WishlistService(
     public async Task DeleteAsync(Guid userId, Guid itemId, CancellationToken ct = default)
     {
         var (_, item) = await LoadAsync(userId, itemId, ct);
-        if (item.AddedByUserId != userId) throw new UnauthorizedException("Only the owner can delete this item.");
+        if (item.AddedByUserId != userId) throw new ForbiddenException("Only the owner can delete this item.");
         db.WishlistItems.Remove(item);
         await db.SaveChangesAsync(ct);
     }

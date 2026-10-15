@@ -4,6 +4,7 @@
  * Displays:
  * - Badge image
  * - Name, description
+ * - Progress towards the badge's goal (e.g. 5 / 10 hugs sent)
  * - Category, tier, points
  * - Unlock criteria
  * - Hidden badge indicator
@@ -12,7 +13,14 @@ import React from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../theme';
-import { getBadgeById, getBadgeImage, isBadgeUnlocked } from '../../constants/badges';
+import {
+  getBadgeById,
+  getBadgeImage,
+  getBadgeProgress,
+  getCriteriaUnitLabel,
+  getUnlockCriteriaText,
+  isBadgeUnlocked,
+} from '../../constants/badges';
 import type { Badge } from '../../constants/badges';
 
 type BadgeDetailsModalProps = {
@@ -52,31 +60,11 @@ export function BadgeDetailsModal({
 
   if (!badge) return null;
 
-  const getCriteriaText = () => {
-    const { type, threshold } = badge.unlockCriteria;
-
-    const criteriaMap: Record<string, string> = {
-      hugs_sent: `Send ${threshold} hug${threshold !== 1 ? 's' : ''}`,
-      checkins_completed: `Complete ${threshold} check-in${threshold !== 1 ? 's' : ''}`,
-      checkin_streak: `${threshold}-day check-in streak`,
-      morning_checkins: `${threshold} morning check-in${threshold !== 1 ? 's' : ''}`,
-      evening_checkins: `${threshold} evening check-in${threshold !== 1 ? 's' : ''}`,
-      memories_created: `Create ${threshold} memor${threshold !== 1 ? 'ies' : 'y'}`,
-      memories_saved_to_vault: `Save ${threshold} memor${threshold !== 1 ? 'ies' : 'y'} to vault`,
-      messages_sent: `Send ${threshold} message${threshold !== 1 ? 's' : ''}`,
-      timeline_events_added: `Add ${threshold} timeline event${threshold !== 1 ? 's' : ''}`,
-      vision_board_items_added: `Add ${threshold} vision board item${threshold !== 1 ? 's' : ''}`,
-      bucket_list_items_added: `Add ${threshold} bucket list item${threshold !== 1 ? 's' : ''}`,
-      games_played: `Play ${threshold} game${threshold !== 1 ? 's' : ''}`,
-      quizzes_completed: `Complete ${threshold} quiz${threshold !== 1 ? 'zes' : 'z'}`,
-      mood_logged: `Log mood ${threshold} time${threshold !== 1 ? 's' : ''}`,
-      media_attachments: `Attach ${threshold} media item${threshold !== 1 ? 's' : ''}`,
-      level_reached: `Reach level ${threshold}`,
-      custom: 'Special achievement',
-    };
-
-    return criteriaMap[type] || `Unlock criteria: ${type}`;
-  };
+  // "5 / 10 hugs sent" — hidden entirely when the criteria isn't measured yet.
+  const progress = getBadgeProgress(badge, userStats);
+  const unitLabel = getCriteriaUnitLabel(badge.unlockCriteria.type);
+  const progressCountText =
+    `${progress.current} / ${progress.target}${unitLabel ? ` ${unitLabel}` : ''}`;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
@@ -129,6 +117,34 @@ export function BadgeDetailsModal({
 
             <Text style={styles.badgeDescription}>{badge.description}</Text>
 
+            {/* Progress towards the badge, e.g. 5 / 10 hugs sent */}
+            {progress.isTracked && (
+              <View
+                style={styles.progressSection}
+                accessibilityRole="progressbar"
+                accessibilityLabel={`${badge.name} progress`}
+                accessibilityValue={{
+                  min: 0,
+                  max: progress.target,
+                  now: progress.current,
+                  text: progressCountText,
+                }}
+              >
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressLabel}>
+                    {progress.isComplete ? 'Complete' : 'Progress'}
+                  </Text>
+                  <Text style={styles.progressPercent}>{progress.percentage}%</Text>
+                </View>
+
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${progress.percentage}%` }]} />
+                </View>
+
+                <Text style={styles.progressCount}>{progressCountText}</Text>
+              </View>
+            )}
+
             {/* Badge metadata */}
             <View style={styles.metadata}>
               <View style={styles.metadataRow}>
@@ -165,7 +181,7 @@ export function BadgeDetailsModal({
               <View style={styles.criteriaSection}>
                 <Text style={styles.criteriaTitle}>How to Unlock</Text>
                 <View style={styles.criteriaBox}>
-                  <Text style={styles.criteriaText}>{getCriteriaText()}</Text>
+                  <Text style={styles.criteriaText}>{getUnlockCriteriaText(badge)}</Text>
                 </View>
               </View>
             )}
@@ -264,7 +280,9 @@ const styles = StyleSheet.create({
   },
 
   badgeName: {
-    ...typography.headlineMd,
+    // headlineMd doesn't exist in the scale, so this spread was silently
+    // dropping the title's serif font altogether.
+    ...typography.headlineSm,
     color: colors.neutral,
     textAlign: 'center',
     marginBottom: spacing.sm,
@@ -290,6 +308,50 @@ const styles = StyleSheet.create({
     color: colors.neutralMuted,
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+
+  progressSection: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  progressLabel: {
+    ...typography.label,
+    color: colors.neutralMuted,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+
+  progressPercent: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 12,
+  },
+
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.goldTint15,
+    overflow: 'hidden',
+  },
+
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: colors.gold,
+  },
+
+  progressCount: {
+    ...typography.bodySm,
+    color: colors.neutralMuted,
+    fontSize: 12,
   },
 
   metadata: {

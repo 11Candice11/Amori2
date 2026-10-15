@@ -454,7 +454,18 @@ function ActionButtons({
       buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
     }
   }
-  if (status === 'Investigating' || status === 'Reopened') {
+  // The server only allows Reopened → Investigating (IncidentStatusService), so
+  // a reopened ticket must restart its investigation before it can be marked
+  // awaiting-response or resolved again.
+  if (status === 'Reopened') {
+    buttons.push({ label: 'Restart Investigation', onPress: () => onDoAction(() => incidentService.investigateIncident(incidentId)) });
+    buttons.push({ label: 'Add Response', style: 'secondary', onPress: () => navigation.navigate('AddResponse', { incidentId }) });
+    buttons.push({ label: 'Add Investigation Note', style: 'secondary', onPress: () => navigation.navigate('AddNote', { incidentId }) });
+    if (partnerLinked) {
+      buttons.push({ label: 'Reassign to Partner', style: 'secondary', onPress: handleReassignToPartner });
+    }
+  }
+  if (status === 'Investigating') {
     buttons.push({ label: 'Add Response', style: 'secondary', onPress: () => navigation.navigate('AddResponse', { incidentId }) });
     buttons.push({ label: 'Add Investigation Note', style: 'secondary', onPress: () => navigation.navigate('AddNote', { incidentId }) });
     buttons.push({ label: 'Mark Awaiting Response', style: 'secondary', onPress: () => onDoAction(() => incidentService.awaitResponse(incidentId)) });

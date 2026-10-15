@@ -2,22 +2,90 @@
  * Badge Service — coordinates badge unlocking and tracking with the points system.
  *
  * This service:
- * - Fetches user's earned badges from the API
- * - Tracks which badges have been unlocked
- * - Computes unlock criteria based on user stats
+ * - Fetches the user's badge progress counters from the API
+ * - Works out which badges are unlocked, and how far along the rest are
  * - Notifies when badges are earned
  * - Saves badges to vault
+ *
+ * Badge definitions live in constants/badges.ts; the server only tells us how
+ * much of each thing the user has done ("hugs_sent: 37"). Matching those
+ * counters against each badge's threshold happens here, which is also what
+ * makes "5 / 10 hugs" progress possible in the UI.
  */
+import { ApiError } from '../../../services/api/client';
 import { pointsService } from '../../../services/api/pointsService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
-import { ALL_BADGES, isBadgeUnlocked, type Badge } from '../../../constants/badges';
-import type { BadgeResponse } from '../../../services/api/pointsService';
+import {
+  ALL_BADGES,
+  ETERNAL_BOND_CATEGORIES,
+  isBadgeUnlocked,
+  type Badge,
+  type BadgeCategory,
+} from '../../../constants/badges';
 
 type BadgeListener = (badges: Set<string>, earnedBadge?: Badge) => void;
 
+/**
+ * How long a loaded set of counters stays fresh. The reward listener polls
+ * every few seconds; without this the (query-heavy) stats endpoint would be
+ * hit on every tick. Pull-to-refresh and awarding points both call refresh(),
+ * which ignores the window.
+ */
+const STATS_TTL_MS = 30_000;
+
 let cachedBadges: Set<string> = new Set();
+let cachedStats: Record<string, number> = {};
+let lastLoadedAt = 0;
 let listeners = new Set<BadgeListener>();
 let loadInFlight: Promise<void> | null = null;
+
+/**
+ * Count the categories the user has at least one badge in — the "a badge in
+ * every category" criteria. Derived here because it depends on the badge
+ * registry, which the server doesn't know about.
+ */
+function countUnlockedCategories(stats: Record<string, number>): number {
+  const earnedCategories = new Set<BadgeCategory>();
+
+  ALL_BADGES.forEach(badge => {
+    // Skip the meta badge itself so it can't count towards its own criteria.
+    if (badge.unlockCriteria.type === 'categories_unlocked') return;
+    if (isBadgeUnlocked(badge, stats)) earnedCategories.add(badge.category);
+  });
+
+  return ETERNAL_BOND_CATEGORIES.filter(category => earnedCategories.has(category)).length;
+}
+
+/** Fetch counters, recompute unlocked badges, and notify subscribers. */
+function fetchStats(): Promise<void> {
+  return pointsService
+    .getBadgeStats()
+    .then(stats => {
+      cachedStats = stats ?? {};
+      lastLoadedAt = Date.now();
+
+      const unlocked = badgeService.getUnlockedBadges();
+      cachedBadges = unlocked;
+      listeners.forEach(listener => listener(new Set(unlocked)));
+    })
+    .catch(err => {
+      // A 404 means the API this build is pointed at predates the badge-stats
+      // endpoint. Worth calling out, because the symptom (no progress bars
+      // anywhere) looks like an app bug rather than a stale backend.
+      if (err instanceof ApiError && err.status === 404) {
+        console.warn(
+          'Badge progress unavailable: this backend has no /api/users/me/badge-stats endpoint yet. ' +
+            'Progress bars stay hidden until it is deployed.',
+        );
+      } else {
+        console.warn('Failed to load badge progress:', err);
+      }
+      // Keep whatever we had; a failed refresh shouldn't wipe the collection.
+    })
+    .finally(() => {
+      loadInFlight = null;
+    });
+}
 
 export const badgeService = {
   /**
@@ -36,53 +104,41 @@ export const badgeService = {
 
   /**
    * Load earned badges from the API and cache them.
-   * Concurrent calls share the same request.
+   * Concurrent calls share the same request, and recent results are reused.
    */
   async loadEarned(): Promise<Set<string>> {
-    if (loadInFlight) return loadInFlight;
+    if (loadInFlight) return loadInFlight.then(() => badgeService.getEarned());
 
-    loadInFlight = pointsService
-      .getBadges()
-      .then((badges: BadgeResponse[]) => {
-        const badgeIds = new Set(badges.map(b => b.id));
-        cachedBadges = badgeIds;
-        listeners.forEach(listener => listener(badgeIds));
-      })
-      .catch(err => {
-        console.warn('Failed to load badges:', err);
-        // Keep cached value on error
-      })
-      .finally(() => {
-        loadInFlight = null;
-      });
+    const isFresh = lastLoadedAt > 0 && Date.now() - lastLoadedAt < STATS_TTL_MS;
+    if (isFresh) return badgeService.getEarned();
 
-    return loadInFlight.then(() => cachedBadges);
+    loadInFlight = fetchStats();
+    return loadInFlight.then(() => badgeService.getEarned());
   },
 
   /**
-   * Get user's current stats for badge unlock evaluation.
-   * Fetches from userSettingsStore (totalPoints, level) + returns as Record.
-   *
-   * Note: Individual activity counts (hugs_sent, checkins_completed, etc.)
-   * are NOT exposed via API — they're tracked server-side and used only for
-   * badge unlock calculations on the backend. This method returns what's
-   * available in UserResponse.
+   * Get the user's progress counters, keyed by unlock criteria
+   * (e.g. `{ hugs_sent: 37 }`). Criteria the backend doesn't track are
+   * absent rather than 0, so the UI can tell "none yet" from "not measured".
    */
   getUserStats(): Record<string, number> {
+    const stats: Record<string, number> = { ...cachedStats };
     const user = userSettingsStore.get();
-    if (!user) return {};
 
-    return {
-      level_reached: user.level,
-      total_points: user.totalPoints,
-      // Backend tracking is private; these values are passed from server
-      // when checking badge unlock criteria
-    };
+    // Level and points also arrive on /users/me, which updates optimistically
+    // as points are awarded — take whichever source is further along.
+    if (user) {
+      stats.level_reached = Math.max(stats.level_reached ?? 0, user.level);
+      stats.total_points = Math.max(stats.total_points ?? 0, user.totalPoints);
+    }
+
+    stats.categories_unlocked = countUnlockedCategories(stats);
+
+    return stats;
   },
 
   /**
    * Compute which badges are unlocked based on current user stats.
-   * This is client-side validation; server is source of truth.
    */
   getUnlockedBadges(): Set<string> {
     const stats = badgeService.getUserStats();
@@ -109,26 +165,30 @@ export const badgeService = {
   },
 
   /**
-   * Get the next badge(s) the user is close to unlocking.
-   * Useful for showing progress suggestions.
+   * Get the badges the user is closest to unlocking, nearest first.
+   * Badges with no progress data fall to the back.
    */
   getNearbadges(count = 3): Badge[] {
     const stats = badgeService.getUserStats();
     const unlocked = badgeService.getUnlockedBadges();
 
-    // Badges not yet earned
-    const lockedBadges = ALL_BADGES.filter(b => !unlocked.has(b.id));
-
-    // For now, just return the first N locked badges
-    // In future, could rank by proximity to unlock threshold
-    return lockedBadges.slice(0, count);
+    return ALL_BADGES.filter(badge => !unlocked.has(badge.id))
+      .map(badge => {
+        const { type, threshold } = badge.unlockCriteria;
+        const tracked = stats[type] !== undefined;
+        const ratio = threshold > 0 ? (stats[type] ?? 0) / threshold : 0;
+        return { badge, rank: tracked ? ratio : -1 };
+      })
+      .sort((a, b) => b.rank - a.rank)
+      .slice(0, count)
+      .map(entry => entry.badge);
   },
 
   /**
    * Save a badge to the user's vault.
    */
   async archiveBadge(badgeId: string): Promise<void> {
-    return pointsService.archiveBadge(badgeId);
+    return pointsService.archiveBadge(badgeId).then(() => {});
   },
 
   /**
@@ -140,10 +200,13 @@ export const badgeService = {
   },
 
   /**
-   * Refresh badge list from the API.
+   * Refresh badge progress from the API, ignoring the freshness window.
    */
   async refresh(): Promise<void> {
-    return badgeService.loadEarned().then(() => {});
+    if (loadInFlight) return loadInFlight;
+
+    loadInFlight = fetchStats();
+    return loadInFlight;
   },
 
   /**
@@ -151,6 +214,8 @@ export const badgeService = {
    */
   reset(): void {
     cachedBadges = new Set();
+    cachedStats = {};
+    lastLoadedAt = 0;
     listeners.clear();
     loadInFlight = null;
   },
