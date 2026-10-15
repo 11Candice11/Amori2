@@ -38,7 +38,7 @@ public sealed class MessageService(
         var m = await db.Messages.Include(x => x.Sender)
             .FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Message", messageId);
-        if (m.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (m.RelationshipId != rel.Id) throw new ForbiddenException();
         return Map(m);
     }
 
@@ -69,7 +69,7 @@ public sealed class MessageService(
         var m = await db.Messages.Include(x => x.Sender)
             .FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Message", messageId);
-        if (m.SenderId != userId) throw new UnauthorizedException("Only the sender can update a message.");
+        if (m.SenderId != userId) throw new ForbiddenException("Only the sender can update a message.");
         if (request.Text != null) m.Text = request.Text;
         if (request.Category.HasValue) m.Category = request.Category.Value;
         await db.SaveChangesAsync(ct);
@@ -80,7 +80,7 @@ public sealed class MessageService(
     {
         var m = await db.Messages.FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Message", messageId);
-        if (m.SenderId != userId) throw new UnauthorizedException("Only the sender can delete a message.");
+        if (m.SenderId != userId) throw new ForbiddenException("Only the sender can delete a message.");
         m.IsDeleted = true;
         await db.SaveChangesAsync(ct);
     }
@@ -90,7 +90,7 @@ public sealed class MessageService(
         var m = await db.Messages.Include(x => x.Sender)
             .FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Message", messageId);
-        if (m.RecipientId != userId) throw new UnauthorizedException("Only the recipient can mark a message as read.");
+        if (m.RecipientId != userId) throw new ForbiddenException("Only the recipient can mark a message as read.");
         m.ReadAt ??= DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         return Map(m);
@@ -103,7 +103,7 @@ public sealed class MessageService(
         var m = await db.Messages.Include(x => x.Sender)
             .FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Message", messageId);
-        if (m.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (m.RelationshipId != rel.Id) throw new ForbiddenException();
         m.IsFavorite = true;
         await db.SaveChangesAsync(ct);
         return Map(m);
@@ -116,7 +116,7 @@ public sealed class MessageService(
         var m = await db.Messages.Include(x => x.Sender)
             .FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted, ct)
             ?? throw new NotFoundException("Message", messageId);
-        if (m.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (m.RelationshipId != rel.Id) throw new ForbiddenException();
         m.IsFavorite = false;
         await db.SaveChangesAsync(ct);
         return Map(m);

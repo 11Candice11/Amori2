@@ -355,7 +355,7 @@ export function BreatheTogetherScreen() {
           onPress={() => navigation.popToTop()}
           accessibilityRole="button"
           accessibilityLabel="Back to sanctuary"
-          android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
         >
           <HomeIcon color={colors.neutral} />
           <Text style={styles.secondaryText}>Back to Sanctuary</Text>

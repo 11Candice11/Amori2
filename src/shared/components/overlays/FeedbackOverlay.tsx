@@ -2,11 +2,11 @@
  * FeedbackOverlayHost — the shared, centered "it worked / it didn't" popup.
  *
  * Mounted once near the app root (see App.tsx, beside <Banner />). Renders two
- * store-driven Lottie celebrations that create/save flows fire imperatively:
- *  - success (`success.json`)  via `showSuccessOverlay(...)`
- *  - failure (`unsuccess.json`) via `showErrorOverlay(...)`
+ * store-driven animations that create/save flows fire imperatively:
+ *  - success (gold sparkles floating up)  via `showSuccessOverlay(...)`
+ *  - failure (`unsuccess.json` Lottie)   via `showErrorOverlay(...)`
  *
- * Both drop over the current screen with a dimmed backdrop, play their Lottie
+ * Both drop over the current screen with a dimmed backdrop, play their animation
  * once, show an optional message, then dismiss. Dismissal is driven by
  * whichever comes first: the animation finishing, a `durationMs` fallback
  * timer, or a backdrop tap — each clearing the store exactly once per show.
@@ -88,8 +88,8 @@ function SuccessGlowEdge({ trigger }: { trigger: number | null }) {
   );
 }
 
-const GOLD_BRIGHT = '#DFBA73';   // brightest gold from the palette
-const GOLD_SOFT   = '#C5A365';   // mid gold for the inner ring
+const GOLD_BRIGHT = '#8B6F3A';   // deep dark brown gold
+const GOLD_SOFT   = '#6B562C';   // darker brown gold for inner ring
 
 const glowStyles = StyleSheet.create({
   edge: {

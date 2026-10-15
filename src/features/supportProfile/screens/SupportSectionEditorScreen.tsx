@@ -238,7 +238,7 @@ export function SupportSectionEditorScreen() {
               label="Favourite colour — hex (optional)"
               value={colorHex}
               visibility={text.favoriteColor?.visibility ?? 'Shared'}
-              placeholder="#DFBA73"
+              placeholder="#8B6F3A"
               onChangeText={setColorHex}
               onChangeVisibility={(v) => updateText('favoriteColor', { visibility: v })}
             />

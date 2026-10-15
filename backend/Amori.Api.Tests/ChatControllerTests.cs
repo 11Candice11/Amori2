@@ -226,7 +226,7 @@ public sealed class ChatControllerTests(AmoriWebApplicationFactory factory)
 
         // Only the recipient may mark a message read.
         var read = await couple.PartnerA.PostAsync($"/api/chat/{id}/read", Empty());
-        Assert.Equal(HttpStatusCode.Unauthorized, read.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
     }
 
     // ── Notification creation ────────────────────────────────────────────────
@@ -320,7 +320,7 @@ public sealed class ChatControllerTests(AmoriWebApplicationFactory factory)
         await outsider.PartnerA.PostAsync($"/api/chat/{foreignId}/send", Empty());
 
         var response = await couple.PartnerA.GetAsync($"/api/chat/{foreignId}");
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

@@ -43,7 +43,7 @@ public sealed class EmergencyService(
             .Include(r => r.Sender).Include(r => r.Recipient)
             .FirstOrDefaultAsync(r => r.Id == requestId, ct)
             ?? throw new NotFoundException("Emergency request", requestId);
-        if (req.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (req.RelationshipId != rel.Id) throw new ForbiddenException();
         return req;
     }
 
@@ -111,7 +111,7 @@ public sealed class EmergencyService(
     public async Task<EmergencyRequestResponse> UpdateAsync(Guid userId, Guid requestId, UpdateEmergencyRequestDto request, CancellationToken ct = default)
     {
         var req = await LoadAsync(userId, requestId, ct);
-        if (req.SenderId != userId) throw new UnauthorizedException("Only the sender can update this request.");
+        if (req.SenderId != userId) throw new ForbiddenException("Only the sender can update this request.");
         if (req.Status != EmergencyRequestStatus.Active)
             throw new ConflictException("Only active requests can be updated.");
         req.Message = request.Message;
@@ -122,7 +122,7 @@ public sealed class EmergencyService(
     public async Task<EmergencyRequestResponse> AcknowledgeAsync(Guid userId, Guid requestId, CancellationToken ct = default)
     {
         var req = await LoadAsync(userId, requestId, ct);
-        if (req.RecipientId != userId) throw new UnauthorizedException("Only the recipient can acknowledge.");
+        if (req.RecipientId != userId) throw new ForbiddenException("Only the recipient can acknowledge.");
         if (req.Status != EmergencyRequestStatus.Active)
             throw new ConflictException($"Cannot acknowledge a request in '{req.Status}' status.");
         req.Status = EmergencyRequestStatus.Acknowledged;
@@ -145,7 +145,7 @@ public sealed class EmergencyService(
     public async Task<EmergencyRequestResponse> CancelAsync(Guid userId, Guid requestId, CancellationToken ct = default)
     {
         var req = await LoadAsync(userId, requestId, ct);
-        if (req.SenderId != userId) throw new UnauthorizedException("Only the sender can cancel.");
+        if (req.SenderId != userId) throw new ForbiddenException("Only the sender can cancel.");
         if (req.Status is EmergencyRequestStatus.Resolved or EmergencyRequestStatus.Cancelled)
             throw new ConflictException($"Request is already '{req.Status}'.");
         req.Status = EmergencyRequestStatus.Cancelled;

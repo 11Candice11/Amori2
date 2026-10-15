@@ -1,6 +1,6 @@
 /**
  * MoodGiftScreen — reached from the mood check-in confirmation when the user
- * lands in a "High Pleasant" state. Shows the daily memory gift so a
+ * lands in a "High Pleasant" state. Shows the daily gift (memory or vision) so a
  * bright moment gets to bloom a little more.
  * 
  * If the gift was already opened on the dashboard, it shows again here but
@@ -21,6 +21,7 @@ import type { MoodStackParamList } from '../../../navigation/MoodStackParamList'
 import { ArtifactRevealModal } from '../../home/components/ArtifactRevealModal';
 import { dailyGiftService, type DailyGift } from '../../home/services/dailyGiftService';
 import { vaultService } from '../../vault/services/vaultService';
+import type { SaveGiftRequest } from '../../vault/types/vault.types';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'MoodGift'>;
 type Rt = RouteProp<MoodStackParamList, 'MoodGift'>;
@@ -49,9 +50,13 @@ export function MoodGiftScreen() {
       
       setDailyGift(gift);
       
-      // Check if this memory is already saved in the vault
+      // Check if this item is already saved in the vault
       const isAlreadySaved = gift
-        ? savedGifts.some((savedGift) => savedGift.memoryId === gift.memory.id)
+        ? savedGifts.some((savedGift) => 
+            gift.type === 'memory' 
+              ? savedGift.memoryId === gift.memory?.id
+              : savedGift.visionBoardItemId === gift.vision?.id
+          )
         : false;
       setAlreadySaved(isAlreadySaved);
       setLoading(false);
@@ -69,10 +74,12 @@ export function MoodGiftScreen() {
     if (!dailyGift || alreadySaved) return;
 
     try {
-      await vaultService.save({
-        memoryId: dailyGift.memory.id,
-        cardNumber: dailyGift.cardNumber,
-      });
+      const payload: SaveGiftRequest =
+        dailyGift.type === 'memory'
+          ? { memoryId: dailyGift.memory!.id, cardNumber: dailyGift.cardNumber }
+          : { visionBoardItemId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
+
+      await vaultService.save(payload);
       setAlreadySaved(true);
       showSuccessOverlay('Saved to your vault');
     } catch (error) {
@@ -121,7 +128,7 @@ export function MoodGiftScreen() {
         <View style={styles.body}>
           <Text style={styles.title}>No gift available</Text>
           <Text style={styles.subtitle}>
-            Your daily memory gift will appear here tomorrow.
+            Your daily gift will appear here tomorrow.
           </Text>
           <Pressable
             style={styles.primaryBtn}

@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
   },
   editBtnText: {
     ...typography.bodySemiBold,
@@ -275,12 +275,12 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.28)',
+    borderColor: 'rgba(139,111,58,0.28)',
   },
   badgeText: {
     ...typography.label,

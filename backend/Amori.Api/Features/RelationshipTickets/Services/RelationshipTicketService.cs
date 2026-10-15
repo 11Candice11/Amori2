@@ -40,7 +40,7 @@ public sealed class RelationshipTicketService(
             .Include(t => t.Responses).ThenInclude(r => r.RespondedBy)
             .FirstOrDefaultAsync(t => t.Id == ticketId, ct)
             ?? throw new NotFoundException("Ticket", ticketId);
-        if (ticket.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (ticket.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, ticket);
     }
 
@@ -86,7 +86,7 @@ public sealed class RelationshipTicketService(
     public async Task<TicketDto> UpdateAsync(Guid userId, Guid ticketId, UpdateTicketRequest request, CancellationToken ct = default)
     {
         var (_, ticket) = await LoadAsync(userId, ticketId, ct);
-        if (ticket.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can update this ticket.");
+        if (ticket.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can update this ticket.");
         if (request.Subject != null) ticket.Subject = request.Subject.Trim();
         if (request.Category.HasValue) ticket.Category = request.Category.Value;
         if (request.Severity.HasValue) ticket.Severity = request.Severity.Value;
@@ -103,7 +103,7 @@ public sealed class RelationshipTicketService(
     public async Task DeleteAsync(Guid userId, Guid ticketId, CancellationToken ct = default)
     {
         var (_, ticket) = await LoadAsync(userId, ticketId, ct);
-        if (ticket.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this ticket.");
+        if (ticket.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this ticket.");
         db.RelationshipTickets.Remove(ticket);
         await db.SaveChangesAsync(ct);
     }
@@ -120,7 +120,7 @@ public sealed class RelationshipTicketService(
     {
         var (relId, ticket) = await LoadAsync(userId, ticketId, ct);
         var isMember = await relAccess.IsUserMemberAsync(request.AssignedToUserId, relId);
-        if (!isMember) throw new UnauthorizedException("Can only assign to a member of your relationship.");
+        if (!isMember) throw new ForbiddenException("Can only assign to a member of your relationship.");
         ticket.AssignedToUserId = request.AssignedToUserId;
         ticket.Status = TicketStatus.InProgress;
         ticket.AssignedTo = await db.Users.FindAsync([request.AssignedToUserId], ct);

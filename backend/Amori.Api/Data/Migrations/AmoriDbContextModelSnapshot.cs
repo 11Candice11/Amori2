@@ -88,6 +88,83 @@ namespace Amori.Api.Data.Migrations
                     b.ToTable("app_notifications", (string)null);
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.Badge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AwardedAtLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("awarded_at_level");
+
+                    b.Property<string>("BadgeName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("badge_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("EarnedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("earned_at");
+
+                    b.Property<string>("ImageKey")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("image_key");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("image_url");
+
+                    b.Property<bool>("IsArchivedInVault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived_in_vault");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_badges_user_id");
+
+                    b.HasIndex("UserId", "AwardedAtLevel")
+                        .IsUnique()
+                        .HasDatabaseName("IX_badges_user_level")
+                        .HasFilter("slug IS NULL");
+
+                    b.HasIndex("UserId", "Slug")
+                        .IsUnique()
+                        .HasDatabaseName("IX_badges_user_slug")
+                        .HasFilter("slug IS NOT NULL");
+
+                    b.ToTable("badges", (string)null);
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.BucketListItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -756,6 +833,10 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("HoldDurationMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("hold_duration_ms");
+
                     b.Property<Guid>("RecipientId")
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_id");
@@ -892,6 +973,9 @@ namespace Amori.Api.Data.Migrations
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("boolean")
                         .HasColumnName("is_favorite");
+
+                    b.Property<bool>("IsGiftOnly")
+                        .HasColumnType("boolean");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision")
@@ -1148,6 +1232,63 @@ namespace Amori.Api.Data.Migrations
                         .HasDatabaseName("IX_mood_check_ins_user_id");
 
                     b.ToTable("mood_check_ins", (string)null);
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.PointsHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ActivityType")
+                        .HasColumnType("integer")
+                        .HasColumnName("activity_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("LocalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_date");
+
+                    b.Property<string>("Metadata")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("metadata");
+
+                    b.Property<int>("PointsAwarded")
+                        .HasColumnType("integer")
+                        .HasColumnName("points_awarded");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reference_id");
+
+                    b.Property<int>("TotalPointsAfter")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_points_after");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_points_history_created_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_points_history_user_id");
+
+                    b.HasIndex("UserId", "ActivityType", "LocalDate")
+                        .HasDatabaseName("IX_points_history_user_activity_local_date");
+
+                    b.ToTable("points_history", (string)null);
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.QuizAnswer", b =>
@@ -2536,6 +2677,49 @@ namespace Amori.Api.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.UserPoints", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("LastPointsAddedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_points_added_at");
+
+                    b.Property<int>("Level")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("level");
+
+                    b.Property<int>("TotalPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_points");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_user_points_user_id");
+
+                    b.ToTable("user_points", (string)null);
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.UserSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2703,12 +2887,17 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<Guid?>("VisionBoardItemId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MemoryId");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_vault_gifts_user_id");
+
+                    b.HasIndex("VisionBoardItemId");
 
                     b.HasIndex("UserId", "MemoryId")
                         .IsUnique()
@@ -3195,6 +3384,17 @@ namespace Amori.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.Badge", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "User")
+                        .WithMany("Badges")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.BucketListItem", b =>
                 {
                     b.HasOne("Amori.Api.Domain.Entities.User", "AddedBy")
@@ -3507,6 +3707,17 @@ namespace Amori.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Relationship");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Amori.Api.Domain.Entities.PointsHistory", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "User")
+                        .WithMany("PointsHistory")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -3906,6 +4117,17 @@ namespace Amori.Api.Data.Migrations
                     b.Navigation("Relationship");
                 });
 
+            modelBuilder.Entity("Amori.Api.Domain.Entities.UserPoints", b =>
+                {
+                    b.HasOne("Amori.Api.Domain.Entities.User", "User")
+                        .WithOne("UserPoints")
+                        .HasForeignKey("Amori.Api.Domain.Entities.UserPoints", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Amori.Api.Domain.Entities.UserSettings", b =>
                 {
                     b.HasOne("Amori.Api.Domain.Entities.User", "User")
@@ -3931,9 +4153,15 @@ namespace Amori.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Amori.Api.Domain.Entities.VisionBoardItem", "VisionBoardItem")
+                        .WithMany()
+                        .HasForeignKey("VisionBoardItemId");
+
                     b.Navigation("Memory");
 
                     b.Navigation("User");
+
+                    b.Navigation("VisionBoardItem");
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardItem", b =>
@@ -4124,7 +4352,13 @@ namespace Amori.Api.Data.Migrations
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.User", b =>
                 {
+                    b.Navigation("Badges");
+
+                    b.Navigation("PointsHistory");
+
                     b.Navigation("RelationshipMemberships");
+
+                    b.Navigation("UserPoints");
                 });
 
             modelBuilder.Entity("Amori.Api.Domain.Entities.VisionBoardSection", b =>

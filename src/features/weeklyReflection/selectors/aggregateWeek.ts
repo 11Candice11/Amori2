@@ -2,14 +2,10 @@
  * aggregateWeek — pure selectors that turn the raw data fetched for a week
  * into the shape the Weekly Reflection screen renders.
  *
- * ── Backend note ────────────────────────────────────────────────────────────
- * There is no history-by-date-range endpoint for mood check-ins today (only
- * GET /api/moods/current, the single most-recent check-in). So the mood
- * distribution can only reflect whatever check-ins the client actually has for
- * the range — in practice the latest one. The aggregation is written to handle
- * an arbitrary list of check-ins so it works unchanged the moment a
- * `GET /api/moods/check-ins?from=&to=` endpoint lands. See useWeeklyReflection
- * for how this gap is surfaced to the UI (moodDataPartial).
+ * The caller passes an arbitrary list of check-ins (useWeeklyReflection fetches
+ * the user's full history from GET /api/moods/check-ins) and these selectors
+ * slice it to the requested week. Check-ins outside the range are ignored, so
+ * the same list serves every week the user pages back to.
  *
  * These functions are deliberately side-effect free (no fetching, no clock
  * reads beyond the passed range) so they're easy to unit test.

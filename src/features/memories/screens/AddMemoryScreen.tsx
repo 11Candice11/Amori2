@@ -49,6 +49,7 @@ import type { TogetherStackParamList } from '../../../navigation/TogetherStackPa
 import { memoriesService } from '../services/memoriesService';
 import { timelineService } from '../../timeline/services/timelineService';
 import { toIsoDate } from '../../../shared/components/inputs';
+import { userPointsStore } from '../../../shared/state/userPointsStore';
 import { mediaService } from '../../../services/media/mediaService';
 import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import { LocationPicker, type LocationValue } from '../../../shared/components/inputs';
@@ -530,6 +531,10 @@ export function AddMemoryScreen() {
       }
 
       showSuccessOverlay(isEditing ? 'Memory saved' : 'Memory created');
+      
+      // Refresh points after successfully creating/saving a memory
+      userPointsStore.load(true);
+      
       navigation.goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the memory.');
@@ -837,7 +842,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
   },
   chipText: {
     ...typography.bodySm,

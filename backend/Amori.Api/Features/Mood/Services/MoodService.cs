@@ -1,7 +1,9 @@
 using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
+using Amori.Api.Domain.Enums;
 using Amori.Api.Features.Mood.DTOs;
+using Amori.Api.Features.Users.Services;
 using Amori.Api.Infrastructure.Relationships;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +11,8 @@ namespace Amori.Api.Features.Mood.Services;
 
 public sealed class MoodService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IMoodService
+    IRelationshipAccessService relAccess,
+    IRewardService rewards) : IMoodService
 {
     /// <summary>Maps a check-in in full, for its owner.</summary>
     /// <remarks>
@@ -56,7 +59,16 @@ public sealed class MoodService(
 
         db.MoodCheckIns.Add(checkIn);
         await db.SaveChangesAsync(ct);
-        return Map(checkIn);
+
+        // Checking in earns points once a day. "A day" is the user's own
+        // calendar day, taken from their device, so the ritual resets when
+        // their day does rather than at UTC midnight — and checking in again
+        // later the same day quietly earns nothing.
+        var response = Map(checkIn);
+        response.Rewards = await rewards.GrantAsync(
+            userId, RewardRequest.Daily(ActivityType.MorningCheckIn, checkIn.Id), ct);
+
+        return response;
     }
 
     // Creates a solo relationship for a user who hasn't joined one yet.
@@ -89,7 +101,7 @@ public sealed class MoodService(
     {
         var c = await db.MoodCheckIns.FindAsync([checkInId], ct)
             ?? throw new NotFoundException("Check-in", checkInId);
-        if (c.UserId != userId) throw new UnauthorizedException();
+        if (c.UserId != userId) throw new ForbiddenException();
         return Map(c);
     }
 
@@ -97,7 +109,7 @@ public sealed class MoodService(
     {
         var c = await db.MoodCheckIns.FindAsync([checkInId], ct)
             ?? throw new NotFoundException("Check-in", checkInId);
-        if (c.UserId != userId) throw new UnauthorizedException();
+        if (c.UserId != userId) throw new ForbiddenException();
 
         if (req.Mood.HasValue) c.Mood = req.Mood.Value;
         if (req.Intensity.HasValue)
@@ -119,7 +131,7 @@ public sealed class MoodService(
     {
         var c = await db.MoodCheckIns.FindAsync([checkInId], ct)
             ?? throw new NotFoundException("Check-in", checkInId);
-        if (c.UserId != userId) throw new UnauthorizedException();
+        if (c.UserId != userId) throw new ForbiddenException();
         db.MoodCheckIns.Remove(c);
         await db.SaveChangesAsync(ct);
     }
@@ -128,7 +140,7 @@ public sealed class MoodService(
     {
         var c = await db.MoodCheckIns.FindAsync([checkInId], ct)
             ?? throw new NotFoundException("Check-in", checkInId);
-        if (c.UserId != userId) throw new UnauthorizedException();
+        if (c.UserId != userId) throw new ForbiddenException();
         c.IsSharedWithPartner = true;
         await db.SaveChangesAsync(ct);
         return Map(c);
@@ -138,7 +150,7 @@ public sealed class MoodService(
     {
         var c = await db.MoodCheckIns.FindAsync([checkInId], ct)
             ?? throw new NotFoundException("Check-in", checkInId);
-        if (c.UserId != userId) throw new UnauthorizedException();
+        if (c.UserId != userId) throw new ForbiddenException();
         c.IsSharedWithPartner = false;
         await db.SaveChangesAsync(ct);
         return Map(c);

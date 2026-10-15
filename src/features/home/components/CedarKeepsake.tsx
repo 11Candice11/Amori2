@@ -90,7 +90,7 @@ export function CedarKeepsake({
       <Pressable
         style={({ pressed }) => [styles.unlockRow, pressed && styles.pressed]}
         onPress={handleUnlock}
-        android_ripple={{ color: 'rgba(197,163,101,0.14)' }}
+        android_ripple={{ color: 'rgba(139,111,58,0.14)' }}
         accessibilityRole="button"
         accessibilityLabel={`Tap to unwrap morning parcel`}
         disabled={unlocked}

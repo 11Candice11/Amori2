@@ -14,7 +14,7 @@ import { Image, StyleSheet, type ImageSourcePropType } from 'react-native';
 
 /** Bottom-nav tab art, keyed by tab route name. */
 export const TAB_ICON_SOURCES = {
-  Home: require('../../../../images/icons/house.png'),
+  Home: require('../../../../images/icons/home.png'),
   CheckIn: require('../../../../images/icons/checkin.png'),
   Together: require('../../../../images/icons/together.png'),
   Desk: require('../../../../images/icons/desk.png'),

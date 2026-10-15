@@ -118,7 +118,7 @@ export function GentleRhythm({
                 <Pressable
                   style={styles.ctaChip}
                   onPress={() => onItemCta?.(item.id)}
-                  android_ripple={{ color: 'rgba(197,163,101,0.16)' }}
+                  android_ripple={{ color: 'rgba(139,111,58,0.16)' }}
                   accessibilityRole="button"
                   accessibilityLabel={item.ctaLabel}
                 >
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,

@@ -12,4 +12,13 @@ public sealed class HugResponse
     public bool IsAcknowledged { get; init; }
     public DateTime? AcknowledgedAt { get; init; }
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>How long the sender held the hug, when the app reported it.</summary>
+    public int? HoldDurationMs { get; init; }
+
+    /// <summary>
+    /// Points and badges this hug earned. Never null — an empty
+    /// <see cref="Common.Responses.RewardsResponse"/> when it earned nothing.
+    /// </summary>
+    public Common.Responses.RewardsResponse Rewards { get; init; } = Common.Responses.RewardsResponse.None;
 }

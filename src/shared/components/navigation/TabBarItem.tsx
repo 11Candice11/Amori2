@@ -23,9 +23,8 @@ type TabBarItemProps = {
 };
 
 function getTabIcon(name: TabRouteName, isFocused: boolean) {
-  // The framed illustrated art reads better a touch larger than the line-glyph
-  // size, so scale up slightly from the base token.
-  const size = layout.tabIconSize + 4;
+  // Make the icons larger for better touch targets without text labels
+  const size = layout.tabIconSize + 36;
 
   if (isTabIconName(name)) {
     return <TabImageIcon name={name} size={size} active={isFocused} />;
@@ -41,8 +40,6 @@ export function TabBarItem({
   onLongPress,
   androidRipple = false,
 }: TabBarItemProps) {
-  const iconColor = isFocused ? colors.tabActive : colors.tabInactive;
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -58,7 +55,6 @@ export function TabBarItem({
       }
     >
       <View style={styles.icon}>{getTabIcon(route.name as TabRouteName, isFocused)}</View>
-      <Text style={[styles.label, { color: iconColor }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -68,11 +64,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    minHeight: 56,
+    paddingVertical: 14,
+    minHeight: 70,
   },
   icon: {
-    marginBottom: 4,
+    // Removed bottom margin since there's no label
   },
   label: {
     ...typography.tabLabel,

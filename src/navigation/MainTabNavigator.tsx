@@ -6,7 +6,7 @@ import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { MoodNavigator } from '../features/mood/navigation/MoodNavigator';
 import { TogetherNavigator } from '../features/together/navigation/TogetherNavigator';
 import { HugsNavigator } from '../features/hugs/navigation/HugsNavigator';
-import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
+import { ProfileStackNavigator } from '../features/profile/navigation/ProfileStackNavigator';
 import { IncidentNavigator } from '../features/incidents/navigation/IncidentNavigator';
 import { SplittingNavigator } from '../features/splitting/navigation/SplittingNavigator';
 import { DistractionNavigator } from '../features/distraction/navigation/DistractionNavigator';
@@ -26,11 +26,6 @@ type Props = {
 };
 
 export function MainTabNavigator({ onLogout }: Props) {
-  const ProfileTab = React.useCallback(
-    () => <ProfileScreen onLogout={onLogout} />,
-    [onLogout],
-  );
-
   return (
     <Tab.Navigator
       tabBar={(props) => <BottomNavBar {...props} />}
@@ -40,7 +35,11 @@ export function MainTabNavigator({ onLogout }: Props) {
       <Tab.Screen name="CheckIn" component={MoodNavigator} />
       <Tab.Screen name="Together" component={TogetherNavigator} />
       <Tab.Screen name="Desk" component={IncidentNavigator} />
-      <Tab.Screen name="Profile" component={ProfileTab} />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileStackNavigator}
+        options={{ onLogout }}
+      />
       {/* Hidden flows — no bottom-bar button (absent from TAB_CONFIG). */}
       <Tab.Screen name="Hugs" component={HugsNavigator} />
       <Tab.Screen name="Splitting" component={SplittingNavigator} />

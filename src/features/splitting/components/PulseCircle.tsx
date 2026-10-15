@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(6,78,59,0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.5)',
+    borderColor: 'rgba(139,111,58,0.5)',
   },
   label: {
     ...typography.headlineSm,

@@ -16,12 +16,13 @@
  * here. (A future "partner's week" view would rely on the server to redact per
  * shareMood/shareActivity, exactly as the dashboard does for partner mood.)
  *
- * Backend gap: only `GET /api/moods/current` exists (the single most-recent
- * check-in) — there's no history-by-range endpoint. So `moodDataPartial` is
- * true whenever the mood strip is built from that single check-in, letting the
- * UI note that the mood picture is limited. The aggregation itself already
- * accepts an arbitrary check-in list, so it upgrades for free once a
- * `GET /api/moods/check-ins?from=&to=` endpoint exists.
+ * Mood history: the strip is built from `GET /api/moods/check-ins`, which
+ * returns every check-in the user has logged (newest first). Earlier this hook
+ * read `GET /api/moods/current` — a single check-in — which made every week
+ * render as "1/7 logged" no matter how faithfully the user checked in, and made
+ * past weeks always look empty. `moodDataPartial` is therefore false now; the
+ * flag survives only so snapshots archived before the fix keep explaining
+ * themselves (see archive.types.ts).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -74,8 +75,10 @@ export interface UseWeeklyReflectionResult {
   /** True when viewing the current week (disables "next"). */
   isCurrentWeek: boolean;
   /**
-   * True when the mood distribution is built from only the single latest
-   * check-in (the backend gap). Lets the UI caveat the mood picture.
+   * True when the mood strip was built from an incomplete picture of the week.
+   * Always false now that full check-in history is fetched — kept so the value
+   * can still be stamped onto newly archived snapshots alongside the older ones
+   * that were saved while only the latest check-in was available.
    */
   moodDataPartial: boolean;
   goToPreviousWeek: () => void;
@@ -101,7 +104,7 @@ export function useWeeklyReflection(): UseWeeklyReflectionResult {
       bucketResult,
     ] = await Promise.allSettled([
       authService.getMe(),
-      moodService.getCurrent(),
+      moodService.getCheckIns(),
       memoriesService.getAll(),
       timelineService.getEvents(),
       hugService.getHugs(),
@@ -111,11 +114,9 @@ export function useWeeklyReflection(): UseWeeklyReflectionResult {
     const currentUserId =
       meResult.status === 'fulfilled' ? meResult.value.id : null;
 
-    // moodService.getCurrent already swallows errors → null, but guard the
-    // settled wrapper too. Only the user's OWN check-in feeds the reflection.
-    const latestCheckIn =
-      moodResult.status === 'fulfilled' ? moodResult.value : null;
-    const checkIns = latestCheckIn ? [latestCheckIn] : [];
+    // The user's full check-in history. Only their OWN check-ins feed the
+    // reflection; aggregateWeek slices this down to the selected week.
+    const checkIns = moodResult.status === 'fulfilled' ? moodResult.value : [];
 
     const memories =
       memoriesResult.status === 'fulfilled' ? memoriesResult.value : [];
@@ -170,9 +171,9 @@ export function useWeeklyReflection(): UseWeeklyReflectionResult {
     currentUserId: raw.currentUserId,
     weekOffset,
     isCurrentWeek: weekOffset === 0,
-    // Any check-in that fed the strip came from /moods/current (a single item),
-    // so the mood picture is partial whenever there's at least one check-in.
-    moodDataPartial: raw.checkIns.length > 0,
+    // The strip is now built from the user's full check-in history, so a live
+    // reflection is never a partial mood picture.
+    moodDataPartial: false,
     goToPreviousWeek,
     goToNextWeek,
     refresh: load,

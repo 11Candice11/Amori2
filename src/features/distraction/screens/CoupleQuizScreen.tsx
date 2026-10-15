@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
   },
   optionText: { ...typography.body, color: colors.neutral },
   optionTextSelected: { color: colors.gold },

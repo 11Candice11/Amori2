@@ -20,28 +20,30 @@ export interface SavedGift {
    * only ever returns entries belonging to the authenticated user.
    */
   userId: string;
-  /** The original memory ID this gift references */
-  memoryId: string;
-  /** Memory title */
+  /** The original memory ID this gift references (null if this is a vision gift) */
+  memoryId: string | null;
+  /** The original vision board item ID this gift references (null if this is a memory gift) */
+  visionBoardItemId: string | null;
+  /** Memory or vision title */
   title: string;
-  /** Memory description/body text */
+  /** Memory or vision description/body text */
   description: string | null;
-  /** ISO 8601 date when this memory occurred */
-  memoryDateTime: string;
-  /** Location where memory took place */
+  /** ISO 8601 date when this memory occurred or vision target date (null for visions without target) */
+  memoryDateTime: string | null;
+  /** Location where memory took place or vision location */
   location: string | null;
-  /** Coordinates of the memory's location, when one was pinned. */
+  /** Coordinates of the memory's or vision's location, when one was pinned. */
   latitude: number | null;
   longitude: number | null;
   /** ISO 8601 timestamp when this was saved to the vault */
   savedAt: string;
-  /** The person who created the original memory */
+  /** The person who created the original memory or vision */
   createdByName: string;
   /** The card number (1-10) associated with this gift */
   cardNumber: number;
   /**
    * The memory's media (photos, voice note, links), so the vault reveal can show
-   * the same rich content the memory does.
+   * the same rich content the memory does. Empty for vision gifts.
    */
   media: MemoryMediaResponse[];
 }
@@ -50,11 +52,18 @@ export interface SavedGift {
  * Request payload for saving a gift to the vault.
  *
  * Only the reference is sent — the server reads the title, description, date
- * and location from the memory itself, so the client can't save content the
+ * and location from the memory or vision itself, so the client can't save content the
  * user isn't entitled to.
+ *
+ * Exactly one of memoryId or visionBoardItemId must be provided. The names
+ * must match the backend SaveVaultGiftRequest exactly — the server silently
+ * ignores unknown fields and then rejects the request as having neither id.
  */
 export interface SaveGiftRequest {
-  memoryId: string;
+  /** The memory ID to save (omit if saving a vision) */
+  memoryId?: string;
+  /** The vision board item ID to save (omit if saving a memory) */
+  visionBoardItemId?: string;
   /** The card number (1-10) the gift was revealed in. */
   cardNumber: number;
 }
@@ -112,4 +121,41 @@ export interface SendGiftResult {
   giftId: string;
   /** Display name of the partner the gift was delivered to. */
   recipientName: string;
+}
+
+// ─── Badges ────────────────────────────────────────────────────────────────
+
+/**
+ * A badge earned by the user as a reward for reaching a level milestone.
+ * Badges can be saved to the vault as personal achievements.
+ */
+export interface Badge {
+  /** Unique badge ID */
+  id: string;
+  /** Badge name/type (e.g., "Level 5", "Level 10") */
+  badgeName: string;
+  /** Description of what the badge represents */
+  description: string;
+  /** The level at which this badge was earned */
+  awardedAtLevel: number;
+  /** URL to the badge image */
+  imageUrl?: string | null;
+  /** Whether the badge is archived/saved to vault */
+  isArchivedInVault: boolean;
+  /** When the badge was earned (ISO 8601) */
+  earnedAt: string;
+}
+
+/**
+ * A badge saved to the vault for display.
+ * Similar to SavedGift but for badges instead of memories/visions.
+ */
+export interface SavedBadge {
+  id: string;
+  badgeName: string;
+  description: string;
+  awardedAtLevel: number;
+  imageUrl?: string | null;
+  /** When it was saved to vault (ISO 8601) */
+  savedAt: string;
 }

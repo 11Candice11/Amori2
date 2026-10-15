@@ -39,11 +39,13 @@ import { splittingService } from '../../splitting/services/splittingService';
 import { artifactStore } from '../services/artifactStore';
 import { dailyGiftService } from '../services/dailyGiftService';
 import { vaultService } from '../../vault/services/vaultService';
+import type { SaveGiftRequest } from '../../vault/types/vault.types';
 import type { DailyGift } from '../services/dailyGiftService';
 import { getDashboardBackground } from '../../../utils/backgroundImages';
 import { isSunday } from '../../weeklyReflection/utils/weekRange';
 import { moodLabel } from '../../../utils/moodUtils';
 import { formatRelativeDate } from '../../../utils/dateUtils';
+import { userPointsStore } from '../../../shared/state/userPointsStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,9 +80,10 @@ export function HomeScreen() {
   // The daily gift loaded from memories
   const [dailyGift, setDailyGift] = useState<DailyGift | null>(null);
   const [loadingGift, setLoadingGift] = useState(false);
-  // Memory IDs already kept in the vault. A gift for one of these can't be
+  // Memory and Vision IDs already kept in the vault. A gift for one of these can't be
   // saved again, so the reveal shows "Already in Vault" instead of "Save".
   const [savedMemoryIds, setSavedMemoryIds] = useState<Set<string>>(new Set());
+  const [savedVisionIds, setSavedVisionIds] = useState<Set<string>>(new Set());
 
   // Load the opened flag and today's gift. Both are day-scoped: at midnight the
   // opened flag resolves to false again and the gift re-rolls, so re-running
@@ -94,7 +97,8 @@ export function HomeScreen() {
       ]);
       setArtifactOpened(opened);
       setDailyGift(gift);
-      setSavedMemoryIds(new Set(savedGifts.map((g) => g.memoryId)));
+      setSavedMemoryIds(new Set(savedGifts.map((g) => g.memoryId).filter((id): id is string => id !== null)));
+      setSavedVisionIds(new Set(savedGifts.map((g) => g.visionBoardItemId).filter((id): id is string => id !== null)));
     } catch (error) {
       console.error('Failed to load artifact data:', error);
     }
@@ -267,37 +271,57 @@ export function HomeScreen() {
       return;
     }
 
-    // Guard against re-saving a memory that's already in the vault. The reveal
+    // Guard against re-saving an item that's already in the vault. The reveal
     // disables the button in this case, but this keeps the rule enforced even
     // if it's called some other way.
-    if (savedMemoryIds.has(dailyGift.memory.id)) {
+    const itemId = dailyGift.type === 'memory' ? dailyGift.memory?.id : dailyGift.vision?.id;
+    const alreadySaved =
+      dailyGift.type === 'memory'
+        ? savedMemoryIds.has(itemId!)
+        : savedVisionIds.has(itemId!);
+
+    if (alreadySaved) {
       return;
     }
 
     try {
-      // Save the memory to the vault. The server reads the gift's details from
-      // the memory itself, so only the reference goes over the wire.
-      await vaultService.save({
-        memoryId: dailyGift.memory.id,
-        cardNumber: dailyGift.cardNumber,
-      });
+      // Save the item to the vault. The server reads the gift's details from
+      // the memory or vision itself, so only the reference goes over the wire.
+      const payload: SaveGiftRequest =
+        dailyGift.type === 'memory'
+          ? { memoryId: dailyGift.memory!.id, cardNumber: dailyGift.cardNumber }
+          : { visionBoardItemId: dailyGift.vision!.id, cardNumber: dailyGift.cardNumber };
+
+      await vaultService.save(payload);
 
       // Remember it's now in the vault so it can't be saved again this session.
-      setSavedMemoryIds((prev) => new Set(prev).add(dailyGift.memory.id));
+      if (dailyGift.type === 'memory') {
+        setSavedMemoryIds((prev) => new Set(prev).add(dailyGift.memory!.id));
+      } else {
+        setSavedVisionIds((prev) => new Set(prev).add(dailyGift.vision!.id));
+      }
+      
+      // Refresh points after saving to vault
+      userPointsStore.load(true);
+      
       showSuccessOverlay('Saved to your vault');
     } catch (error) {
       console.error('Failed to save gift to vault:', error);
       showErrorOverlay("Couldn't save to your vault");
       throw error;
     }
-  }, [dailyGift, savedMemoryIds]);
+  }, [dailyGift, savedMemoryIds, savedVisionIds]);
 
-  // Whether today's gift references a memory the user has already kept. Such a
+  // Whether today's gift references an item the user has already kept. Such a
   // gift can't be saved again, so the reveal shows it as already in the vault.
-  const giftAlreadySaved = useMemo(
-    () => (dailyGift ? savedMemoryIds.has(dailyGift.memory.id) : false),
-    [dailyGift, savedMemoryIds],
-  );
+  const giftAlreadySaved = useMemo(() => {
+    if (!dailyGift) return false;
+    if (dailyGift.type === 'memory') {
+      return savedMemoryIds.has(dailyGift.memory!.id);
+    } else {
+      return savedVisionIds.has(dailyGift.vision!.id);
+    }
+  }, [dailyGift, savedMemoryIds, savedVisionIds]);
 
   // ── Loading state ────────────────────────────────────────────────────────
   if (dashboard.loading && !dashboard.partnerName) {

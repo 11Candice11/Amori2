@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   memoryTitle: { ...typography.bodySm, color: colors.neutral, fontSize: 13, marginTop: 6 },
 
   flashbackCard: {
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.gold,

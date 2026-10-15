@@ -2,14 +2,20 @@ using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Infrastructure.Relationships;
+using Amori.Api.Features.Notifications;
+using Amori.Api.Features.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
+using Amori.Api.Domain.Enums;
 using Amori.Api.Features.BucketList.DTOs;
+using Amori.Api.Features.Users.Services;
 
 namespace Amori.Api.Features.BucketList.Services;
 
 public sealed class BucketListService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IBucketListService
+    IRelationshipAccessService relAccess,
+    INotificationService notifications,
+    IRewardService rewards) : IBucketListService
 {
     private static BucketListItemResponse Map(BucketListItem b) => new()
     {
@@ -28,7 +34,7 @@ public sealed class BucketListService(
         var item = await db.BucketListItems.Include(b => b.AddedBy)
             .FirstOrDefaultAsync(b => b.Id == itemId, ct)
             ?? throw new NotFoundException("Bucket list item", itemId);
-        if (item.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (item.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, item);
     }
 
@@ -65,7 +71,55 @@ public sealed class BucketListService(
         db.BucketListItems.Add(item);
         await db.SaveChangesAsync(ct);
         item.AddedBy = (await db.Users.FindAsync([userId], ct))!;
-        return Map(item);
+
+        // Notify the partner that a new item was added
+        await NotifyPartnerAsync(userId, item, ct);
+
+        // The to-do shelf lives in the bucket list under its own category, so
+        // one create path earns one of two activities depending on which it is.
+        var activity = item.Category == BucketListCategory.ToDoList
+            ? ActivityType.TodoAdded
+            : ActivityType.BucketListAdded;
+
+        var response = Map(item);
+        response.Rewards = await rewards.GrantAsync(userId, RewardRequest.For(activity, item.Id), ct);
+
+        return response;
+    }
+
+    /// <summary>
+    /// Notify the partner that a new bucket list item was added to the shared list.
+    /// Best-effort; does not throw if notification dispatch fails.
+    /// </summary>
+    private async Task NotifyPartnerAsync(Guid creatorId, BucketListItem item, CancellationToken ct = default)
+    {
+        try
+        {
+            // Find the partner (the other member of the relationship)
+            var partner = await db.RelationshipMembers
+                .Where(rm => rm.RelationshipId == item.RelationshipId && rm.UserId != creatorId)
+                .Select(rm => rm.User)
+                .FirstOrDefaultAsync(ct);
+
+            if (partner == null)
+                return; // No partner yet
+
+            var creatorName = item.AddedBy?.DisplayName ?? "Your partner";
+            var body = $"{creatorName} added to the bucket list: {item.Title}";
+
+            await notifications.CreateAsync(
+                partner.Id,
+                "New bucket list item 🪣",
+                body,
+                notificationType: NotificationTypes.BucketListItemAdded,
+                referenceId: item.Id.ToString(),
+                ct: ct);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw — notification failures shouldn't break item creation
+            System.Diagnostics.Debug.WriteLine($"Bucket list notification failed: {ex.Message}");
+        }
     }
 
     public async Task<BucketListItemResponse> UpdateAsync(Guid userId, Guid itemId, UpdateBucketListItemRequest request, CancellationToken ct = default)
@@ -84,7 +138,7 @@ public sealed class BucketListService(
     public async Task DeleteAsync(Guid userId, Guid itemId, CancellationToken ct = default)
     {
         var (_, item) = await LoadAsync(userId, itemId, ct);
-        if (item.AddedByUserId != userId) throw new UnauthorizedException("Only the owner can delete this item.");
+        if (item.AddedByUserId != userId) throw new ForbiddenException("Only the owner can delete this item.");
         db.BucketListItems.Remove(item);
         await db.SaveChangesAsync(ct);
     }

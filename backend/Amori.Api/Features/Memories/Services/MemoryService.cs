@@ -3,6 +3,8 @@ using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Infrastructure.Relationships;
 using Amori.Api.Infrastructure.Storage;
+using Amori.Api.Features.Notifications;
+using Amori.Api.Features.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.Memories.DTOs;
 
@@ -11,7 +13,8 @@ namespace Amori.Api.Features.Memories.Services;
 public sealed class MemoryService(
     AmoriDbContext db,
     IRelationshipAccessService relAccess,
-    IFileStorageService storage) : IMemoryService
+    IFileStorageService storage,
+    INotificationService notifications) : IMemoryService
 {
     private MemoryResponse Map(Memory m) => new()
     {
@@ -44,7 +47,7 @@ public sealed class MemoryService(
             .Include(m => m.CreatedBy).Include(m => m.Media)
             .FirstOrDefaultAsync(m => m.Id == memoryId && !m.IsDeleted, ct)
             ?? throw new NotFoundException("Memory", memoryId);
-        if (memory.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (memory.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, memory);
     }
 
@@ -83,13 +86,52 @@ public sealed class MemoryService(
         db.Memories.Add(memory);
         await db.SaveChangesAsync(ct);
         memory.CreatedBy = (await db.Users.FindAsync([userId], ct))!;
+
+        // Notify the partner that a new memory was added
+        await NotifyPartnerAsync(userId, memory, ct);
+
         return Map(memory);
+    }
+
+    /// <summary>
+    /// Notify the partner that a new memory was added to the shared collection.
+    /// Best-effort; does not throw if notification dispatch fails.
+    /// </summary>
+    private async Task NotifyPartnerAsync(Guid creatorId, Memory memory, CancellationToken ct = default)
+    {
+        try
+        {
+            // Find the partner (the other member of the relationship)
+            var partner = await db.RelationshipMembers
+                .Where(rm => rm.RelationshipId == memory.RelationshipId && rm.UserId != creatorId)
+                .Select(rm => rm.User)
+                .FirstOrDefaultAsync(ct);
+
+            if (partner == null)
+                return; // No partner yet
+
+            var creatorName = memory.CreatedBy?.DisplayName ?? "Your partner";
+            var body = $"{creatorName} added a memory: {memory.Title}";
+
+            await notifications.CreateAsync(
+                partner.Id,
+                "New memory saved 💭",
+                body,
+                notificationType: NotificationTypes.MemoryAdded,
+                referenceId: memory.Id.ToString(),
+                ct: ct);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw — notification failures shouldn't break memory creation
+            System.Diagnostics.Debug.WriteLine($"Memory notification failed: {ex.Message}");
+        }
     }
 
     public async Task<MemoryResponse> UpdateAsync(Guid userId, Guid memoryId, UpdateMemoryRequest request, CancellationToken ct = default)
     {
         var (_, memory) = await LoadAsync(userId, memoryId, ct);
-        if (memory.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can update this memory.");
+        if (memory.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can update this memory.");
         if (request.Title != null) memory.Title = request.Title.Trim();
         if (request.Description != null) memory.Description = request.Description;
         if (request.Category.HasValue) memory.Category = request.Category.Value;
@@ -105,7 +147,7 @@ public sealed class MemoryService(
     public async Task DeleteAsync(Guid userId, Guid memoryId, CancellationToken ct = default)
     {
         var (_, memory) = await LoadAsync(userId, memoryId, ct);
-        if (memory.CreatedByUserId != userId) throw new UnauthorizedException("Only the creator can delete this memory.");
+        if (memory.CreatedByUserId != userId) throw new ForbiddenException("Only the creator can delete this memory.");
         memory.IsDeleted = true;
         await db.SaveChangesAsync(ct);
     }
@@ -152,7 +194,7 @@ public sealed class MemoryService(
     public async Task DeleteMediaAsync(Guid userId, Guid memoryId, Guid mediaId, CancellationToken ct = default)
     {
         var (_, memory) = await LoadAsync(userId, memoryId, ct);
-        if (memory.CreatedByUserId != userId) throw new UnauthorizedException();
+        if (memory.CreatedByUserId != userId) throw new ForbiddenException();
         var media = memory.Media.FirstOrDefault(m => m.Id == mediaId)
             ?? throw new NotFoundException("Media", mediaId);
         db.MemoryMedia.Remove(media);

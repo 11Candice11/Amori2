@@ -3,6 +3,7 @@
  *
  * Endpoints used:
  *   POST   /api/moods/check-ins   → create a new check-in
+ *   GET    /api/moods/check-ins   → every check-in, newest first
  *   GET    /api/moods/current     → most recent check-in
  *
  * Backend enum values (integers, not strings):
@@ -53,6 +54,18 @@ export const moodService = {
       feelings: "I don't know",
     };
     return api.post<CheckInResponse>('/api/moods/check-ins', payload);
+  },
+
+  /**
+   * Every check-in the user has logged, newest first.
+   *
+   * Used by features that need mood *history* rather than the latest mood
+   * (e.g. the Weekly Reflection's day-by-day strip). Deliberately unfiltered
+   * by date so callers can page back through past weeks without refetching —
+   * the same "fetch once, slice locally" shape as memories/timeline/hugs.
+   */
+  async getCheckIns(): Promise<CheckInResponse[]> {
+    return api.get<CheckInResponse[]>('/api/moods/check-ins');
   },
 
   async getCurrent(): Promise<CheckInResponse | null> {

@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   detailValue: { ...typography.bodySm, color: colors.neutral, flexShrink: 1, textAlign: 'right' },
 
   achievedCard: {
-    backgroundColor: 'rgba(197,163,101,0.10)',
+    backgroundColor: 'rgba(139,111,58,0.10)',
     borderWidth: 1,
     borderColor: colors.gold,
     borderRadius: 14,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderRadius: 12,
     alignItems: 'center',
     paddingVertical: 12,
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: 10,
   },
-  sectionOptionActive: { backgroundColor: 'rgba(197,163,101,0.12)' },
+  sectionOptionActive: { backgroundColor: 'rgba(139,111,58,0.12)' },
   sectionOptionText: { ...typography.body, color: colors.neutral },
   sectionOptionCheck: { color: colors.gold, fontSize: 16 },
 });

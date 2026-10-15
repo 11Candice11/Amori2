@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentActive: {
-    backgroundColor: 'rgba(197,163,101,0.16)',
+    backgroundColor: 'rgba(139,111,58,0.16)',
   },
   segmentText: {
     ...typography.bodySm,

@@ -113,7 +113,7 @@ export function MoodGroundingScreen() {
             onPress={() => handleExercisePress(item)}
             accessibilityRole="button"
             accessibilityLabel={item.title}
-            android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
           >
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardMeta}>{item.meta}</Text>
@@ -126,7 +126,7 @@ export function MoodGroundingScreen() {
           onPress={goHome}
           accessibilityRole="button"
           accessibilityLabel="Go home"
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
         >
           <Text style={styles.secondaryBtnText}>Go Home</Text>
         </Pressable>

@@ -196,7 +196,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
     // ── Cross-relationship isolation ────────────────────────────────────────────
 
     [Fact]
-    public async Task GetItem_FromAnotherRelationship_Returns401()
+    public async Task GetItem_FromAnotherRelationship_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var outsiders = await CreateLinkedCoupleAsync();
@@ -205,7 +205,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
 
         var response = await couple.PartnerA.GetAsync($"/api/vision-board/items/{foreignId}");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── Edit ────────────────────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task MoveItem_ToAForeignSection_Returns401()
+    public async Task MoveItem_ToAForeignSection_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var outsiders = await CreateLinkedCoupleAsync();
@@ -322,7 +322,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
         var response = await couple.PartnerA.PostAsync($"/api/vision-board/items/{itemId}/move",
             Json(new MoveVisionBoardItemRequest { SectionId = foreignSectionId }));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── Complete / uncomplete + notes ───────────────────────────────────────────
@@ -499,7 +499,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task DeleteSection_FromAnotherRelationship_Returns401()
+    public async Task DeleteSection_FromAnotherRelationship_Returns403()
     {
         var couple = await CreateLinkedCoupleAsync();
         var outsiders = await CreateLinkedCoupleAsync();
@@ -508,7 +508,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
 
         var response = await couple.PartnerA.DeleteAsync($"/api/vision-board/sections/{foreignSectionId}");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── Unlinking behaviour ─────────────────────────────────────────────────────
@@ -535,7 +535,7 @@ public sealed class VisionBoardControllerTests(AmoriWebApplicationFactory factor
         Assert.Empty(soloBoard.GetProperty("items").EnumerateArray());
 
         var reachForOld = await couple.PartnerB.GetAsync($"/api/vision-board/items/{itemId}");
-        Assert.Equal(HttpStatusCode.Unauthorized, reachForOld.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, reachForOld.StatusCode);
     }
 
     // ── Duplicate submissions ───────────────────────────────────────────────────

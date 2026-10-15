@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  shortcutActive: { backgroundColor: 'rgba(197,163,101,0.15)', borderColor: colors.gold },
+  shortcutActive: { backgroundColor: 'rgba(139,111,58,0.15)', borderColor: colors.gold },
   shortcutText: { ...typography.bodySm, color: colors.neutral },
   shortcutTextActive: { color: colors.gold },
   footer: {

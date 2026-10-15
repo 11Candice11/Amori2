@@ -10,7 +10,7 @@ import type { IncidentStatus, IncidentPriority, IncidentCategory } from '../type
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<IncidentStatus, { label: string; bg: string; text: string }> = {
-  Open:             { label: 'Open',              bg: 'rgba(197,163,101,0.15)', text: '#C5A365' },
+  Open:             { label: 'Open',              bg: 'rgba(139,111,58,0.15)', text: '#8B6F3A' },
   Assigned:         { label: 'Assigned',           bg: 'rgba(100,160,220,0.15)', text: '#64A0DC' },
   Investigating:    { label: 'Investigating',      bg: 'rgba(120,180,140,0.15)', text: '#78B48C' },
   AwaitingResponse: { label: 'Awaiting Response',  bg: 'rgba(220,160,80,0.15)',  text: '#DCA050' },
@@ -32,7 +32,7 @@ export function StatusBadge({ status }: { status: IncidentStatus }) {
 
 const PRIORITY_CONFIG: Record<IncidentPriority, { label: string; bg: string; text: string }> = {
   Low:      { label: 'Low',      bg: 'rgba(76,175,125,0.15)',  text: '#4CAF7D' },
-  Medium:   { label: 'Medium',   bg: 'rgba(197,163,101,0.15)', text: '#C5A365' },
+  Medium:   { label: 'Medium',   bg: 'rgba(139,111,58,0.15)', text: '#8B6F3A' },
   High:     { label: 'High',     bg: 'rgba(220,130,60,0.15)',  text: '#DC823C' },
   Critical: { label: 'Critical', bg: 'rgba(179,64,64,0.15)',   text: '#B34040' },
 };
@@ -90,12 +90,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   categoryBadge: {
-    backgroundColor: 'rgba(253,252,240,0.08)',
+    backgroundColor: 'rgba(139,111,58,0.08)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(253,252,240,0.15)',
+    borderColor: 'rgba(139,111,58,0.15)',
   },
   categoryText: {
     ...typography.label,

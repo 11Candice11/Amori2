@@ -90,4 +90,16 @@ export const customTriggerStore = {
     const triggers = await loadFromStorage();
     await saveToStorage(triggers.filter(t => t.id !== triggerId));
   },
+
+  /**
+   * Drop every custom trigger. Used on sign-out — triggers are personal, so the
+   * next person to sign in on this device must not see them.
+   */
+  async reset(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(CUSTOM_TRIGGERS_STORAGE_KEY);
+    } catch (err) {
+      console.error('Failed to reset custom triggers:', err);
+    }
+  },
 };

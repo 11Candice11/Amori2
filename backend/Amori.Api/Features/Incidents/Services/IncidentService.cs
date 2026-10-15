@@ -111,7 +111,7 @@ public sealed class IncidentService(
             .Include(i => i.AssignedTo)
             .FirstOrDefaultAsync(i => i.Id == incidentId, ct)
             ?? throw new NotFoundException("Incident", incidentId);
-        if (incident.RelationshipId != rel.Id) throw new UnauthorizedException();
+        if (incident.RelationshipId != rel.Id) throw new ForbiddenException();
         return (rel.Id, incident);
     }
 
@@ -256,7 +256,7 @@ public sealed class IncidentService(
     {
         var (relId, incident) = await LoadAndAuthorizeAsync(userId, incidentId, ct);
         var isMember = await relAccess.IsUserMemberAsync(req.AssignedToUserId, relId);
-        if (!isMember) throw new UnauthorizedException("Can only assign to a member of your relationship.");
+        if (!isMember) throw new ForbiddenException("Can only assign to a member of your relationship.");
 
         incident.AssignedToUserId = req.AssignedToUserId;
         incident.AssignedAt = DateTime.UtcNow;
@@ -472,7 +472,7 @@ public sealed class IncidentService(
         var note = await db.RelationshipIncidentNotes.Include(n => n.Author)
             .FirstOrDefaultAsync(n => n.Id == noteId && n.IncidentId == incidentId, ct)
             ?? throw new NotFoundException("Note", noteId);
-        if (note.AuthorUserId != userId) throw new UnauthorizedException("Only the author can edit this note.");
+        if (note.AuthorUserId != userId) throw new ForbiddenException("Only the author can edit this note.");
         note.Content = req.Content;
         await db.SaveChangesAsync(ct);
         return new IncidentNoteResponse
@@ -489,7 +489,7 @@ public sealed class IncidentService(
         var note = await db.RelationshipIncidentNotes
             .FirstOrDefaultAsync(n => n.Id == noteId && n.IncidentId == incidentId, ct)
             ?? throw new NotFoundException("Note", noteId);
-        if (note.AuthorUserId != userId) throw new UnauthorizedException("Only the author can delete this note.");
+        if (note.AuthorUserId != userId) throw new ForbiddenException("Only the author can delete this note.");
         db.RelationshipIncidentNotes.Remove(note);
         await db.SaveChangesAsync(ct);
     }
@@ -539,7 +539,7 @@ public sealed class IncidentService(
         var response = await db.RelationshipIncidentResponses.Include(r => r.Author)
             .FirstOrDefaultAsync(r => r.Id == responseId && r.IncidentId == incidentId, ct)
             ?? throw new NotFoundException("Response", responseId);
-        if (response.AuthorUserId != userId) throw new UnauthorizedException("Only the author can edit this response.");
+        if (response.AuthorUserId != userId) throw new ForbiddenException("Only the author can edit this response.");
         response.Message = req.Message;
         await db.SaveChangesAsync(ct);
         return new IncidentResponseDto
@@ -556,7 +556,7 @@ public sealed class IncidentService(
         var response = await db.RelationshipIncidentResponses
             .FirstOrDefaultAsync(r => r.Id == responseId && r.IncidentId == incidentId, ct)
             ?? throw new NotFoundException("Response", responseId);
-        if (response.AuthorUserId != userId) throw new UnauthorizedException("Only the author can delete this response.");
+        if (response.AuthorUserId != userId) throw new ForbiddenException("Only the author can delete this response.");
         db.RelationshipIncidentResponses.Remove(response);
         await db.SaveChangesAsync(ct);
     }

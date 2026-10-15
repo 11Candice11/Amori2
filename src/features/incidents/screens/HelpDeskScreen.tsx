@@ -38,7 +38,7 @@ function TabButton({
     <Pressable
       style={[styles.tabBtn, isActive && styles.tabBtnActive]}
       onPress={onPress}
-      android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: isActive }}
@@ -187,7 +187,7 @@ export function HelpDeskScreen() {
             {/* Quick links - only show in overview */}
             {activeTab === 'overview' ? (
               <View style={styles.quickRow}>
-                <Pressable style={styles.quickBtn} onPress={() => navigation.navigate('IncidentList', { filter: 'all' })} android_ripple={{ color: 'rgba(197,163,101,0.1)' }}>
+                <Pressable style={styles.quickBtn} onPress={() => navigation.navigate('IncidentList', { filter: 'all' })} android_ripple={{ color: 'rgba(139,111,58,0.1)' }}>
                   <Text style={styles.quickText}>View all incidents →</Text>
                 </Pressable>
               </View>

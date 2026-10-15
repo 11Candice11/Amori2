@@ -156,7 +156,7 @@ export function BreatheWithMeScreen() {
             onPress={() => setRunning(r => !r)}
             accessibilityRole="button"
             accessibilityLabel={running ? 'Pause breathing' : 'Resume breathing'}
-            android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+            android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
           >
             {running ? <PauseIcon color={colors.neutral} size={22} /> : <PlayIcon color={colors.neutral} size={22} />}
           </Pressable>

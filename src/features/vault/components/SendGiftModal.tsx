@@ -12,7 +12,7 @@
  * This uses the dedicated /api/vault/gifts/create endpoint, which creates
  * and sends the gift in one operation without polluting the memories feed.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -48,7 +48,6 @@ import {
 } from '../../memories/components/VoiceNoteRecorder';
 import { getCardImage } from '../../../utils/cardSelector';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
-import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
 import { mediaService } from '../../../services/media/mediaService';
 import { vaultService } from '../services/vaultService';
 import type { CreateGiftMediaRequest } from '../types/vault.types';
@@ -85,6 +84,8 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
   const [giftAt, setGiftAt] = useState<Date>(() => new Date());
   const [location, setLocation] = useState<LocationValue | null>(null);
   const [note, setNote] = useState('');
+  const [saveToMyVault, setSaveToMyVault] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkTitle, setLinkTitle] = useState('');
 
@@ -112,11 +113,19 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The success popup is its own native Modal. iOS can only present one modal
+  // at a time, so showing it while this gift card is still open is dropped
+  // ("already presenting"). Park the message here and show it once the card
+  // has finished closing (see handleClose).
+  const pendingSuccessMessage = useRef<string | null>(null);
+
   const resetForm = useCallback(() => {
     setTitle('');
     setGiftAt(new Date());
     setLocation(null);
     setNote('');
+    setSaveToMyVault(false);
+    setIsPrivate(false);
     setLinkUrl('');
     setLinkTitle('');
     setImage(null);
@@ -299,13 +308,29 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
           media: media.length > 0 ? media : undefined,
         });
 
-        showSuccessOverlay(`Gift sent to ${result.recipientName} 🎁`);
+        // If the sender wants to keep a copy, save it to their vault too
+        if (saveToMyVault) {
+          try {
+            await vaultService.save({
+              memoryId: result.memoryId,
+              cardNumber: card,
+            });
+            pendingSuccessMessage.current = `Gift sent to ${result.recipientName} and saved to your vault 🎁`;
+          } catch (saveErr) {
+            // Don't fail the whole operation if saving to own vault fails
+            console.warn('Could not save gift to sender vault:', saveErr);
+            pendingSuccessMessage.current = `Gift sent to ${result.recipientName} 🎁`;
+          }
+        } else {
+          pendingSuccessMessage.current = `Gift sent to ${result.recipientName} 🎁`;
+        }
         resetForm();
         onSent?.();
         close();
       } catch (err) {
+        // Shown inline in the form. No error popup here: it would be a second
+        // native Modal on top of this one, which iOS refuses to present.
         setError(err instanceof Error ? err.message : 'Could not send the gift.');
-        showErrorOverlay("Couldn't send gift");
         setSending(false);
       }
     },
@@ -330,6 +355,12 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
     // Don't wipe a half-filled form mid-send; reset only when idle.
     if (!sending) resetForm();
     onClose();
+
+    // The card's Modal has finished closing by now. Give iOS a beat to tear
+    // it down before presenting the success popup's Modal.
+    const message = pendingSuccessMessage.current;
+    pendingSuccessMessage.current = null;
+    if (message) setTimeout(() => showSuccessOverlay(message), 400);
   }, [sending, resetForm, onClose]);
 
   return (
@@ -394,12 +425,25 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
               <Text style={styles.label}>Photo or video (optional)</Text>
               {image ? (
                 <View style={styles.imageWrap}>
-                  <Image source={{ uri: image.previewUri }} style={styles.imagePreview} />
-                  {image.kind === 'video' && !image.uploading ? (
-                    <View style={styles.videoBadge} pointerEvents="none">
-                      <Text style={styles.videoBadgeText}>▶</Text>
+                  {isPrivate ? (
+                    /* Private mode: show lock icon instead of preview */
+                    <View style={styles.privateImageOverlay}>
+                      <View style={styles.privateLockCircle}>
+                        <Text style={styles.privateLockIcon}>🔒</Text>
+                      </View>
+                      <Text style={styles.privateLabel}>Private {image.kind}</Text>
+                      <Text style={styles.privateHint}>Preview hidden</Text>
                     </View>
-                  ) : null}
+                  ) : (
+                    <>
+                      <Image source={{ uri: image.previewUri }} style={styles.imagePreview} />
+                      {image.kind === 'video' && !image.uploading ? (
+                        <View style={styles.videoBadge} pointerEvents="none">
+                          <Text style={styles.videoBadgeText}>▶</Text>
+                        </View>
+                      ) : null}
+                    </>
+                  )}
                   {image.uploading ? (
                     <View style={styles.imageOverlay}>
                       <ActivityIndicator color="#fff" />
@@ -418,7 +462,10 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
                   ) : null}
                   <Pressable
                     style={styles.imageRemove}
-                    onPress={() => setImage(null)}
+                    onPress={() => {
+                      setImage(null);
+                      setIsPrivate(false); // Reset private flag when image is removed
+                    }}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel="Remove attachment"
@@ -436,6 +483,33 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
                   <Text style={styles.addImageText}>+ Add photo or video</Text>
                 </Pressable>
               )}
+
+              {/* Private checkbox - only show if there's an image */}
+              {image ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.checkboxRow,
+                    styles.privateCheckboxRow,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setIsPrivate(!isPrivate)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isPrivate }}
+                  accessibilityLabel="Mark as private"
+                >
+                  <View style={[styles.checkbox, isPrivate && styles.checkboxChecked]}>
+                    {isPrivate ? (
+                      <Text style={styles.checkmark}>✓</Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.checkboxTextContainer}>
+                    <Text style={styles.checkboxLabel}>Private {image.kind}</Text>
+                    <Text style={styles.privateWarning}>
+                      Preview hidden • For their eyes only
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : null}
 
               <Text style={styles.label}>Link (optional)</Text>
               <TextInput
@@ -484,6 +558,25 @@ export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGift
               {voiceNote?.uploading ? (
                 <Text style={styles.hintText}>Uploading voice note…</Text>
               ) : null}
+
+              {/* Option to save a copy to sender's vault */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.checkboxRow,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setSaveToMyVault(!saveToMyVault)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: saveToMyVault }}
+                accessibilityLabel="Also save to my vault"
+              >
+                <View style={[styles.checkbox, saveToMyVault && styles.checkboxChecked]}>
+                  {saveToMyVault ? (
+                    <Text style={styles.checkmark}>✓</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.checkboxLabel}>Also save to my vault</Text>
+              </Pressable>
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -597,6 +690,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   imagePreview: { width: '100%', height: '100%' },
+  privateImageOverlay: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.surfaceCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  privateLockCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privateLockIcon: {
+    fontSize: 28,
+  },
+  privateLabel: {
+    ...typography.bodySemiBold,
+    color: colors.neutral,
+    fontSize: 14,
+  },
+  privateHint: {
+    ...typography.bodySm,
+    color: colors.neutralMuted,
+    fontSize: 12,
+  },
   videoBadge: {
     position: 'absolute',
     left: 8,
@@ -641,6 +765,58 @@ const styles = StyleSheet.create({
     color: colors.neutralMuted,
     fontSize: 12,
     marginTop: spacing.xs,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  privateCheckboxRow: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    borderColor: colors.gold,
+    backgroundColor: colors.gold,
+  },
+  checkmark: {
+    color: colors.ctaText,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  checkboxLabel: {
+    ...typography.body,
+    color: colors.neutral,
+    fontSize: 14,
+    flex: 1,
+  },
+  checkboxTextContainer: {
+    flex: 1,
+    gap: 2,
+  },
+  privateWarning: {
+    ...typography.bodySm,
+    color: colors.neutralMuted,
+    fontSize: 11,
+    fontStyle: 'italic',
   },
   error: {
     ...typography.bodySm,

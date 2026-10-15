@@ -234,7 +234,7 @@ export function HugSentScreen() {
           onPress={() => navigation.navigate('HugsHistory')}
           accessibilityRole="button"
           accessibilityLabel="View our hugs history"
-          android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
         >
           <HistoryIcon color={colors.neutral} />
           <Text style={styles.secondaryText}>View Our Hugs History</Text>
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.12)',
+    borderColor: 'rgba(139,111,58,0.12)',
   },
   orbitInner: {
     width: 150,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(6,78,59,0.4)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.16)',
+    borderColor: 'rgba(139,111,58,0.16)',
   },
   planet: {
     width: 96,

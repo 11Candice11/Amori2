@@ -27,6 +27,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '../../theme';
 import { BackIcon } from '../icons/BackIcon';
 import { NotificationBell } from './NotificationBell';
+import { LevelBadge } from './LevelBadge';
 
 type Props = {
   title: string;
@@ -72,7 +73,7 @@ export function AppHeader({
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          android_ripple={{ color: 'rgba(197,163,101,0.15)', borderless: true }}
+          android_ripple={{ color: 'rgba(139,111,58,0.15)', borderless: true }}
         >
           <BackIcon />
         </Pressable>
@@ -94,6 +95,7 @@ export function AppHeader({
       {hasRightContent ? (
         <View style={[styles.side, styles.sideRight, styles.rightGroup]}>
           {right}
+          <LevelBadge />
           {showNotificationBell ? (
             <NotificationBell onPress={openNotifications} />
           ) : null}

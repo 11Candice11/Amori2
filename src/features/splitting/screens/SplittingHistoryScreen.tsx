@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.md,
   },
-  cardLatest: { borderColor: 'rgba(197,163,101,0.5)' },
+  cardLatest: { borderColor: 'rgba(139,111,58,0.5)' },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
   cardDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.rhythmComplete },
   cardDotCancelled: { backgroundColor: colors.neutralSubtle },
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
 
   actionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   actionPill: {
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
     borderRadius: 8,
     paddingHorizontal: 9,
     paddingVertical: 4,

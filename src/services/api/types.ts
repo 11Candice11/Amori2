@@ -42,6 +42,10 @@ export interface UserResponse {
   soundEnabled: boolean;
   /** App settings: enable vibration feedback. */
   vibrationEnabled: boolean;
+  /** Gamification: total points earned. */
+  totalPoints: number;
+  /** Gamification: current level based on points. */
+  level: number;
 }
 
 export interface UpdateUserSettingsRequest {

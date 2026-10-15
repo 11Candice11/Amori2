@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   },
   filterChipActive: {
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.16)',
+    backgroundColor: 'rgba(139,111,58,0.16)',
   },
   filterText: {
     ...typography.bodySm,
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   },
   cardMilestone: {
     borderColor: colors.gold,
-    backgroundColor: 'rgba(197,163,101,0.06)',
+    backgroundColor: 'rgba(139,111,58,0.06)',
   },
   cardPressed: {
     opacity: 0.85,
@@ -745,12 +745,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   badge: {
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.28)',
+    borderColor: 'rgba(139,111,58,0.28)',
   },
   badgeMilestone: {
     backgroundColor: colors.gold,

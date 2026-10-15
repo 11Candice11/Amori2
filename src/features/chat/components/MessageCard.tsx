@@ -21,7 +21,7 @@ export function MessageCard({ conversation, onPress }: Props) {
       style={styles.card}
       onPress={onPress}
       accessibilityRole="button"
-      android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
     >
       <View style={styles.headerRow}>
         <Text style={styles.template}>{TEMPLATE_TITLES[conversation.templateType]}</Text>

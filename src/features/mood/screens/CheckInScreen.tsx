@@ -6,9 +6,10 @@
  *
  * On confirm, the selected mood is sent to the backend via moodService.
  */
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -36,6 +38,7 @@ import type { CheckInResponse } from '../../../services/api/types';
 import type { MoodStackParamList } from '../../../navigation/MoodStackParamList';
 import { moodBackgroundStore, useMoodBackground } from '../../../shared/state/moodBackgroundStore';
 import { moodLabel } from '../../../utils/moodUtils';
+import { userPointsStore } from '../../../shared/state/userPointsStore';
 
 type Nav = NativeStackNavigationProp<MoodStackParamList, 'CheckInHome'>;
 
@@ -46,12 +49,90 @@ type Nav = NativeStackNavigationProp<MoodStackParamList, 'CheckInHome'>;
 // 'done'     — the "Anchored" confirmation
 type Stage = 'loading' | 'already' | 'quadrant' | 'mood' | 'done';
 
-const QUADRANT_ACCENT: Record<MoodQuadrant, string> = {
-  HIGH_PLEASANT: colors.gold,
-  LOW_PLEASANT: colors.primaryLight,
-  HIGH_UNPLEASANT: colors.emergency,
-  LOW_UNPLEASANT: colors.neutralMuted,
+const QUADRANT_COLORS: Record<MoodQuadrant, string> = {
+  HIGH_PLEASANT: '#FFD93D',      // Yellow
+  LOW_PLEASANT: '#6BCF9E',       // Green
+  HIGH_UNPLEASANT: '#FF6B6B',    // Red/Coral
+  LOW_UNPLEASANT: '#6B9FFF',     // Blue
 };
+
+// Animated orb component
+function AnimatedOrb({ 
+  quadrant, 
+  label, 
+  tagline, 
+  onPress, 
+  delay = 0 
+}: { 
+  quadrant: MoodQuadrant; 
+  label: string; 
+  tagline: string; 
+  onPress: () => void; 
+  delay?: number;
+}) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    // Fade in on mount
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      delay,
+      useNativeDriver: true,
+    }).start();
+    
+    // Continuous pulse animation
+    const createPulse = () => {
+      return Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1500 + Math.random() * 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500 + Math.random() * 500,
+          useNativeDriver: true,
+        }),
+      ]);
+    };
+    
+    const loop = Animated.loop(createPulse());
+    loop.start();
+    
+    return () => {
+      loop.stop();
+    };
+  }, [pulseAnim, fadeAnim, delay]);
+  
+  const color = QUADRANT_COLORS[quadrant];
+  
+  return (
+    <Pressable 
+      onPress={onPress} 
+      style={styles.orbContainer}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${tagline}`}
+    >
+      <Animated.View
+        style={[
+          styles.orb,
+          {
+            backgroundColor: color,
+            transform: [{ scale: pulseAnim }],
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <View style={styles.orbContent}>
+          <Text style={styles.orbLabel}>{label}</Text>
+          <Text style={styles.orbTagline}>{tagline}</Text>
+        </View>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 /** True when the ISO timestamp falls on the current calendar day. */
 function isToday(iso: string | null | undefined): boolean {
@@ -138,6 +219,7 @@ export function CheckInScreen() {
   }, []);
 
   const handleSelectQuadrant = useCallback((q: MoodQuadrant) => {
+    Vibration.vibrate(50);
     inFlowRef.current = true;
     setQuadrant(q);
     setStage('mood');
@@ -165,6 +247,9 @@ export function CheckInScreen() {
       setConfirmedQuadrant(mood.quadrant);
       // Moves Check-in, Together and Desk onto the new mood's background.
       moodBackgroundStore.setQuadrant(mood.quadrant);
+
+      // Refresh points after successful check-in
+      userPointsStore.load(true);
 
       // A high-pleasant check-in earns the daily gift — take them straight to
       // it rather than pausing on the "Anchored" confirmation. Other quadrants
@@ -196,6 +281,10 @@ export function CheckInScreen() {
       setConfirmedQuadrant(null);
       // An "I don't know" check-in has no quadrant — back to neutral.
       moodBackgroundStore.setQuadrant(null);
+      
+      // Refresh points after successful check-in
+      userPointsStore.load(true);
+      
       setStage('done');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your check-in.');
@@ -391,38 +480,44 @@ export function CheckInScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={backgroundImage} style={styles.header} imageStyle={styles.headerImg} resizeMode="cover">
-          <View style={styles.headerOverlay}>
-            <View style={styles.stepRow}>
-              <View style={styles.stepDot} />
-              <Text style={styles.stepLabel}>STEP 1 OF 2</Text>
-            </View>
-            <Text style={styles.title}>How are you, really?</Text>
-            <Text style={styles.subtitle}>
-              Start with your energy and how pleasant it feels. We'll narrow it down together.
-            </Text>
-          </View>
-        </ImageBackground>
+        <View style={styles.headerSimple}>
+          <Text style={styles.titleCentered}>Tap the color that best describes</Text>
+          <Text style={styles.titleCentered}>how you feel right now</Text>
+        </View>
 
         {lastCheckIn?.feelings ? (
           <Text style={styles.lastCheckIn}>Last check-in: {lastCheckIn.feelings}</Text>
         ) : null}
 
-        <View style={styles.grid}>
-          {QUADRANTS.map(q => (
-            <Pressable
-              key={q.key}
-              style={styles.quadrantCard}
-              onPress={() => handleSelectQuadrant(q.key)}
-              android_ripple={{ color: colors.goldTint12 }}
-              accessibilityRole="button"
-              accessibilityLabel={`${q.label}, ${q.tagline}`}
-            >
-              <View style={[styles.accentBar, { backgroundColor: QUADRANT_ACCENT[q.key] }]} />
-              <Text style={styles.quadrantLabel}>{q.label}</Text>
-              <Text style={styles.quadrantTagline}>{q.tagline}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.orbGrid}>
+          <AnimatedOrb
+            quadrant="HIGH_UNPLEASANT"
+            label="High Energy"
+            tagline="Unpleasant"
+            onPress={() => handleSelectQuadrant('HIGH_UNPLEASANT')}
+            delay={0}
+          />
+          <AnimatedOrb
+            quadrant="HIGH_PLEASANT"
+            label="High Energy"
+            tagline="Pleasant"
+            onPress={() => handleSelectQuadrant('HIGH_PLEASANT')}
+            delay={100}
+          />
+          <AnimatedOrb
+            quadrant="LOW_UNPLEASANT"
+            label="Low Energy"
+            tagline="Unpleasant"
+            onPress={() => handleSelectQuadrant('LOW_UNPLEASANT')}
+            delay={200}
+          />
+          <AnimatedOrb
+            quadrant="LOW_PLEASANT"
+            label="Low Energy"
+            tagline="Pleasant"
+            onPress={() => handleSelectQuadrant('LOW_PLEASANT')}
+            delay={300}
+          />
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -501,33 +596,63 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
-  grid: {
+  // ── Animated orbs for Step 1 ──
+  headerSimple: {
+    paddingTop: spacing.xl * 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+  },
+  titleCentered: {
+    ...typography.headline,
+    color: colors.neutral,
+    textAlign: 'center',
+    fontSize: 20,
+  },
+  orbGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    gap: spacing.md,
     paddingHorizontal: spacing.md,
+    marginTop: spacing.lg,
   },
-  quadrantCard: {
-    width: '47.5%',
-    flexGrow: 1,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    padding: spacing.md,
-    minHeight: 110,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
+  orbContainer: {
+    width: '45%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  accentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 4,
+  orb: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 1000,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  quadrantLabel: { ...typography.bodySemiBold, color: colors.neutral, fontSize: 16, marginBottom: 2 },
-  quadrantTagline: { ...typography.bodySm, color: colors.neutralMuted },
+  orbContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orbLabel: {
+    ...typography.bodySemiBold,
+    fontSize: 16,
+    color: '#0A140F',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  orbTagline: {
+    ...typography.body,
+    fontSize: 13,
+    color: '#0A140F',
+    textAlign: 'center',
+    opacity: 0.8,
+  },
 
   error: {
     ...typography.bodySm,

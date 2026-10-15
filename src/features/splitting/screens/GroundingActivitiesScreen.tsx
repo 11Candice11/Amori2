@@ -141,7 +141,7 @@ export function GroundingActivitiesScreen() {
               onPress={() => begin(activity)}
               accessibilityRole="button"
               accessibilityLabel={`Begin ${activity.title}`}
-              android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+              android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
             >
               <Text style={styles.beginText}>Begin →</Text>
             </Pressable>
@@ -190,10 +190,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
     padding: spacing.md,
     marginTop: spacing.md,
   },
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
   activityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   activityTitle: { ...typography.bodyMedium, color: colors.neutral, fontSize: 15 },
-  recPill: { backgroundColor: 'rgba(197,163,101,0.18)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  recPill: { backgroundColor: 'rgba(139,111,58,0.18)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   recText: { ...typography.label, color: colors.gold, fontSize: 9 },
   activityMeta: { ...typography.label, color: colors.neutralMuted, fontSize: 10, marginTop: 3 },
   activityDesc: { ...typography.bodySm, color: colors.neutralMuted, marginTop: 10, lineHeight: 18 },

@@ -20,9 +20,12 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
-/** A stable key for the local calendar day, e.g. "2026-9-22". */
+/** A stable key for the local calendar day, e.g. "2026-09-22". */
 function localDayKey(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 /** Milliseconds from now until the next local midnight (min 1s to avoid a 0 loop). */

@@ -118,6 +118,11 @@ public sealed class AmoriDbContext(DbContextOptions<AmoriDbContext> options) : D
     // Support Profile ("How to Know Me" / Support Preferences)
     public DbSet<SupportProfile> SupportProfiles => Set<SupportProfile>();
 
+    // Gamification
+    public DbSet<UserPoints> UserPoints => Set<UserPoints>();
+    public DbSet<Badge> Badges => Set<Badge>();
+    public DbSet<PointsHistory> PointsHistory => Set<PointsHistory>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

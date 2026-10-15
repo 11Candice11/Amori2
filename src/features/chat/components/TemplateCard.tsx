@@ -16,7 +16,7 @@ export function TemplateCard({ template, onPress }: Props) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Start: ${template.title}`}
-      android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+      android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
     >
       <View style={styles.body}>
         <Text style={styles.title}>{template.title}</Text>

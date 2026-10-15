@@ -66,7 +66,9 @@ public sealed class AuthControllerTests(AmoriWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Login_WithWrongPassword_ShouldReturnForbidden()
+    // Bad credentials are an identity failure → 401. (403 is reserved for
+    // "signed in, but not allowed"; see ForbiddenException.)
+    public async Task Login_WithWrongPassword_ShouldReturnUnauthorized()
     {
         var email = $"dave-{Guid.NewGuid()}@example.com";
 
@@ -76,7 +78,7 @@ public sealed class AuthControllerTests(AmoriWebApplicationFactory factory)
         var loginResp = await _client.PostAsync("/api/auth/login",
             Json(new LoginRequest { Email = email, Password = "WrongPassword!" }));
 
-        Assert.Equal(HttpStatusCode.Forbidden, loginResp.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, loginResp.StatusCode);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

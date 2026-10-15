@@ -44,6 +44,12 @@ public sealed class NotificationService(
             // Vision Board add/complete are partner activity too.
             NotificationTypes.VisionBoardItemAdded => settings.PartnerActivityNotifications,
             NotificationTypes.VisionBoardItemCompleted => settings.PartnerActivityNotifications,
+            // Memory added is also partner activity.
+            NotificationTypes.MemoryAdded => settings.PartnerActivityNotifications,
+            // Calendar, bucket list, and wishlist items are also partner activity.
+            NotificationTypes.CalendarEventAdded => settings.PartnerActivityNotifications,
+            NotificationTypes.BucketListItemAdded => settings.PartnerActivityNotifications,
+            NotificationTypes.WishlistItemAdded => settings.PartnerActivityNotifications,
             NotificationTypes.CheckInReminder => settings.CheckInReminders,
             NotificationTypes.DailyDigest => settings.DailyDigest,
             _ => true,
@@ -89,7 +95,7 @@ public sealed class NotificationService(
     {
         var device = await db.DeviceRegistrations.FindAsync([deviceId], ct)
             ?? throw new NotFoundException("Device", deviceId);
-        if (device.UserId != userId) throw new UnauthorizedException();
+        if (device.UserId != userId) throw new ForbiddenException();
         db.DeviceRegistrations.Remove(device);
         await db.SaveChangesAsync(ct);
     }
@@ -104,7 +110,7 @@ public sealed class NotificationService(
     {
         var n = await db.AppNotifications.FindAsync([notificationId], ct)
             ?? throw new NotFoundException("Notification", notificationId);
-        if (n.UserId != userId) throw new UnauthorizedException();
+        if (n.UserId != userId) throw new ForbiddenException();
         n.IsRead = true;
         n.ReadAt ??= DateTime.UtcNow;
         await db.SaveChangesAsync(ct);

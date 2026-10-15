@@ -27,9 +27,26 @@ public sealed class UserService(
 
         var settings = await GetOrCreateSettingsAsync(userId, ct);
 
+        // Load points and badges
+        var userPoints = await db.Set<UserPoints>().FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        var badges = await db.Set<Badge>()
+            .Where(b => b.UserId == userId && !b.IsArchivedInVault)
+            .OrderByDescending(b => b.EarnedAt)
+            .ToListAsync(ct);
+
         await db.SaveChangesAsync(ct);
 
-        return ToResponse(user, settings);
+        var response = ToResponse(user, settings);
+        
+        // Add gamification data
+        if (userPoints != null)
+        {
+            response.Points = ToPointsResponse(userPoints);
+        }
+        
+        response.EarnedBadges = badges.Select(ToBadgeResponse).ToList();
+
+        return response;
     }
 
     public async Task<GetCurrentUserResponse> UpdateSettingsAsync(
@@ -106,7 +123,7 @@ public sealed class UserService(
         // Verify the current password before allowing a change — a valid session
         // alone isn't enough to reset the password.
         if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            throw new UnauthorizedException("Current password is incorrect.");
+            throw new ForbiddenException("Current password is incorrect.");
 
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
         await db.SaveChangesAsync(ct);
@@ -166,5 +183,59 @@ public sealed class UserService(
         db.UserSettings.Add(settings);
         // Saved by the caller alongside any other changes.
         return settings;
+    }
+
+    private static UserPointsResponse? ToPointsResponse(UserPoints userPoints)
+    {
+        var level = CalculateLevel(userPoints.TotalPoints);
+        
+        // Calculate points in current level
+        int pointsUsed = 0;
+        for (int i = 1; i < level; i++)
+        {
+            pointsUsed += i * 100;
+        }
+
+        var pointsInCurrentLevel = userPoints.TotalPoints - pointsUsed;
+        var pointsNeededForLevel = level * 100;
+        var progressPercentage = pointsNeededForLevel > 0
+            ? (int)Math.Round((pointsInCurrentLevel / (double)pointsNeededForLevel) * 100)
+            : 0;
+
+        return new UserPointsResponse
+        {
+            TotalPoints = userPoints.TotalPoints,
+            Level = level,
+            PointsInCurrentLevel = pointsInCurrentLevel,
+            PointsNeededForLevel = pointsNeededForLevel,
+            ProgressPercentage = Math.Min(progressPercentage, 100),
+        };
+    }
+
+    private static BadgeResponse ToBadgeResponse(Badge badge) => new()
+    {
+        Id = badge.Id,
+        BadgeName = badge.BadgeName,
+        Description = badge.Description,
+        AwardedAtLevel = badge.AwardedAtLevel,
+        ImageUrl = badge.ImageUrl,
+        IsArchivedInVault = badge.IsArchivedInVault,
+        EarnedAt = badge.EarnedAt,
+    };
+
+    private static int CalculateLevel(int totalPoints)
+    {
+        if (totalPoints < 100) return 1;
+        
+        int level = 1;
+        int pointsUsed = 0;
+
+        while (pointsUsed + (level * 100) <= totalPoints)
+        {
+            pointsUsed += level * 100;
+            level++;
+        }
+
+        return level;
     }
 }

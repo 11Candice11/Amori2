@@ -68,7 +68,7 @@ export function DistractionCentreScreen() {
             style={styles.escapeCard}
             accessibilityRole="button"
             accessibilityLabel={escape.title}
-            android_ripple={{ color: 'rgba(197,163,101,0.08)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.08)' }}
           >
             <View style={styles.escapeIcon}>
               <SparkleIcon color={colors.primaryLight} size={18} />
@@ -117,10 +117,10 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.body, color: colors.neutralMuted, marginTop: spacing.sm },
 
   featuredCard: {
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
     padding: spacing.md,
     marginTop: spacing.lg,
   },

@@ -14,6 +14,10 @@
     "plugins": [
       "expo-notifications"
     ],
+    "assetBundlePatterns": [
+      "assets/**",
+      "images/**"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.candice.amori",

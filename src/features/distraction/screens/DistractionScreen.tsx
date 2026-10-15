@@ -226,9 +226,9 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(197,163,101,0.3)',
+    borderColor: 'rgba(139,111,58,0.3)',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   wyrOption: {
-    backgroundColor: 'rgba(253,252,240,0.04)',
+    backgroundColor: 'rgba(139,111,58,0.04)',
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,

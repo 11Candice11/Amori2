@@ -24,6 +24,8 @@ using Amori.Api.Features.WeeklyReflection.Services;
 using Amori.Api.Features.VisionBoard.Services;
 using Amori.Api.Features.VoiceNotes.Services;
 using Amori.Api.Features.Wishlist.Services;
+using Amori.Api.Common.Middleware;
+using Amori.Api.Common.Time;
 using Amori.Api.Infrastructure.Notifications;
 using Amori.Api.Infrastructure.Relationships;
 
@@ -34,6 +36,10 @@ public static class ApplicationServicesExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         // ── Infrastructure ────────────────────────────────────────────────────
+        // Injected rather than calling DateTime.UtcNow, so day-boundary and
+        // streak behaviour can be driven from tests.
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IClientLocalTimeAccessor, ClientLocalTimeAccessor>();
         services.AddScoped<IRelationshipAccessService, RelationshipAccessService>();
         services.AddHttpClient<IPushNotificationService, ExpoPushNotificationService>(client =>
         {
@@ -49,6 +55,9 @@ public static class ApplicationServicesExtensions
 
         // ── Users ─────────────────────────────────────────────────────────────
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IPointsService, PointsService>();
+        services.AddScoped<IRewardService, RewardService>();
+        services.AddScoped<IBadgeStatsService, BadgeStatsService>();
 
         // ── Mood ──────────────────────────────────────────────────────────────
         services.AddScoped<IMoodService, MoodService>();

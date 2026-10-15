@@ -257,7 +257,7 @@ export function SharedCalendarCard({
         <Pressable
           style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
           onPress={onAddEvent}
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
           accessibilityRole="button"
           accessibilityLabel="Add event"
         >
@@ -274,7 +274,7 @@ export function SharedCalendarCard({
           ]}
           onPress={onAddAnniversaries}
           disabled={addingAnniversaries}
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
           accessibilityRole="button"
           accessibilityLabel="Add anniversary reminders to the calendar"
         >
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingVertical: 9,
     borderRadius: 12,
-    backgroundColor: 'rgba(197,163,101,0.10)',
+    backgroundColor: 'rgba(139,111,58,0.10)',
   },
   anniversaryHeart: {
     color: colors.gold,

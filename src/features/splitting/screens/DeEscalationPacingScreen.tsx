@@ -124,7 +124,7 @@ export function DeEscalationPacingScreen() {
           accessibilityRole="button"
           accessibilityLabel="Take 5 slow breaths"
           onPress={() => navigation.navigate('BreatheWithMe', { flow })}
-          android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
         >
           <View style={styles.ritualIcon}>{RITUAL_ICON.breath}</View>
           <View style={{ flex: 1 }}>
@@ -187,7 +187,7 @@ export function DeEscalationPacingScreen() {
               onPress={() => setDuration(d.id)}
               accessibilityRole="button"
               accessibilityState={{ selected: duration === d.id }}
-              android_ripple={{ color: 'rgba(197,163,101,0.1)' }}
+              android_ripple={{ color: 'rgba(139,111,58,0.1)' }}
             >
               <Text style={[styles.durationText, duration === d.id && styles.durationTextActive]}>
                 {d.label}
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(197,163,101,0.16)',
+    backgroundColor: 'rgba(139,111,58,0.16)',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,

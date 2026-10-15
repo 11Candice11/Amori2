@@ -226,7 +226,7 @@ export function MoodBreatheScreen() {
           onPress={goHome}
           accessibilityRole="button"
           accessibilityLabel="Done"
-          android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+          android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
         >
           <Text style={styles.secondaryBtnText}>{done ? 'Back to sanctuary' : "I'm done"}</Text>
         </Pressable>

@@ -9,3 +9,18 @@ export { MemoriesCard } from './MemoriesCard';
 export { VisionBoardCard } from './VisionBoardCard';
 export { TogetherTabs } from './TogetherTabs';
 export type { TogetherTabKey } from './TogetherTabs';
+export { ScrapbookCard } from './ScrapbookCard';
+export {
+  CornerFlower,
+  FlowerDecor,
+  LeafDecor,
+  HeartDecor,
+  TapeDecor,
+  StampDecor,
+  PaperclipDecor,
+  PinDecor,
+  PencilDecor,
+  EnvelopeDecor,
+  StickyNoteBackground,
+  ScrapbookDecorationCluster,
+} from './ScrapbookDecorations';

@@ -59,7 +59,7 @@ public sealed class DistractionService(
         var session = await db.GameSessions.Include(s => s.Game)
             .FirstOrDefaultAsync(s => s.Id == sessionId, ct)
             ?? throw new NotFoundException("Game session", sessionId);
-        if (session.UserId != userId) throw new UnauthorizedException();
+        if (session.UserId != userId) throw new ForbiddenException();
         if (session.Status != GameSessionStatus.InProgress)
             throw new ConflictException("Session is not in progress.");
 

@@ -12,6 +12,8 @@ namespace Amori.Api.Features.Users;
 [Authorize]
 public sealed class UsersController(
     IUserService userService,
+    IPointsService pointsService,
+    IBadgeStatsService badgeStatsService,
     ICurrentUserService currentUser) : ControllerBase
 {
     private Guid RequireUserId() =>
@@ -45,4 +47,60 @@ public sealed class UsersController(
         await userService.ChangePasswordAsync(RequireUserId(), request, ct);
         return NoContent();
     }
+
+    // ─── Gamification: Points ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Apply a manual points adjustment (support corrections, testing).
+    ///
+    /// Only <c>ManualAdjustment</c> is accepted. Every other activity earns its
+    /// points server-side when the activity actually happens, so that a client
+    /// cannot award itself points or decide how many they are worth.
+    /// </summary>
+    [HttpPost("me/points")]
+    [ProducesResponseType(typeof(AddPointsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> AddPoints(
+        [FromBody] AddPointsRequest request, CancellationToken ct) =>
+        Ok(await pointsService.AddPointsAsync(RequireUserId(), request, ct));
+
+    /// <summary>Get the current user's points and level information.</summary>
+    [HttpGet("me/points")]
+    [ProducesResponseType(typeof(UserPointsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPoints(CancellationToken ct) =>
+        Ok(await pointsService.GetUserPointsAsync(RequireUserId(), ct));
+
+    /// <summary>Get the current user's earned badges.</summary>
+    [HttpGet("me/badges")]
+    [ProducesResponseType(typeof(List<BadgeResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBadges(CancellationToken ct) =>
+        Ok(await pointsService.GetUserBadgesAsync(RequireUserId(), ct));
+
+    /// <summary>
+    /// Get the current user's badge progress counters, keyed by unlock criteria
+    /// (for example "hugs_sent": 5). Criteria we don't track are omitted.
+    /// </summary>
+    [HttpGet("me/badge-stats")]
+    [ProducesResponseType(typeof(Dictionary<string, int>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBadgeStats(CancellationToken ct) =>
+        Ok(await badgeStatsService.GetBadgeStatsAsync(RequireUserId(), ct));
+
+    /// <summary>
+    /// Archive a badge to the user's vault (marks it as saved). Accepts a level
+    /// badge's id or a catalogue badge's slug, e.g. <c>first_embrace</c>.
+    /// </summary>
+    [HttpPost("me/badges/{badgeId}/archive")]
+    [ProducesResponseType(typeof(BadgeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ArchiveBadge(
+        [FromRoute] string badgeId, CancellationToken ct) =>
+        Ok(await pointsService.ArchiveBadgeToVaultAsync(RequireUserId(), badgeId, ct));
+
+    /// <summary>Get the current user's points history (debug/admin).</summary>
+    [HttpGet("me/points/history")]
+    [ProducesResponseType(typeof(List<PointsHistoryEntryResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPointsHistory(
+        CancellationToken ct, [FromQuery] int limit = 50) =>
+        Ok(await pointsService.GetPointsHistoryAsync(RequireUserId(), limit, ct));
 }

@@ -1,11 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import LottieView from 'lottie-react-native';
 
 import { colors } from '../../theme';
-
-// Shared Lottie source used for every "created / saved successfully" moment.
-const SUCCESS_SOURCE = require('../../../../images/lottie/success.json');
+import { SparklesAnimation } from './SparklesAnimation';
 
 type SuccessAnimationProps = {
   /** Diameter (px) of the square the animation is drawn into. Defaults to 120. */
@@ -21,9 +18,10 @@ type SuccessAnimationProps = {
 };
 
 /**
- * The canonical success indicator. Renders the shared `success.json` Lottie
- * animation once and calls `onFinish` when it completes. Use it inline to
- * confirm a create/save action (a new todo, memory, timeline event, etc.).
+ * The canonical success indicator. Renders a gold sparkles animation that
+ * floats upward and gathers at the bottom nav bar. Calls `onFinish` when it
+ * completes. Use it inline to confirm a create/save action (a new todo,
+ * memory, timeline event, etc.).
  */
 export function SuccessAnimation({
   size = 120,
@@ -33,12 +31,11 @@ export function SuccessAnimation({
   onFinish,
 }: SuccessAnimationProps) {
   return (
-    <LottieView
-      source={SUCCESS_SOURCE}
+    <SparklesAnimation
+      size={size}
+      style={style}
       autoPlay={autoPlay}
-      loop={loop}
-      onAnimationFinish={onFinish}
-      style={[{ width: size, height: size }, style]}
+      onFinish={onFinish}
     />
   );
 }
@@ -51,7 +48,7 @@ type SuccessScreenProps = {
 };
 
 /**
- * Full-screen, theme-aware success state. Centers the success animation on the
+ * Full-screen, theme-aware success state. Centers the sparkles animation on the
  * app background — handy right after a create flow before navigating away.
  */
 export function SuccessScreen({ size = 160, onFinish }: SuccessScreenProps) {

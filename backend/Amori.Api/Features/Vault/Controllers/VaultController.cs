@@ -36,7 +36,7 @@ public sealed class VaultController(
     public async Task<IActionResult> GetGiftById(Guid giftId, CancellationToken ct) =>
         Ok(await vaultService.GetGiftByIdAsync(RequireUserId(), giftId, ct));
 
-    /// <summary>Save one of the relationship's memories to the caller's vault.</summary>
+    /// <summary>Save one of the relationship's memories or vision board items to the caller's vault.</summary>
     [HttpPost("gifts")]
     [ProducesResponseType(typeof(VaultGiftResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
@@ -47,7 +47,7 @@ public sealed class VaultController(
     }
 
     /// <summary>
-    /// Send one of the relationship's memories as a gift to the caller's
+    /// Send one of the relationship's memories or vision board items as a gift to the caller's
     /// partner. It lands in the partner's vault (not the caller's) and notifies
     /// them. Returns a confirmation rather than the gift, since the caller can't
     /// read the partner's private vault.
@@ -57,6 +57,17 @@ public sealed class VaultController(
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> SendGiftToPartner([FromBody] SaveVaultGiftRequest req, CancellationToken ct) =>
         Ok(await vaultService.SendGiftToPartnerAsync(RequireUserId(), req, ct));
+
+    /// <summary>
+    /// Create a new gift-only memory and send it to the caller's partner in one operation.
+    /// The memory is not added to the caller's or partner's regular memories feed, only
+    /// appears in the partner's vault. Returns a confirmation with the gift ID.
+    /// </summary>
+    [HttpPost("gifts/create")]
+    [ProducesResponseType(typeof(SendGiftResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateAndSendGiftToPartner([FromBody] CreateGiftRequest req, CancellationToken ct) =>
+        Ok(await vaultService.CreateGiftToPartnerAsync(RequireUserId(), req, ct));
 
     /// <summary>Remove a saved gift from the caller's vault.</summary>
     [HttpDelete("gifts/{giftId:guid}")]

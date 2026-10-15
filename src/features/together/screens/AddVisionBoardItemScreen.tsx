@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
-  typeChipActive: { borderColor: colors.gold, backgroundColor: 'rgba(197,163,101,0.14)' },
+  typeChipActive: { borderColor: colors.gold, backgroundColor: 'rgba(139,111,58,0.14)' },
   typeChipText: { ...typography.bodySm, color: colors.neutralMuted },
   typeChipTextActive: { color: colors.gold },
 

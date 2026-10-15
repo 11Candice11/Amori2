@@ -1,28 +1,21 @@
 /**
  * CheckInStep2Screen — "Choose your specific mood"
  *
- * Step 2 of 2: Shows a list of moods filtered to the quadrant the
- * user selected in Step 1. Each row has a radio-style selector, mood
- * name, and a short description. At the bottom there's a "Confirm &
- * Anchor" CTA and an "I don't know" fallback.
- *
- * Design notes:
- *  - Forest image header with a dark overlay (same pattern as Step 1)
- *  - Quadrant label + tagline shown prominently at top
- *  - Scrollable list of mood options (radio select)
- *  - Gold CTA pill at bottom
- *  - "I don't know" ghost link below CTA
+ * Step 2 of 2: Shows all 80 moods in a large continuous grid where you can
+ * pan/scroll up/down/left/right to explore different mood regions. Each
+ * mood bubble is colored by its quadrant with smooth transitions.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
+  Animated,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
+  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -35,41 +28,7 @@ import {
   type MoodQuadrant,
 } from '../types/mood.types';
 
-// ─── Images ───────────────────────────────────────────────────────────────────
-
-// Use the forest image for High Unpleasant (stormy), fireplace for others
-const forestImage = require('../../../../images/forest.png');
-const fireplaceImage = require('../../../../images/fireplace.png');
-const cozyImage = require('../../../../images/cozy.png');
-
-function getBackgroundImage(quadrant: MoodQuadrant) {
-  switch (quadrant) {
-    case 'HIGH_UNPLEASANT':
-      return forestImage;   // dark, stirring forest
-    case 'LOW_UNPLEASANT':
-      return forestImage;   // quiet forest, subdued
-    case 'HIGH_PLEASANT':
-      return fireplaceImage; // warm, bright fire
-    case 'LOW_PLEASANT':
-      return cozyImage;      // calm, cozy interior
-  }
-}
-
 // ─── Icons ────────────────────────────────────────────────────────────────────
-
-function CheckIcon() {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M5 12l4 4L19 7"
-        stroke={colors.ctaText}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
 
 function AnchorIcon() {
   return (
@@ -101,15 +60,25 @@ function QuestionDontKnowIcon() {
   );
 }
 
-// ─── Quadrant accent color helper ────────────────────────────────────────────
+// ─── Color spectrum ────────────────────────────────────────────────────────────
 
-function getQuadrantLabelColor(quadrant: MoodQuadrant): string {
-  switch (quadrant) {
-    case 'HIGH_PLEASANT':   return colors.gold;
-    case 'LOW_PLEASANT':    return colors.primaryLight;
-    case 'HIGH_UNPLEASANT': return '#B34040';
-    case 'LOW_UNPLEASANT':  return colors.neutralMuted;
-  }
+const QUADRANT_COLORS: Record<MoodQuadrant, string> = {
+  HIGH_UNPLEASANT: '#FF6B6B',      // Red
+  HIGH_PLEASANT: '#FFD93D',        // Yellow
+  LOW_PLEASANT: '#6BCF9E',         // Green
+  LOW_UNPLEASANT: '#6B9FFF',       // Blue
+};
+
+const COLOR_SPECTRUM = [
+  '#FF6B6B', '#FF7B6B', '#FF8B6B', '#FF9B6B', '#FFB84D',
+  '#FFC93D', '#FFD93D', '#E0D93D', '#C7D93D', '#ADED6E',
+  '#87CEEB', '#79C9E8', '#6BCF9E', '#65C9A0', '#5FC3A2',
+  '#5CB8B8', '#5BB0B8', '#5AACBE', '#5AA2C0', '#6B9FFF',
+  '#7E94FF', '#8B7FB8', '#9073A8', '#956798', '#9A5B88',
+];
+
+function getMoodColor(mood: MoodOption): string {
+  return QUADRANT_COLORS[mood.quadrant];
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -119,22 +88,31 @@ type Props = {
   onConfirm: (mood: MoodOption) => void;
   onIDontKnow: () => void;
   onBack: () => void;
-  /** True while the API call is in-flight */
   submitting?: boolean;
-  /** Error message from a failed confirm / "I don't know" submission. */
   error?: string | null;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, submitting = false, error = null }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export function CheckInStep2Screen({
+  quadrant,
+  onConfirm,
+  onIDontKnow,
+  onBack,
+  submitting = false,
+  error = null,
+}: Props) {
+  const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const meta = QUADRANTS.find((q) => q.key === quadrant)!;
-  const moodsForQuadrant = MOOD_OPTIONS.filter((m) => m.quadrant === quadrant);
-  const selectedMood = moodsForQuadrant.find((m) => m.id === selectedId) ?? null;
-  const accentColor = getQuadrantLabelColor(quadrant);
-  const bgImage = getBackgroundImage(quadrant);
+  const selectedMood = selectedMoodId
+    ? MOOD_OPTIONS.find((m) => m.id === selectedMoodId) ?? null
+    : null;
+
+  const handleBubbleSelect = (moodId: string) => {
+    Vibration.vibrate(30);
+    setSelectedMoodId(moodId);
+  };
 
   const handleConfirm = useCallback(() => {
     if (selectedMood) {
@@ -142,154 +120,329 @@ export function CheckInStep2Screen({ quadrant, onConfirm, onIDontKnow, onBack, s
     }
   }, [selectedMood, onConfirm]);
 
-  const renderMoodRow = useCallback(
-    (mood: MoodOption) => {
-      const isSelected = mood.id === selectedId;
-      return (
-        <Pressable
-          key={mood.id}
-          style={({ pressed }) => [
-            styles.moodRow,
-            isSelected && styles.moodRowSelected,
-            pressed && styles.moodRowPressed,
-          ]}
-          onPress={() => setSelectedId(mood.id)}
-          android_ripple={{ color: 'rgba(253,252,240,0.05)' }}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: isSelected }}
-          accessibilityLabel={`${mood.label}: ${mood.description}`}
-        >
-          {/* Radio / check indicator */}
-          <View style={[styles.radio, isSelected && styles.radioSelected]}>
-            {isSelected && <CheckIcon />}
-          </View>
-
-          {/* Text */}
-          <View style={styles.moodText}>
-            <Text style={[styles.moodLabel, isSelected && styles.moodLabelSelected]}>
-              {mood.label}
-            </Text>
-            <Text style={styles.moodDescription}>{mood.description}</Text>
-          </View>
-        </Pressable>
-      );
+  // Arrange all 80 moods in a 2x2 quadrant grid layout with 10 bridge moods between each
+  const quadrants: { key: MoodQuadrant; moods: MoodOption[] }[] = [
+    {
+      key: 'HIGH_PLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'HIGH_PLEASANT'),
     },
-    [selectedId],
-  );
+    {
+      key: 'HIGH_UNPLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'HIGH_UNPLEASANT'),
+    },
+    {
+      key: 'LOW_PLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'LOW_PLEASANT'),
+    },
+    {
+      key: 'LOW_UNPLEASANT',
+      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'LOW_UNPLEASANT'),
+    },
+  ];
+
+  // Add 10 bridge moods between each pair of adjacent quadrants
+  // High Energy: 20 + 10 bridge to Low Energy + 10 bridge from Low Energy = 40 moods per side
+  // Create 5x8 grids (40 moods per quadrant zone including bridges)
+  const createQuadrantGrid = (
+    mainMoods: MoodOption[],
+    adjacentMoods1: MoodOption[],
+    adjacentMoods2: MoodOption[]
+  ): (MoodOption | null)[][] => {
+    const allMoods = [
+      ...mainMoods.slice(0, 20),
+      ...adjacentMoods1.slice(0, 10),
+      ...adjacentMoods2.slice(0, 10),
+    ];
+
+    const grid: (MoodOption | null)[][] = [];
+    for (let i = 0; i < Math.ceil(allMoods.length / 5); i++) {
+      const row: (MoodOption | null)[] = [];
+      for (let j = 0; j < 5; j++) {
+        const index = i * 5 + j;
+        row.push(index < allMoods.length ? allMoods[index] : null);
+      }
+      grid.push(row);
+    }
+    return grid;
+  };
+
+  // Build grids for each quadrant with bridge moods
+  const highEnergyUnpleasantMoods = quadrants[1].moods; // RED
+  const highEnergyPleasantMoods = quadrants[0].moods; // YELLOW
+  const lowEnergyUnpleasantMoods = quadrants[3].moods; // BLUE
+  const lowEnergyPleasantMoods = quadrants[2].moods; // GREEN
+
+  const quadrantGrids = [
+    {
+      quadrant: 'HIGH_UNPLEASANT',
+      grid: createQuadrantGrid(
+        highEnergyUnpleasantMoods,
+        highEnergyPleasantMoods,
+        lowEnergyUnpleasantMoods
+      ),
+    },
+    {
+      quadrant: 'HIGH_PLEASANT',
+      grid: createQuadrantGrid(
+        highEnergyPleasantMoods,
+        highEnergyUnpleasantMoods,
+        lowEnergyPleasantMoods
+      ),
+    },
+    {
+      quadrant: 'LOW_UNPLEASANT',
+      grid: createQuadrantGrid(
+        lowEnergyUnpleasantMoods,
+        highEnergyUnpleasantMoods,
+        lowEnergyPleasantMoods
+      ),
+    },
+    {
+      quadrant: 'LOW_PLEASANT',
+      grid: createQuadrantGrid(
+        lowEnergyPleasantMoods,
+        highEnergyPleasantMoods,
+        lowEnergyUnpleasantMoods
+      ),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      {/* Mood list scrolls freely */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        overScrollMode="never"
-      >
-        {/* ── Header with background image ── */}
-        <ImageBackground
-          source={bgImage}
-          style={styles.headerImage}
-          imageStyle={styles.headerImageStyle}
-          resizeMode="cover"
-        >
-          <View style={styles.headerOverlay}>
-            {/* Back button */}
-            <Pressable
-              style={styles.backButton}
-              onPress={!submitting ? onBack : undefined}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              accessibilityState={{ disabled: submitting }}
-            >
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M19 12H5M5 12l7-7M5 12l7 7"
-                  stroke={colors.neutral}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
-            </Pressable>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable
+            style={styles.backButton}
+            onPress={!submitting ? onBack : undefined}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityState={{ disabled: submitting }}
+          >
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M19 12H5M5 12l7-7M5 12l7 7"
+                stroke={colors.neutral}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
 
-            {/* Step label */}
-            <View style={styles.stepRow}>
-              <View style={styles.stepDot} />
-              <Text style={styles.stepLabel}>STEP 2 OF 2</Text>
-            </View>
-
-            {/* Quadrant label + tagline */}
-            <Text style={[styles.quadrantLabel, { color: accentColor }]}>
-              {meta.label.toUpperCase()} • {meta.tagline.toUpperCase()}
-            </Text>
-
-            <Text style={styles.headerSubtext}>
-              Take a deep breath. No judgment in this sanctuary.
-            </Text>
-          </View>
-        </ImageBackground>
-
-        {/* ── Mood list ── */}
-        <View style={styles.listContainer}>
-          {moodsForQuadrant.map(renderMoodRow)}
+          <Text style={styles.headerTitle}>
+            Tap the emotion that best describes how you feel right now
+          </Text>
         </View>
 
-        {/* Bottom padding so last mood row isn't hidden behind the fixed footer */}
-        <View style={styles.listBottomPadding} />
-      </ScrollView>
-
-      {/* ── Fixed footer — always visible, never scrolls away ── */}
-      <View style={styles.footer}>
-        {/* Surface any submit / "I don't know" error so it isn't silent */}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {/* Confirm CTA */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.confirmButton,
-            (!selectedMood || submitting) && styles.confirmButtonDisabled,
-            pressed && selectedMood && !submitting && styles.confirmButtonPressed,
-          ]}
-          onPress={handleConfirm}
-          disabled={!selectedMood || submitting}
-          android_ripple={selectedMood && !submitting ? { color: 'rgba(10,20,15,0.2)' } : undefined}
-          accessibilityRole="button"
-          accessibilityLabel="Confirm and anchor"
-          accessibilityState={{ disabled: !selectedMood || submitting }}
+        {/* Mood grid - 2x2 quadrant layout */}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.gridScroll}
+          contentContainerStyle={styles.gridContent}
+          scrollEnabled={true}
+          showsVerticalScrollIndicator={true}
         >
-          {submitting ? (
-            <ActivityIndicator size="small" color={colors.ctaText} />
-          ) : (
-            <>
-              <AnchorIcon />
-              <Text style={styles.confirmButtonText}>Confirm & Anchor</Text>
-            </>
-          )}
-        </Pressable>
+          <View style={styles.quadrantGridContainer}>
+            {/* Top row: High Energy moods */}
+            <View style={styles.quadrantRow}>
+              {/* Top-left: High Energy Unpleasant (Red) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[0].grid.map((row, rowIndex) => (
+                  <View key={`red-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
 
-        {/* I don't know */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.dontKnowButton,
-            pressed && styles.dontKnowPressed,
-            submitting && styles.dontKnowPressed,
-          ]}
-          onPress={!submitting ? onIDontKnow : undefined}
-          android_ripple={{ color: 'rgba(253,252,240,0.06)' }}
-          accessibilityRole="button"
-          accessibilityLabel="I don't know, hard to pinpoint words right now"
-          accessibilityState={{ disabled: submitting }}
-        >
-          <QuestionDontKnowIcon />
-          <Text style={styles.dontKnowText}>I don't know</Text>
-        </Pressable>
-        <Text style={styles.dontKnowHint}>Hard to pinpoint words right now</Text>
+              {/* Top-right: High Energy Pleasant (Yellow) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[1].grid.map((row, rowIndex) => (
+                  <View key={`yellow-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Bottom row: Low Energy moods */}
+            <View style={styles.quadrantRow}>
+              {/* Bottom-left: Low Energy Unpleasant (Blue) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[2].grid.map((row, rowIndex) => (
+                  <View key={`blue-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
+
+              {/* Bottom-right: Low Energy Pleasant (Green) with bridges */}
+              <View style={styles.quadrantBox}>
+                {quadrantGrids[3].grid.map((row, rowIndex) => (
+                  <View key={`green-row-${rowIndex}`} style={styles.gridRow}>
+                    {row.map((mood, colIndex) =>
+                      mood ? (
+                        <BubbleMood
+                          key={mood.id}
+                          mood={mood}
+                          isSelected={selectedMoodId === mood.id}
+                          onPress={() => handleBubbleSelect(mood.id)}
+                        />
+                      ) : (
+                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
+                      )
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Description at bottom */}
+        {selectedMood && (
+          <View style={styles.descriptionContainer}>
+            <Text style={[styles.descriptionLabel, { color: getMoodColor(selectedMood) }]}>
+              {selectedMood.label}
+            </Text>
+            <Text style={styles.descriptionSubtext}>{selectedMood.description}</Text>
+          </View>
+        )}
+
+        {/* Footer with actions */}
+        <View style={styles.footer}>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.confirmButton,
+              (!selectedMood || submitting) && styles.confirmButtonDisabled,
+              pressed && selectedMood && !submitting && styles.confirmButtonPressed,
+            ]}
+            onPress={handleConfirm}
+            disabled={!selectedMood || submitting}
+            android_ripple={selectedMood && !submitting ? { color: 'rgba(10,20,15,0.2)' } : undefined}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm and anchor"
+            accessibilityState={{ disabled: !selectedMood || submitting }}
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color={colors.ctaText} />
+            ) : (
+              <>
+                <AnchorIcon />
+                <Text style={styles.confirmButtonText}>Confirm & Anchor</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.dontKnowButton,
+              pressed && styles.dontKnowPressed,
+              submitting && styles.dontKnowPressed,
+            ]}
+            onPress={!submitting ? onIDontKnow : undefined}
+            android_ripple={{ color: 'rgba(253,252,240,0.06)' }}
+            accessibilityRole="button"
+            accessibilityLabel="I don't know, hard to pinpoint words right now"
+            accessibilityState={{ disabled: submitting }}
+          >
+            <QuestionDontKnowIcon />
+            <Text style={styles.dontKnowText}>I don't know</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+// ─── Bubble component ─────────────────────────────────────────────────────────
+
+interface BubbleMoodProps {
+  mood: MoodOption;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+function BubbleMood({ mood, isSelected, onPress }: BubbleMoodProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: isSelected ? 1.15 : 1,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 40,
+    }).start();
+  }, [isSelected, scaleAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.bubbleSpacing,
+        {
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.bubble,
+          {
+            backgroundColor: getMoodColor(mood),
+          },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${mood.label}: ${mood.description}`}
+      >
+        <Text
+          style={styles.bubbleText}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+        >
+          {mood.label}
+        </Text>
+        {isSelected && <View style={styles.bubbleRing} />}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -300,122 +453,116 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scroll: {
+  container: {
     flex: 1,
-  },
-  content: {
-    // no paddingBottom here — footer handles the bottom space
   },
 
-  // Header image
-  headerImage: {
-    width: '100%',
-    height: 200,
-    marginBottom: spacing.sm,
-  },
-  headerImageStyle: {
-    opacity: 0.6,
-  },
-  headerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(10,20,15,0.6)',
+  // Header
+  header: {
+    paddingTop: spacing.lg,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-    justifyContent: 'flex-end',
+    paddingBottom: spacing.md,
+    alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
     top: spacing.md,
     left: spacing.md,
     padding: 4,
+    zIndex: 10,
   },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: spacing.xs,
-  },
-  stepDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.gold,
-  },
-  stepLabel: {
-    ...typography.label,
-    color: colors.gold,
-    fontSize: 9,
-  },
-  quadrantLabel: {
-    ...typography.label,
-    fontSize: 11,
-    marginBottom: spacing.xs,
-    letterSpacing: 1.4,
-  },
-  headerSubtext: {
-    ...typography.body,
-    color: colors.neutralMuted,
+  headerTitle: {
+    ...typography.headline,
+    color: colors.neutral,
+    textAlign: 'center',
+    fontSize: 16,
+    paddingHorizontal: spacing.lg,
   },
 
-  // Mood list
-  listContainer: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-  },
-  listBottomPadding: {
-    // Enough room so the last mood row clears the fixed footer
-    height: 180,
-  },
-  moodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  moodRowSelected: {
-    borderColor: 'rgba(197,163,101,0.4)',
-    backgroundColor: 'rgba(197,163,101,0.08)',
-  },
-  moodRowPressed: {
-    opacity: 0.82,
-  },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.neutralSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  radioSelected: {
-    backgroundColor: colors.ctaBackground,
-    borderColor: colors.ctaBackground,
-  },
-  moodText: {
+  // Grid
+  gridScroll: {
     flex: 1,
   },
-  moodLabel: {
-    ...typography.bodyMedium,
-    color: colors.neutral,
-    marginBottom: 2,
+  gridContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
-  moodLabelSelected: {
-    color: colors.gold,
+  quadrantGridContainer: {
+    flexDirection: 'column',
   },
-  moodDescription: {
-    ...typography.bodySm,
-    color: colors.neutralMuted,
+  quadrantRow: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  quadrantBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(197,163,101,0.1)',
+  },
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 0,
+    paddingHorizontal: 0,
+  },
+  bubbleSpacing: {
+    width: '20%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+  },
+  bubble: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 1000,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  bubbleText: {
+    ...typography.bodySemiBold,
+    fontSize: 9,
+    color: '#0A140F',
+    textAlign: 'center',
+    paddingHorizontal: 2,
+  },
+  bubbleRing: {
+    position: 'absolute',
+    width: '115%',
+    height: '115%',
+    borderRadius: 1000,
+    borderWidth: 2,
+    borderColor: colors.gold,
   },
 
-  // Fixed footer
+  // Description
+  descriptionContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: 'rgba(10,20,15,0.4)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(197,163,101,0.2)',
+  },
+  descriptionLabel: {
+    ...typography.bodySemiBold,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  descriptionSubtext: {
+    ...typography.body,
+    color: colors.neutral,
+    textAlign: 'center',
+  },
+
+  // Footer
   footer: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
@@ -426,7 +573,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
 
-  // Confirm CTA
+  // Buttons
   confirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -449,7 +596,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  // Don't know
   dontKnowButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -464,19 +610,10 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.neutralMuted,
   },
-  dontKnowHint: {
-    ...typography.bodySm,
-    color: colors.neutralSubtle,
-    textAlign: 'center',
-    paddingBottom: spacing.xs,
-  },
   error: {
     ...typography.bodySm,
     color: '#B34040',
     textAlign: 'center',
     marginBottom: spacing.sm,
-  },
-  bottomPadding: {
-    height: spacing.lg,
   },
 });

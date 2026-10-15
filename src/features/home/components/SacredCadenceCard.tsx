@@ -130,7 +130,7 @@ export function SacredCadenceCard({
           <Pressable
             style={({ pressed }) => [styles.ctaSecondary, pressed && styles.ctaSecondaryPressed]}
             onPress={onOpenView}
-            android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
             accessibilityRole="button"
             accessibilityLabel="Open View"
           >
@@ -206,12 +206,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(197,163,101,0.1)',
+    backgroundColor: 'rgba(139,111,58,0.1)',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.25)',
+    borderColor: 'rgba(139,111,58,0.25)',
     marginBottom: 6,
   },
   moodPillDot: {

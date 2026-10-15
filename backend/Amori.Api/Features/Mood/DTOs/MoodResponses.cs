@@ -17,6 +17,14 @@ public sealed class CheckInResponse
     public bool IsSharedWithPartner { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Points and badges this check-in earned. Empty when the user had already
+    /// checked in today, since the daily points are only credited once.
+    /// Settable because it is filled in after the check-in is saved.
+    /// </summary>
+    public Common.Responses.RewardsResponse Rewards { get; set; } =
+        Common.Responses.RewardsResponse.None;
 }
 
 public sealed class MoodSummaryResponse

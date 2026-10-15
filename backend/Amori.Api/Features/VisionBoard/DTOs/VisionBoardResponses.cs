@@ -34,6 +34,12 @@ public sealed class VisionBoardItemResponse
     public int SortOrder { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Points and badges this action earned. Empty when it earned nothing.
+    /// </summary>
+    public Common.Responses.RewardsResponse Rewards { get; set; } =
+        Common.Responses.RewardsResponse.None;
 }
 
 public sealed class VisionBoardSectionResponse

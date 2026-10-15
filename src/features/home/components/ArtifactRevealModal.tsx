@@ -154,7 +154,7 @@ export function ArtifactRevealModal({
             disabled={saved}
             accessibilityRole="button"
             accessibilityLabel={saved ? 'Already saved to vault' : 'Save to vault'}
-            android_ripple={{ color: 'rgba(197,163,101,0.15)' }}
+            android_ripple={{ color: 'rgba(139,111,58,0.15)' }}
           >
             <Text style={styles.saveBtnText}>{saved ? '✓ Already in Vault' : 'Save to Vault'}</Text>
           </Pressable>
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
   },
   saveBtnDone: {
-    backgroundColor: 'rgba(197,163,101,0.14)',
+    backgroundColor: 'rgba(139,111,58,0.14)',
   },
   saveBtnText: {
     ...typography.bodySemiBold,

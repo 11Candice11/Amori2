@@ -177,7 +177,7 @@ export function MonthlyMemoriesWidget({
       <Pressable
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         onPress={onOpen}
-        android_ripple={{ color: 'rgba(197,163,101,0.12)' }}
+        android_ripple={{ color: 'rgba(139,111,58,0.12)' }}
         accessibilityRole="button"
         accessibilityLabel={
           isEmpty
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: 'rgba(197,163,101,0.12)',
+    backgroundColor: 'rgba(139,111,58,0.12)',
   },
   badgeText: {
     ...typography.label,

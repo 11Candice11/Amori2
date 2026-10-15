@@ -15,4 +15,7 @@ public sealed class User : BaseEntity
 
     // Navigation
     public ICollection<RelationshipMember> RelationshipMemberships { get; set; } = [];
+    public UserPoints? UserPoints { get; set; }
+    public ICollection<Badge> Badges { get; set; } = [];
+    public ICollection<PointsHistory> PointsHistory { get; set; } = [];
 }

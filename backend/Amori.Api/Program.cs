@@ -116,6 +116,11 @@ app.UseCors(Amori.Api.Configuration.CorsSettings.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Resolve the caller's local date once, after authentication so the warning
+// logged for an implausible date can name the user. Day-based rules (daily
+// points, streaks) read it from IClientLocalTimeAccessor.
+app.UseMiddleware<ClientLocalTimeMiddleware>();
+
 app.MapControllers();
 app.MapHealthChecks("/api/healthz");
 
