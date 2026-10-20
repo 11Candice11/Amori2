@@ -644,13 +644,13 @@ export function SanctuaryDashboard({
       <View style={styles.attGrid}>
         <View style={styles.attRow}>
           {onLetsChat ? (
-            <AttunementItem icon={<ActionImageIcon name="chat" size={100} />} title="Let's Chat" onPress={onLetsChat} />
+            <AttunementItem icon={<ActionImageIcon name="chat" size={150} />} title="Let's Chat" onPress={onLetsChat} />
           ) : null}
-          <AttunementItem icon={<ActionImageIcon name="hug" size={100} />} title="Send hug" onPress={onHug} />
+          <AttunementItem icon={<ActionImageIcon name="hug" size={150} />} title="Send hug" onPress={onHug} />
         </View>
         <View style={styles.attRow}>
-          <AttunementItem icon={<ActionImageIcon name="distraction" size={100} />} title="Distraction" onPress={onDistraction} />
-          <AttunementItem icon={<ActionImageIcon name="incident" size={100} />} title="Log Incident" onPress={onLogIncident} />
+          <AttunementItem icon={<ActionImageIcon name="distraction" size={150} />} title="Distraction" onPress={onDistraction} />
+          <AttunementItem icon={<ActionImageIcon name="incident" size={150} />} title="Log Incident" onPress={onLogIncident} />
         </View>
       </View>
 

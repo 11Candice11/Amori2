@@ -55,9 +55,11 @@ unquoted globs like `--include=*.ts` fail — quote them.
 
 Known baseline: `tsc` reports 8 pre-existing errors (MemoryLocationMap,
 ProfileStackNavigator ×2, AchievementsScreen, ProfileScreen `openLink`,
-VisionBoardScreen `sectionGroup`, MainTabNavigator `onLogout`). Backend test
-`PointsHistory_ShouldRecordTheLocalDateTheActivityHappenedOn` fails (hard-coded
-date). Don't treat those as regressions; do flag any new ones.
+VisionBoardScreen `sectionGroup`, MainTabNavigator `onLogout`). Two
+`PointsAwardingTests` fail on hard-coded dates that are now in the past:
+`PointsHistory_ShouldRecordTheLocalDateTheActivityHappenedOn` and
+`CheckIn_ShouldAwardAgainOnTheNextLocalDay` (166/168 pass). Don't treat those as
+regressions; do flag any new ones.
 
 ## Conventions that matter
 
@@ -164,6 +166,13 @@ else is a hidden tab in `src/navigation/MainTabNavigator.tsx`.
   edits and don't overwrite files you haven't re-read.
 - Don't add permanent tests unless asked; temporary verification tests are fine if
   deleted afterwards.
+- **Deploy**: `cd backend && ./deploy.sh` (~6–8 min; amd64 image built locally, shipped over
+  SSH with `~/.ssh/AmoriKey.pem` to `ubuntu@51.20.141.199`, Postgres runs in Docker on the same
+  box). Run it as a background process. **Back up first** — dumps go to `~/amori/backups/` on the
+  server: `sudo docker exec amori-postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' | gzip > ~/amori/backups/pre-deploy-<UTC>.sql.gz`.
+  Check what will run with `dotnet ef migrations script <server's last migration>`; the server's
+  list is in `__EFMigrationsHistory`. A 404 from an `[Authorize]` route on the live API means
+  that code isn't deployed (deployed routes return 401 without a token).
 - `Program.cs` runs `MigrateAsync()` on boot, so a deploy applies new migrations.
   Tests build the schema with `EnsureCreated` and do **not** exercise migrations —
   check generated SQL for anything non-trivial (filtered indexes, renames).

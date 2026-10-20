@@ -2892,7 +2892,7 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("MemoryId")
+                    b.Property<Guid?>("MemoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("memory_id");
 
@@ -2905,7 +2905,8 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnName("user_id");
 
                     b.Property<Guid?>("VisionBoardItemId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("vision_board_item_id");
 
                     b.HasKey("Id");
 
@@ -2919,6 +2920,10 @@ namespace Amori.Api.Data.Migrations
                     b.HasIndex("UserId", "MemoryId")
                         .IsUnique()
                         .HasDatabaseName("IX_vault_gifts_user_id_memory_id");
+
+                    b.HasIndex("UserId", "VisionBoardItemId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_vault_gifts_user_id_vision_board_item_id");
 
                     b.ToTable("vault_gifts", (string)null);
                 });
@@ -4161,8 +4166,7 @@ namespace Amori.Api.Data.Migrations
                     b.HasOne("Amori.Api.Domain.Entities.Memory", "Memory")
                         .WithMany()
                         .HasForeignKey("MemoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Amori.Api.Domain.Entities.User", "User")
                         .WithMany()
@@ -4172,7 +4176,8 @@ namespace Amori.Api.Data.Migrations
 
                     b.HasOne("Amori.Api.Domain.Entities.VisionBoardItem", "VisionBoardItem")
                         .WithMany()
-                        .HasForeignKey("VisionBoardItemId");
+                        .HasForeignKey("VisionBoardItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Memory");
 
