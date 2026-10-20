@@ -1,3 +1,4 @@
+using Amori.Api.Common.Time;
 using Amori.Api.Common.Exceptions;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
@@ -16,7 +17,8 @@ public sealed class HugService(
     AmoriDbContext db,
     IRelationshipAccessService relAccess,
     INotificationService notifications,
-    IRewardService rewards) : IHugService
+    IRewardService rewards,
+    IClientLocalTimeAccessor localTime) : IHugService
 {
     private const string NotificationType = NotificationTypes.Hug;
 
@@ -83,7 +85,13 @@ public sealed class HugService(
             SenderId = userId,
             RecipientId = partner.Id,
             Whisper = whisper,
-            HoldDurationMs = holdDuration
+            HoldDurationMs = holdDuration,
+            // Both partners' time zones at send time, for Long Distance Hugger.
+            // Null when a device hasn't reported one, which never counts.
+            SenderUtcOffsetMinutes = localTime.Current.WasReported
+                ? localTime.Current.UtcOffsetMinutes
+                : null,
+            RecipientUtcOffsetMinutes = partner.LastKnownUtcOffsetMinutes,
         };
         db.Hugs.Add(hug);
         await db.SaveChangesAsync(ct);

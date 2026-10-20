@@ -34,6 +34,8 @@ type BadgeListener = (badges: Set<string>, earnedBadge?: Badge) => void;
 const STATS_TTL_MS = 30_000;
 
 let cachedBadges: Set<string> = new Set();
+/** Catalogue slugs the user has saved to their vault (server rows with a slug). */
+let savedBadges: Set<string> = new Set();
 let cachedStats: Record<string, number> = {};
 let lastLoadedAt = 0;
 let listeners = new Set<BadgeListener>();
@@ -56,17 +58,39 @@ function countUnlockedCategories(stats: Record<string, number>): number {
   return ETERNAL_BOND_CATEGORIES.filter(category => earnedCategories.has(category)).length;
 }
 
-/** Fetch counters, recompute unlocked badges, and notify subscribers. */
-function fetchStats(): Promise<void> {
+function notifyListeners(): void {
+  const unlocked = new Set(cachedBadges);
+  listeners.forEach(listener => listener(unlocked));
+}
+
+/**
+ * Which catalogue badges are saved to the vault. Best-effort: a failure keeps
+ * the last known set rather than wiping every "saved" marker.
+ */
+function fetchSaved(): Promise<void> {
   return pointsService
-    .getBadgeStats()
-    .then(stats => {
+    .getBadges()
+    .then(badges => {
+      savedBadges = new Set(
+        badges
+          .filter(b => b.isArchivedInVault && typeof b.slug === 'string' && b.slug)
+          .map(b => b.slug as string),
+      );
+    })
+    .catch(err => {
+      console.warn('Failed to load saved badges:', err);
+    });
+}
+
+/** Fetch counters + saved badges, recompute unlocked badges, and notify subscribers. */
+function fetchStats(): Promise<void> {
+  return Promise.all([pointsService.getBadgeStats(), fetchSaved()])
+    .then(([stats]) => {
       cachedStats = stats ?? {};
       lastLoadedAt = Date.now();
 
-      const unlocked = badgeService.getUnlockedBadges();
-      cachedBadges = unlocked;
-      listeners.forEach(listener => listener(new Set(unlocked)));
+      cachedBadges = badgeService.getUnlockedBadges();
+      notifyListeners();
     })
     .catch(err => {
       // A 404 means the API this build is pointed at predates the badge-stats
@@ -184,11 +208,52 @@ export const badgeService = {
       .map(entry => entry.badge);
   },
 
+  /** Catalogue badge ids the user has saved to their vault. */
+  getSaved(): Set<string> {
+    return new Set(savedBadges);
+  },
+
+  /** Whether this catalogue badge is saved to the vault. */
+  isSaved(badgeId: string): boolean {
+    return savedBadges.has(badgeId);
+  },
+
   /**
-   * Save a badge to the user's vault.
+   * Save a badge to the user's vault — the one path every screen uses.
+   *
+   * The first save of a badge earns its points; the response's `rewards`
+   * envelope updates the level badge automatically (see services/api/rewards).
+   * Marks the badge saved locally and notifies subscribers so every grid shows
+   * the marker straight away.
    */
   async archiveBadge(badgeId: string): Promise<void> {
-    return pointsService.archiveBadge(badgeId).then(() => {});
+    await pointsService.archiveBadge(badgeId);
+    savedBadges = new Set(savedBadges).add(badgeId);
+    notifyListeners();
+  },
+
+  /**
+   * Save several badges at once (one request, one transaction on the server).
+   * Returns the slugs the server skipped (unknown or not earned).
+   */
+  async archiveMany(badgeIds: string[]): Promise<string[]> {
+    if (badgeIds.length === 0) return [];
+    const result = await pointsService.archiveBadges(badgeIds);
+    const next = new Set(savedBadges);
+    result.saved.forEach(b => {
+      if (b.slug) next.add(b.slug);
+    });
+    savedBadges = next;
+    notifyListeners();
+    return result.skipped;
+  },
+
+  /**
+   * Earned catalogue badges not yet saved to the vault — what the catch-up
+   * summary offers to save.
+   */
+  getUnsavedEarned(): Badge[] {
+    return ALL_BADGES.filter(b => cachedBadges.has(b.id) && !savedBadges.has(b.id));
   },
 
   /**
@@ -214,6 +279,7 @@ export const badgeService = {
    */
   reset(): void {
     cachedBadges = new Set();
+    savedBadges = new Set();
     cachedStats = {};
     lastLoadedAt = 0;
     listeners.clear();

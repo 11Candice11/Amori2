@@ -49,6 +49,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.LastActiveAt)
             .HasColumnName("last_active_at");
+        builder.Property(u => u.LastKnownUtcOffsetMinutes).HasColumnName("last_known_utc_offset_minutes");
 
         builder.Property(u => u.CreatedAt)
             .HasColumnName("created_at")

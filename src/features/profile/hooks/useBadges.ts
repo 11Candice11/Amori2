@@ -12,6 +12,8 @@ import type { Badge } from '../../../constants/badges';
 export interface UseBadgesResult {
   /** Set of earned badge IDs */
   unlockedBadges: Set<string>;
+  /** Set of badge IDs saved to the vault */
+  savedBadges: Set<string>;
   /** Full badge objects for earned badges */
   earnedBadges: Badge[];
   /** Badges user is close to unlocking */
@@ -34,6 +36,7 @@ export interface UseBadgesResult {
 
 export function useBadges(): UseBadgesResult {
   const [unlockedBadges, setUnlockedBadges] = useState<Set<string>>(new Set());
+  const [savedBadges, setSavedBadges] = useState<Set<string>>(() => badgeService.getSaved());
   const [userStats, setUserStats] = useState<Record<string, number>>(() =>
     badgeService.getUserStats(),
   );
@@ -55,6 +58,7 @@ export function useBadges(): UseBadgesResult {
         // Load badge progress from API
         const earned = await badgeService.loadEarned();
         setUnlockedBadges(earned);
+        setSavedBadges(badgeService.getSaved());
         setUserStats(badgeService.getUserStats());
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to load badges'));
@@ -69,6 +73,7 @@ export function useBadges(): UseBadgesResult {
     // badge is earned, so refresh both from the same event.
     const unsubscribe = badgeService.subscribe((badges) => {
       setUnlockedBadges(new Set(badges));
+      setSavedBadges(badgeService.getSaved());
       setUserStats(badgeService.getUserStats());
     });
 
@@ -77,6 +82,7 @@ export function useBadges(): UseBadgesResult {
 
   return {
     unlockedBadges,
+    savedBadges,
     earnedBadges: badgeService.getEarnedBadges(),
     nearbyBadges: badgeService.getNearbadges(3),
     userStats,

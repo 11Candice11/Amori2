@@ -1,21 +1,29 @@
 /**
  * CheckInStep2Screen — "Choose your specific mood"
  *
- * Step 2 of 2: Shows all 80 moods in a large continuous grid where you can
- * pan/scroll up/down/left/right to explore different mood regions. Each
- * mood bubble is colored by its quadrant with smooth transitions.
+ * One large 2×2 canvas of colour quadrants, 30 moods each (5 columns × 6 rows):
+ *
+ *      Red    | Yellow
+ *   ----------+----------
+ *      Blue   | Green
+ *
+ * The viewport is zoomed so roughly 3 columns × 4 rows are visible at a time.
+ * It opens on the quadrant chosen in step 1; the user drags in any direction
+ * (left/right/up/down) to reach the neighbouring colours. Panning snaps to the
+ * mood grid on release.
  */
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  LayoutChangeEvent,
+  PanResponder,
   Pressable,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  View,
   Vibration,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -23,7 +31,6 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { colors, spacing, typography } from '../../../shared/theme';
 import {
   MOOD_OPTIONS,
-  QUADRANTS,
   type MoodOption,
   type MoodQuadrant,
 } from '../types/mood.types';
@@ -50,36 +57,78 @@ function QuestionDontKnowIcon() {
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
       <Path
         d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"
-        stroke={colors.neutralMuted}
+        stroke={SOFT_TEXT}
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <Circle cx="12" cy="12" r="10" stroke={colors.neutralMuted} strokeWidth={1.5} />
+      <Circle cx="12" cy="12" r="10" stroke={SOFT_TEXT} strokeWidth={1.5} />
     </Svg>
   );
 }
 
-// ─── Color spectrum ────────────────────────────────────────────────────────────
+// ─── Colours & canvas layout ──────────────────────────────────────────────────
 
 const QUADRANT_COLORS: Record<MoodQuadrant, string> = {
-  HIGH_UNPLEASANT: '#FF6B6B',      // Red
-  HIGH_PLEASANT: '#FFD93D',        // Yellow
-  LOW_PLEASANT: '#6BCF9E',         // Green
-  LOW_UNPLEASANT: '#6B9FFF',       // Blue
+  HIGH_UNPLEASANT: '#FF6B6B', // Red
+  HIGH_PLEASANT: '#FFD93D',   // Yellow
+  LOW_PLEASANT: '#6BCF9E',    // Green
+  LOW_UNPLEASANT: '#6B9FFF',  // Blue
 };
 
-const COLOR_SPECTRUM = [
-  '#FF6B6B', '#FF7B6B', '#FF8B6B', '#FF9B6B', '#FFB84D',
-  '#FFC93D', '#FFD93D', '#E0D93D', '#C7D93D', '#ADED6E',
-  '#87CEEB', '#79C9E8', '#6BCF9E', '#65C9A0', '#5FC3A2',
-  '#5CB8B8', '#5BB0B8', '#5AACBE', '#5AA2C0', '#6B9FFF',
-  '#7E94FF', '#8B7FB8', '#9073A8', '#956798', '#9A5B88',
-];
+/**
+ * Brighter text/accent colours for this screen. The theme's `neutral` is a dark
+ * brown that reads as dim against the near-black background.
+ */
+const BRIGHT_TEXT = '#F3E9D2';
+const SOFT_TEXT = '#CBBE9E';
+const BRIGHT_GOLD = '#D9B26A';
 
 function getMoodColor(mood: MoodOption): string {
   return QUADRANT_COLORS[mood.quadrant];
 }
+
+/** Each quadrant is 5 columns × 6 rows = 30 moods. */
+const QUAD_COLS = 5;
+const QUAD_ROWS = 6;
+
+/** Where each colour sits on the 2×2 canvas (quadrant column/row). */
+const QUADRANT_POSITION: Record<MoodQuadrant, { qCol: 0 | 1; qRow: 0 | 1 }> = {
+  HIGH_UNPLEASANT: { qCol: 0, qRow: 0 }, // Red    – top left
+  HIGH_PLEASANT: { qCol: 1, qRow: 0 },   // Yellow – top right
+  LOW_UNPLEASANT: { qCol: 0, qRow: 1 },  // Blue   – bottom left
+  LOW_PLEASANT: { qCol: 1, qRow: 1 },    // Green  – bottom right
+};
+
+const CANVAS_COLS = QUAD_COLS * 2; // 10
+const CANVAS_ROWS = QUAD_ROWS * 2; // 12
+
+/** Visible cells (the extra 0.25 lets the neighbouring colour peek in). */
+const VIEW_COLS = 3;
+const VIEW_ROWS = 4;
+const PEEK = 0.25;
+
+/** Furthest the viewport's top-left cell can go while staying on the canvas. */
+const MAX_COL = CANVAS_COLS - VIEW_COLS; // 6
+const MAX_ROW = CANVAS_ROWS - VIEW_ROWS; // 7
+
+type PlacedMood = { mood: MoodOption; col: number; row: number };
+
+/** Lay every mood out on the canvas grid once. */
+const PLACED_MOODS: PlacedMood[] = (
+  Object.keys(QUADRANT_POSITION) as MoodQuadrant[]
+).flatMap((q) => {
+  const { qCol, qRow } = QUADRANT_POSITION[q];
+  return MOOD_OPTIONS.filter((m) => m.quadrant === q)
+    .slice(0, QUAD_COLS * QUAD_ROWS)
+    .map((mood, i) => ({
+      mood,
+      col: qCol * QUAD_COLS + (i % QUAD_COLS),
+      row: qRow * QUAD_ROWS + Math.floor(i / QUAD_COLS),
+    }));
+});
+
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -103,109 +152,105 @@ export function CheckInStep2Screen({
   error = null,
 }: Props) {
   const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
+
+  // Size of one mood cell, derived from the space available for the grid.
+  const cell = viewport
+    ? Math.floor(
+        Math.min(viewport.w / (VIEW_COLS + PEEK), viewport.h / (VIEW_ROWS + PEEK)),
+      )
+    : 0;
+
+  // Pan state. `pan` is the canvas translation in px; `cellPos` is the snapped
+  // top-left cell (col,row) so we can re-snap if the cell size changes.
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const panValue = useRef({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const cellRef = useRef(0);
+  cellRef.current = cell;
+
+  useEffect(() => {
+    const id = pan.addListener((v) => {
+      panValue.current = v;
+    });
+    return () => pan.removeListener(id);
+  }, [pan]);
+
+  // Resting position as a snapped top-left cell, so a resize keeps the user's place.
+  const cellPos = useRef<{ col: number; row: number } | null>(null);
+  const focusedQuadrant = useRef<MoodQuadrant | null>(null);
+
+  // Open focused on the quadrant picked in step 1 (only when it first appears or
+  // changes). If the cell size merely changes, stay where the user is.
+  useEffect(() => {
+    if (!cell) return;
+    if (focusedQuadrant.current !== quadrant || !cellPos.current) {
+      const { qCol, qRow } = QUADRANT_POSITION[quadrant];
+      cellPos.current = {
+        col: clamp(qCol * QUAD_COLS, 0, MAX_COL),
+        row: clamp(qRow * QUAD_ROWS, 0, MAX_ROW),
+      };
+      focusedQuadrant.current = quadrant;
+    }
+    pan.setValue({ x: -cellPos.current.col * cell, y: -cellPos.current.row * cell });
+  }, [cell, quadrant, pan]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Take over from the bubbles only once the finger actually moves.
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
+      onMoveShouldSetPanResponderCapture: (_e, g) =>
+        Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        pan.stopAnimation();
+        dragStart.current = { ...panValue.current };
+      },
+      onPanResponderMove: (_e, g) => {
+        const c = cellRef.current;
+        pan.setValue({
+          x: clamp(dragStart.current.x + g.dx, -MAX_COL * c, 0),
+          y: clamp(dragStart.current.y + g.dy, -MAX_ROW * c, 0),
+        });
+      },
+      onPanResponderRelease: (_e, g) => {
+        const c = cellRef.current;
+        if (!c) return;
+        // Project a little along the fling, then snap to the nearest cell.
+        const projX = panValue.current.x + g.vx * 160;
+        const projY = panValue.current.y + g.vy * 160;
+        const col = clamp(Math.round(-projX / c), 0, MAX_COL);
+        const row = clamp(Math.round(-projY / c), 0, MAX_ROW);
+        cellPos.current = { col, row };
+        Animated.spring(pan, {
+          toValue: { x: -col * c, y: -row * c },
+          useNativeDriver: false,
+          friction: 9,
+          tension: 60,
+        }).start();
+      },
+    }),
+  ).current;
 
   const selectedMood = selectedMoodId
     ? MOOD_OPTIONS.find((m) => m.id === selectedMoodId) ?? null
     : null;
 
-  const handleBubbleSelect = (moodId: string) => {
+  const handleBubbleSelect = useCallback((moodId: string) => {
     Vibration.vibrate(30);
     setSelectedMoodId(moodId);
-  };
+  }, []);
 
   const handleConfirm = useCallback(() => {
-    if (selectedMood) {
-      onConfirm(selectedMood);
-    }
+    if (selectedMood) onConfirm(selectedMood);
   }, [selectedMood, onConfirm]);
 
-  // Arrange all 80 moods in a 2x2 quadrant grid layout with 10 bridge moods between each
-  const quadrants: { key: MoodQuadrant; moods: MoodOption[] }[] = [
-    {
-      key: 'HIGH_PLEASANT',
-      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'HIGH_PLEASANT'),
-    },
-    {
-      key: 'HIGH_UNPLEASANT',
-      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'HIGH_UNPLEASANT'),
-    },
-    {
-      key: 'LOW_PLEASANT',
-      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'LOW_PLEASANT'),
-    },
-    {
-      key: 'LOW_UNPLEASANT',
-      moods: MOOD_OPTIONS.filter((m) => m.quadrant === 'LOW_UNPLEASANT'),
-    },
-  ];
-
-  // Add 10 bridge moods between each pair of adjacent quadrants
-  // High Energy: 20 + 10 bridge to Low Energy + 10 bridge from Low Energy = 40 moods per side
-  // Create 5x8 grids (40 moods per quadrant zone including bridges)
-  const createQuadrantGrid = (
-    mainMoods: MoodOption[],
-    adjacentMoods1: MoodOption[],
-    adjacentMoods2: MoodOption[]
-  ): (MoodOption | null)[][] => {
-    const allMoods = [
-      ...mainMoods.slice(0, 20),
-      ...adjacentMoods1.slice(0, 10),
-      ...adjacentMoods2.slice(0, 10),
-    ];
-
-    const grid: (MoodOption | null)[][] = [];
-    for (let i = 0; i < Math.ceil(allMoods.length / 5); i++) {
-      const row: (MoodOption | null)[] = [];
-      for (let j = 0; j < 5; j++) {
-        const index = i * 5 + j;
-        row.push(index < allMoods.length ? allMoods[index] : null);
-      }
-      grid.push(row);
-    }
-    return grid;
+  const onGridLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setViewport((prev) =>
+      prev && prev.w === width && prev.h === height ? prev : { w: width, h: height },
+    );
   };
-
-  // Build grids for each quadrant with bridge moods
-  const highEnergyUnpleasantMoods = quadrants[1].moods; // RED
-  const highEnergyPleasantMoods = quadrants[0].moods; // YELLOW
-  const lowEnergyUnpleasantMoods = quadrants[3].moods; // BLUE
-  const lowEnergyPleasantMoods = quadrants[2].moods; // GREEN
-
-  const quadrantGrids = [
-    {
-      quadrant: 'HIGH_UNPLEASANT',
-      grid: createQuadrantGrid(
-        highEnergyUnpleasantMoods,
-        highEnergyPleasantMoods,
-        lowEnergyUnpleasantMoods
-      ),
-    },
-    {
-      quadrant: 'HIGH_PLEASANT',
-      grid: createQuadrantGrid(
-        highEnergyPleasantMoods,
-        highEnergyUnpleasantMoods,
-        lowEnergyPleasantMoods
-      ),
-    },
-    {
-      quadrant: 'LOW_UNPLEASANT',
-      grid: createQuadrantGrid(
-        lowEnergyUnpleasantMoods,
-        highEnergyUnpleasantMoods,
-        lowEnergyPleasantMoods
-      ),
-    },
-    {
-      quadrant: 'LOW_PLEASANT',
-      grid: createQuadrantGrid(
-        lowEnergyPleasantMoods,
-        highEnergyPleasantMoods,
-        lowEnergyUnpleasantMoods
-      ),
-    },
-  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -238,112 +283,64 @@ export function CheckInStep2Screen({
           </Text>
         </View>
 
-        {/* Mood grid - 2x2 quadrant layout */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.gridScroll}
-          contentContainerStyle={styles.gridContent}
-          scrollEnabled={true}
-          showsVerticalScrollIndicator={true}
+        {/* Pannable mood canvas */}
+        <View
+          style={styles.gridViewport}
+          onLayout={onGridLayout}
+          accessibilityHint="Drag in any direction to see more moods"
+          {...panResponder.panHandlers}
         >
-          <View style={styles.quadrantGridContainer}>
-            {/* Top row: High Energy moods */}
-            <View style={styles.quadrantRow}>
-              {/* Top-left: High Energy Unpleasant (Red) with bridges */}
-              <View style={styles.quadrantBox}>
-                {quadrantGrids[0].grid.map((row, rowIndex) => (
-                  <View key={`red-row-${rowIndex}`} style={styles.gridRow}>
-                    {row.map((mood, colIndex) =>
-                      mood ? (
-                        <BubbleMood
-                          key={mood.id}
-                          mood={mood}
-                          isSelected={selectedMoodId === mood.id}
-                          onPress={() => handleBubbleSelect(mood.id)}
-                        />
-                      ) : (
-                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
-                      )
-                    )}
-                  </View>
-                ))}
-              </View>
+          {cell > 0 && (
+            <Animated.View
+              style={[
+                styles.canvas,
+                {
+                  width: CANVAS_COLS * cell,
+                  height: CANVAS_ROWS * cell,
+                  transform: [{ translateX: pan.x }, { translateY: pan.y }],
+                },
+              ]}
+            >
+              {PLACED_MOODS.map(({ mood, col, row }) => (
+                <View
+                  key={mood.id}
+                  style={{
+                    position: 'absolute',
+                    left: col * cell,
+                    top: row * cell,
+                    width: cell,
+                    height: cell,
+                    padding: 3,
+                    // Keep the enlarged, glowing bubble above its neighbours.
+                    zIndex: selectedMoodId === mood.id ? 10 : 0,
+                  }}
+                >
+                  <BubbleMood
+                    mood={mood}
+                    isSelected={selectedMoodId === mood.id}
+                    onPress={() => handleBubbleSelect(mood.id)}
+                  />
+                </View>
+              ))}
+            </Animated.View>
+          )}
+        </View>
 
-              {/* Top-right: High Energy Pleasant (Yellow) with bridges */}
-              <View style={styles.quadrantBox}>
-                {quadrantGrids[1].grid.map((row, rowIndex) => (
-                  <View key={`yellow-row-${rowIndex}`} style={styles.gridRow}>
-                    {row.map((mood, colIndex) =>
-                      mood ? (
-                        <BubbleMood
-                          key={mood.id}
-                          mood={mood}
-                          isSelected={selectedMoodId === mood.id}
-                          onPress={() => handleBubbleSelect(mood.id)}
-                        />
-                      ) : (
-                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
-                      )
-                    )}
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Bottom row: Low Energy moods */}
-            <View style={styles.quadrantRow}>
-              {/* Bottom-left: Low Energy Unpleasant (Blue) with bridges */}
-              <View style={styles.quadrantBox}>
-                {quadrantGrids[2].grid.map((row, rowIndex) => (
-                  <View key={`blue-row-${rowIndex}`} style={styles.gridRow}>
-                    {row.map((mood, colIndex) =>
-                      mood ? (
-                        <BubbleMood
-                          key={mood.id}
-                          mood={mood}
-                          isSelected={selectedMoodId === mood.id}
-                          onPress={() => handleBubbleSelect(mood.id)}
-                        />
-                      ) : (
-                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
-                      )
-                    )}
-                  </View>
-                ))}
-              </View>
-
-              {/* Bottom-right: Low Energy Pleasant (Green) with bridges */}
-              <View style={styles.quadrantBox}>
-                {quadrantGrids[3].grid.map((row, rowIndex) => (
-                  <View key={`green-row-${rowIndex}`} style={styles.gridRow}>
-                    {row.map((mood, colIndex) =>
-                      mood ? (
-                        <BubbleMood
-                          key={mood.id}
-                          mood={mood}
-                          isSelected={selectedMoodId === mood.id}
-                          onPress={() => handleBubbleSelect(mood.id)}
-                        />
-                      ) : (
-                        <View key={`spacer-${colIndex}`} style={styles.bubbleSpacing} />
-                      )
-                    )}
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-
-        {/* Description at bottom */}
-        {selectedMood && (
-          <View style={styles.descriptionContainer}>
-            <Text style={[styles.descriptionLabel, { color: getMoodColor(selectedMood) }]}>
-              {selectedMood.label}
+        {/* Description (fixed height so the grid doesn't resize on select) */}
+        <View style={styles.descriptionContainer}>
+          {selectedMood ? (
+            <>
+              <Text style={[styles.descriptionLabel, { color: getMoodColor(selectedMood) }]}>
+                {selectedMood.label}
+              </Text>
+              <Text style={styles.descriptionSubtext}>{selectedMood.description}</Text>
+            </>
+          ) : (
+            <Text style={styles.descriptionSubtext}>
+              Drag to explore every colour, then tap a mood
             </Text>
-            <Text style={styles.descriptionSubtext}>{selectedMood.description}</Text>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* Footer with actions */}
         <View style={styles.footer}>
@@ -401,50 +398,55 @@ interface BubbleMoodProps {
   onPress: () => void;
 }
 
-function BubbleMood({ mood, isSelected, onPress }: BubbleMoodProps) {
+const BubbleMood = React.memo(function BubbleMood({ mood, isSelected, onPress }: BubbleMoodProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.spring(scaleAnim, {
-      toValue: isSelected ? 1.15 : 1,
+      toValue: isSelected ? 1.12 : 1,
       useNativeDriver: true,
       friction: 5,
       tension: 40,
     }).start();
   }, [isSelected, scaleAnim]);
 
+  const color = getMoodColor(mood);
+
   return (
-    <Animated.View
-      style={[
-        styles.bubbleSpacing,
-        {
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-    >
+    <Animated.View style={[styles.bubbleWrap, { transform: [{ scale: scaleAnim }] }]}>
+      {isSelected && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.bubbleGlow,
+            { backgroundColor: color, shadowColor: color },
+          ]}
+        />
+      )}
       <Pressable
         onPress={onPress}
         style={[
           styles.bubble,
-          {
-            backgroundColor: getMoodColor(mood),
-          },
+          { backgroundColor: color },
+          isSelected && { shadowColor: color, shadowOpacity: 0.95, shadowRadius: 16, elevation: 12 },
         ]}
         accessibilityRole="button"
         accessibilityLabel={`${mood.label}: ${mood.description}`}
+        accessibilityState={{ selected: isSelected }}
       >
         <Text
           style={styles.bubbleText}
-          numberOfLines={2}
+          numberOfLines={1}
           adjustsFontSizeToFit
+          minimumFontScale={0.5}
         >
           {mood.label}
         </Text>
-        {isSelected && <View style={styles.bubbleRing} />}
+        {isSelected && <View pointerEvents="none" style={styles.bubbleRing} />}
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -479,44 +481,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
 
-  // Grid
-  gridScroll: {
+  // Canvas
+  gridViewport: {
     flex: 1,
+    overflow: 'hidden',
   },
-  gridContent: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+  canvas: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
   },
-  quadrantGridContainer: {
-    flexDirection: 'column',
-  },
-  quadrantRow: {
-    flexDirection: 'row',
+  bubbleWrap: {
     flex: 1,
-  },
-  quadrantBox: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: 'rgba(197,163,101,0.1)',
-  },
-  gridRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 0,
-    paddingHorizontal: 0,
-  },
-  bubbleSpacing: {
-    width: '20%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
   },
   bubble: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
     borderRadius: 1000,
     alignItems: 'center',
     justifyContent: 'center',
@@ -528,37 +507,53 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     ...typography.bodySemiBold,
-    fontSize: 9,
+    fontSize: 15,
     color: '#0A140F',
     textAlign: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: 8,
+  },
+  bubbleGlow: {
+    position: 'absolute',
+    top: -5,
+    left: -5,
+    right: -5,
+    bottom: -5,
+    borderRadius: 1000,
+    opacity: 0.4,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 18,
   },
   bubbleRing: {
     position: 'absolute',
-    width: '115%',
-    height: '115%',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
     borderRadius: 1000,
     borderWidth: 2,
-    borderColor: colors.gold,
+    borderColor: '#FFFFFF',
   },
 
-  // Description
+  // Description — fixed height so selecting a mood never resizes the grid above.
   descriptionContainer: {
+    height: 84,
+    justifyContent: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: 'rgba(10,20,15,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(197,163,101,0.2)',
+    borderTopColor: 'rgba(217,178,106,0.35)',
   },
   descriptionLabel: {
     ...typography.bodySemiBold,
-    fontSize: 16,
+    fontSize: 20,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   descriptionSubtext: {
     ...typography.body,
-    color: colors.neutral,
+    fontSize: 15,
+    color: BRIGHT_TEXT,
     textAlign: 'center',
   },
 
@@ -581,11 +576,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: 16,
     borderRadius: 50,
-    backgroundColor: colors.ctaBackground,
+    backgroundColor: BRIGHT_GOLD,
     marginBottom: spacing.xs,
   },
   confirmButtonDisabled: {
-    opacity: 0.4,
+    opacity: 0.45,
   },
   confirmButtonPressed: {
     opacity: 0.88,
@@ -608,7 +603,7 @@ const styles = StyleSheet.create({
   },
   dontKnowText: {
     ...typography.bodyMedium,
-    color: colors.neutralMuted,
+    color: SOFT_TEXT,
   },
   error: {
     ...typography.bodySm,

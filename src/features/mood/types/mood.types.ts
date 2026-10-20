@@ -86,6 +86,16 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { id: 'tense',         label: 'Tense',         description: 'Wound up and rigid.',                      quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Overwhelmed },
   { id: 'restless',      label: 'Restless',      description: "Can't sit still, keyed up.",               quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Anxious },
   { id: 'nervous',       label: 'Nervous',       description: 'Jittery and worried.',                     quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Anxious },
+  { id: 'defensive',     label: 'Defensive',     description: 'Guarded and protective.',                   quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Angry },
+  { id: 'hostile',       label: 'Hostile',       description: 'Aggressive and combative.',                 quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Angry },
+  { id: 'scornful',      label: 'Scornful',      description: 'Contemptuous and dismissive.',              quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Angry },
+  { id: 'bitter',        label: 'Bitter',        description: 'Resentful and embittered.',                 quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Angry },
+  { id: 'cynical',       label: 'Cynical',       description: 'Distrustful and skeptical.',                quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Angry },
+  { id: 'paranoid',      label: 'Paranoid',      description: 'Suspicious and mistrustful.',               quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Anxious },
+  { id: 'frantic',       label: 'Frantic',       description: 'Wildly hurried and desperate.',             quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Overwhelmed },
+  { id: 'desperate',     label: 'Desperate',     description: 'In urgent need or want.',                   quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Overwhelmed },
+  { id: 'triggered',     label: 'Triggered',     description: 'Emotionally activated.',                    quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Angry },
+  { id: 'agitated',      label: 'Agitated',      description: 'Stirred up and unsettled.',                 quadrant: 'HIGH_UNPLEASANT', backendMood: BackendMood.Anxious },
 
   // ── Yellow · High energy · pleasant ─────────────────────────────────────
   // Maps to Happy (all pleasant + energised).
@@ -109,6 +119,16 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { id: 'upbeat',        label: 'Upbeat',        description: 'Positive and lively.',                     quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
   { id: 'focused',       label: 'Focused',       description: 'Sharp and locked in.',                     quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
   { id: 'surprised',     label: 'Surprised',     description: 'Caught off guard, in a good way.',         quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'playful',       label: 'Playful',       description: 'Lighthearted and fun-loving.',             quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'gleeful',       label: 'Gleeful',       description: 'Full of glee and delight.',                quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'exhilarated',   label: 'Exhilarated',   description: 'Thrilled and invigorated.',                quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'energetic',     label: 'Energetic',     description: 'Full of vitality and vigor.',              quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'pumped',        label: 'Pumped',        description: 'Fired up and ready to go.',                quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'elated',        label: 'Elated',        description: 'Extremely happy and joyful.',              quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'blissful',      label: 'Blissful',      description: 'In a state of perfect happiness.',         quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'accomplished',  label: 'Accomplished',  description: 'Successful and fulfilled.',                quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'empowered',     label: 'Empowered',     description: 'Strong and in control.',                    quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
+  { id: 'alive',         label: 'Alive',         description: 'Fully present and engaged.',               quadrant: 'HIGH_PLEASANT',   backendMood: BackendMood.Happy },
 
   // ── Green · Low energy · pleasant ───────────────────────────────────────
   // Maps to Calm (all pleasant + settled).
@@ -132,6 +152,16 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { id: 'carefree',      label: 'Carefree',      description: 'Light, without a worry.',                  quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
   { id: 'thoughtful',    label: 'Thoughtful',    description: 'Reflective and considerate.',              quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
   { id: 'good',          label: 'Good',          description: 'Simply doing well.',                       quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'cozy',          label: 'Cozy',          description: 'Warm and comfortable.',                     quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'nurtured',      label: 'Nurtured',      description: 'Cared for and supported.',                 quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'reassured',     label: 'Reassured',     description: 'Comforted and put at ease.',               quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'safe',          label: 'Safe',          description: 'Protected and secure.',                    quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'grounded',      label: 'Grounded',      description: 'Rooted and stable.',                       quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'whole',         label: 'Whole',         description: 'Complete and integrated.',                 quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'trusting',      label: 'Trusting',      description: 'Confident in what will come.',             quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'connected',     label: 'Connected',     description: 'Bonded and together.',                     quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'at-peace',      label: 'At Peace',      description: 'Inner harmony and stillness.',             quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
+  { id: 'supported',     label: 'Supported',     description: 'Held and upheld.',                         quadrant: 'LOW_PLEASANT',    backendMood: BackendMood.Calm },
 
   // ── Blue · Low energy · unpleasant ──────────────────────────────────────
   // Maps to Sad / Numb depending on the flavour.
@@ -155,6 +185,16 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { id: 'apathetic',     label: 'Apathetic',     description: 'Indifferent, hard to care.',               quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Numb },
   { id: 'bored',         label: 'Bored',         description: 'Unengaged and listless.',                  quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Numb },
   { id: 'meh',           label: 'Meh',           description: 'Neither here nor there.',                  quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Numb },
+  { id: 'hollow',        label: 'Hollow',        description: 'Empty and void inside.',                   quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'broken',        label: 'Broken',        description: 'Shattered and undone.',                    quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'heartbroken',   label: 'Heartbroken',   description: 'Deeply hurt and pained.',                 quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'aching',        label: 'Aching',        description: 'Sorrowful and tender.',                    quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'weary',         label: 'Weary',         description: 'Tired in body and spirit.',                quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Numb },
+  { id: 'drained',       label: 'Drained',       description: 'Depleted and empty.',                      quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Numb },
+  { id: 'heavy',         label: 'Heavy',         description: 'Weighed down with burden.',                quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'melancholy',    label: 'Melancholy',    description: 'Pensive and wistful sadness.',             quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'resigned',      label: 'Resigned',      description: 'Accepting of difficult fate.',            quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
+  { id: 'morose',        label: 'Morose',        description: 'Gloomy and ill-tempered.',                quadrant: 'LOW_UNPLEASANT',  backendMood: BackendMood.Sad },
 ];
 
 // ─── Quadrant descriptions & follow-on actions ──────────────────────────────

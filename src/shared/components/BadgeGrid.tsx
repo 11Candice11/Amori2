@@ -16,6 +16,7 @@ export type BadgeGridProps = {
   variant?: 'large' | 'medium' | 'small';
   showNames?: boolean;
   unlockedBadges?: Set<string>; // Set of unlocked badge IDs
+  savedBadges?: Set<string>; // Set of badge IDs saved to the vault
   onBadgePress?: (badgeId: string) => void;
   emptyText?: string;
   numColumns?: number;
@@ -26,13 +27,19 @@ export function BadgeGrid({
   variant = 'medium',
   showNames = false,
   unlockedBadges = new Set(),
+  savedBadges = new Set(),
   onBadgePress,
   emptyText,
   numColumns = 3,
 }: BadgeGridProps) {
   const data = useMemo(
-    () => badges.map((id) => ({ id, isLocked: !unlockedBadges.has(id) })),
-    [badges, unlockedBadges]
+    () =>
+      badges.map((id) => ({
+        id,
+        isLocked: !unlockedBadges.has(id),
+        isSaved: savedBadges.has(id),
+      })),
+    [badges, unlockedBadges, savedBadges]
   );
 
   if (data.length === 0) {
@@ -57,6 +64,7 @@ export function BadgeGrid({
             variant={variant}
             showName={showNames}
             isLocked={item.isLocked}
+            isSaved={item.isSaved}
           />
         </View>
       )}

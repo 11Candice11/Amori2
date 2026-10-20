@@ -35,4 +35,12 @@ public enum ActivityType
 
     /// <summary>Manual points adjustment (admin use).</summary>
     ManualAdjustment = 10,
+    /// <summary>Saved a catalogue badge to the vault; worth that badge's own points, once.</summary>
+    BadgeSaved = 11,
+    /// <summary>
+    /// The one-off credit for everything a user did before points were awarded
+    /// server-side. At most one row per user (unique partial index); its
+    /// metadata holds the per-activity breakdown.
+    /// </summary>
+    HistoryBackfill = 12,
 }

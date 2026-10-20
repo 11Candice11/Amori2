@@ -14,9 +14,12 @@ namespace Amori.Api.Features.Users.Services;
 /// value is derived from existing feature tables, so progress stays correct
 /// even for activity recorded before badges existed.
 ///
-/// Criteria we have no data source for (travel-aware hugs, partner mood
-/// support, the unbuilt partner-sync feature) are deliberately left out of the
+/// Criteria we have no data source for are deliberately left out of the
 /// dictionary so the client can hide the bar instead of showing a misleading 0.
+///
+/// "Messages" badges count Let's Chat (<see cref="ChatConversation"/>), the
+/// messaging feature the app actually has; the older direct-messages table is
+/// API-only and is no longer counted.
 /// </summary>
 public sealed class BadgeStatsService(
     AmoriDbContext db,
@@ -28,8 +31,15 @@ public sealed class BadgeStatsService(
     /// <summary>An SOS/request response counts as "fast" within this many minutes.</summary>
     private const int FastRequestResponseMinutes = 10;
 
-    /// <summary>A day with at least this many messages counts as a real conversation.</summary>
-    private const int ConversationMessageThreshold = 20;
+    /// <summary>
+    /// A Let's Chat message answered by the partner's own message within this
+    /// window counts as one conversation (an exchange).
+    /// </summary>
+    private static readonly TimeSpan ConversationReplyWindow = TimeSpan.FromHours(24);
+
+    /// <summary>Chat statuses that mean "actually sent" (not a draft or kept private).</summary>
+    private static readonly ChatMessageStatus[] SentChatStatuses =
+        [ChatMessageStatus.Sent, ChatMessageStatus.Delivered, ChatMessageStatus.Read];
 
     /// <summary>Hugs sent between these hours (UTC) count as late-night hugs.</summary>
     private const int NightHugFromHour = 0;
@@ -70,7 +80,7 @@ public sealed class BadgeStatsService(
         await AddTimelineStatsAsync(stats, userId, anniversary, ct);
         await AddPlanningStatsAsync(stats, userId, relationshipId, ct);
         await AddGameStatsAsync(stats, userId, relationshipId, ct);
-        await AddSupportStatsAsync(stats, userId, ct);
+        await AddSupportStatsAsync(stats, userId, relationshipId, ct);
 
         return stats;
     }
@@ -98,13 +108,25 @@ public sealed class BadgeStatsService(
         var hugs = await db.Hugs
             .AsNoTracking()
             .Where(h => h.SenderId == userId || h.RecipientId == userId)
-            .Select(h => new { h.SenderId, h.CreatedAt, h.AcknowledgedAt })
+            .Select(h => new
+            {
+                h.SenderId, h.CreatedAt, h.AcknowledgedAt,
+                h.SenderUtcOffsetMinutes, h.RecipientUtcOffsetMinutes,
+            })
             .ToListAsync(ct);
 
         var sent = hugs.Where(h => h.SenderId == userId).ToList();
         var received = hugs.Where(h => h.SenderId != userId).ToList();
 
         stats["hugs_sent"] = sent.Count;
+
+        // Sent while the two of you were in different time zones (one of you
+        // travelling, or living apart). Only hugs where both devices reported
+        // an offset can count — older hugs have none.
+        stats["long_distance_hugs"] = sent.Count(h =>
+            h.SenderUtcOffsetMinutes.HasValue &&
+            h.RecipientUtcOffsetMinutes.HasValue &&
+            h.SenderUtcOffsetMinutes != h.RecipientUtcOffsetMinutes);
 
         stats["night_hugs"] = sent.Count(h =>
             h.CreatedAt.Hour >= NightHugFromHour && h.CreatedAt.Hour < NightHugToHour);
@@ -182,29 +204,46 @@ public sealed class BadgeStatsService(
         stats["media_shared"] = memoryMedia + mediaMessages;
     }
 
-    // ─── Messages ────────────────────────────────────────────────────────────
+    // ─── Messages (Let's Chat) ───────────────────────────────────────────────
 
     private async Task AddMessageStatsAsync(
         Dictionary<string, int> stats, Guid userId, Guid? relationshipId, CancellationToken ct)
     {
-        stats["messages_sent"] = await db.Messages
+        stats["messages_sent"] = await db.ChatConversations
             .AsNoTracking()
-            .CountAsync(m => m.SenderId == userId && !m.IsDeleted, ct);
+            .CountAsync(c => c.SenderId == userId && c.SentAt != null &&
+                             SentChatStatuses.Contains(c.Status), ct);
 
-        if (relationshipId is null) return;
+        if (relationshipId is null)
+        {
+            stats["conversations_completed"] = 0;
+            return;
+        }
 
-        // "A real conversation" = a day the two of you traded at least
-        // ConversationMessageThreshold messages.
-        var messageDays = await db.Messages
-            .AsNoTracking()
-            .Where(m => m.RelationshipId == relationshipId.Value && !m.IsDeleted)
-            .Select(m => m.CreatedAt)
-            .ToListAsync(ct);
+        var chats = await SentChatsAsync(relationshipId.Value, ct);
 
-        stats["conversations_completed"] = messageDays
-            .GroupBy(timestamp => DateOnly.FromDateTime(timestamp))
-            .Count(day => day.Count() >= ConversationMessageThreshold);
+        // A conversation is an exchange: a message from either of you that the
+        // other answered with their own message within a day. Shared, so both
+        // partners see the same count.
+        stats["conversations_completed"] = chats.Count(message => chats.Any(reply =>
+            reply.SenderId != message.SenderId &&
+            reply.SentAt > message.SentAt &&
+            reply.SentAt - message.SentAt <= ConversationReplyWindow));
     }
+
+    private sealed record SentChat(Guid SenderId, DateTime SentAt, ChatTemplateType TemplateType);
+
+    /// <summary>Every sent Let's Chat message in the relationship, oldest first.</summary>
+    private async Task<List<SentChat>> SentChatsAsync(Guid relationshipId, CancellationToken ct) =>
+        (await db.ChatConversations
+            .AsNoTracking()
+            .Where(c => c.RelationshipId == relationshipId && c.SentAt != null &&
+                        SentChatStatuses.Contains(c.Status))
+            .Select(c => new { c.SenderId, c.SentAt, c.TemplateType })
+            .ToListAsync(ct))
+        .Select(c => new SentChat(c.SenderId, c.SentAt!.Value, c.TemplateType))
+        .OrderBy(c => c.SentAt)
+        .ToList();
 
     // ─── Timeline & anniversary ──────────────────────────────────────────────
 
@@ -298,18 +337,14 @@ public sealed class BadgeStatsService(
 
     // ─── Support & SOS ───────────────────────────────────────────────────────
 
-    private async Task AddSupportStatsAsync(Dictionary<string, int> stats, Guid userId, CancellationToken ct)
+    private async Task AddSupportStatsAsync(
+        Dictionary<string, int> stats, Guid userId, Guid? relationshipId, CancellationToken ct)
     {
-        var requests = await db.EmergencyRequests
-            .AsNoTracking()
-            .Where(r => r.RecipientId == userId && r.AcknowledgedAt != null)
-            .Select(r => new { r.CreatedAt, r.AcknowledgedAt })
-            .ToListAsync(ct);
-
-        stats["partner_request_fast_responses"] = requests.Count(r =>
-            r.AcknowledgedAt!.Value - r.CreatedAt <= TimeSpan.FromMinutes(FastRequestResponseMinutes));
-
         var partner = await relationshipAccess.GetPartnerAsync(userId);
+
+        stats["partner_request_fast_responses"] =
+            await CountFastResponsesToPartnerRequestsAsync(userId, partner?.Id, relationshipId, ct);
+
         if (partner is null) return;
 
         // Showing up for a hard day: the partner shared a difficult mood, and
@@ -336,17 +371,93 @@ public sealed class BadgeStatsService(
             .Select(h => h.CreatedAt)
             .ToListAsync(ct);
 
-        var messagesSent = await db.Messages
+        var chatsSent = await db.ChatConversations
             .AsNoTracking()
-            .Where(m => m.SenderId == userId && !m.IsDeleted && m.CreatedAt >= from)
-            .Select(m => m.CreatedAt)
+            .Where(c => c.SenderId == userId && c.SentAt != null && c.SentAt >= from &&
+                        SentChatStatuses.Contains(c.Status))
+            .Select(c => c.SentAt!.Value)
             .ToListAsync(ct);
 
-        var reachedOutAt = hugsSent.Concat(messagesSent).ToList();
+        var reachedOutAt = hugsSent.Concat(chatsSent).ToList();
         var window = TimeSpan.FromHours(SupportWindowHours);
 
         stats["partner_low_mood_support"] = hardDays.Count(hardDay =>
             reachedOutAt.Any(sentAt => sentAt >= hardDay && sentAt - hardDay <= window));
+    }
+
+    /// <summary>
+    /// Open Heart: partner requests the user answered within
+    /// <see cref="FastRequestResponseMinutes"/>. A "request" is any of:
+    /// <list type="bullet">
+    /// <item>a Let's Chat "Something I need" message — answered by a Let's Chat
+    /// message or a hug back;</item>
+    /// <item>a care ticket the partner marked Awaiting Response — answered by
+    /// adding a response to it;</item>
+    /// <item>an emergency request — answered by acknowledging it (API only today).</item>
+    /// </list>
+    /// Each request counts once, however many answers it got.
+    /// </summary>
+    private async Task<int> CountFastResponsesToPartnerRequestsAsync(
+        Guid userId, Guid? partnerId, Guid? relationshipId, CancellationToken ct)
+    {
+        var window = TimeSpan.FromMinutes(FastRequestResponseMinutes);
+
+        var emergencies = await db.EmergencyRequests
+            .AsNoTracking()
+            .Where(r => r.RecipientId == userId && r.AcknowledgedAt != null)
+            .Select(r => new { r.CreatedAt, r.AcknowledgedAt })
+            .ToListAsync(ct);
+        var count = emergencies.Count(r => r.AcknowledgedAt!.Value - r.CreatedAt <= window);
+
+        if (partnerId is not { } partner || relationshipId is not { } relId) return count;
+
+        // Let's Chat "Something I need" from the partner, answered by a chat or a hug.
+        var needs = await db.ChatConversations
+            .AsNoTracking()
+            .Where(c => c.SenderId == partner && c.RecipientId == userId &&
+                        c.TemplateType == ChatTemplateType.Need &&
+                        c.SentAt != null && SentChatStatuses.Contains(c.Status))
+            .Select(c => c.SentAt!.Value)
+            .ToListAsync(ct);
+
+        if (needs.Count > 0)
+        {
+            var earliest = needs.Min();
+            var myChats = await db.ChatConversations
+                .AsNoTracking()
+                .Where(c => c.SenderId == userId && c.SentAt != null && c.SentAt >= earliest &&
+                            SentChatStatuses.Contains(c.Status))
+                .Select(c => c.SentAt!.Value)
+                .ToListAsync(ct);
+            var myHugs = await db.Hugs
+                .AsNoTracking()
+                .Where(h => h.SenderId == userId && h.CreatedAt >= earliest)
+                .Select(h => h.CreatedAt)
+                .ToListAsync(ct);
+            var answers = myChats.Concat(myHugs).ToList();
+
+            count += needs.Count(askedAt =>
+                answers.Any(at => at > askedAt && at - askedAt <= window));
+        }
+
+        // Care tickets the partner put into Awaiting Response, answered by the user.
+        var ticketEvents = await db.RelationshipIncidentHistory
+            .AsNoTracking()
+            .Where(h => h.Incident.RelationshipId == relId)
+            .Where(h => (h.Action == IncidentHistoryAction.ResponseRequested && h.ActorUserId == partner) ||
+                        (h.Action == IncidentHistoryAction.ResponseAdded && h.ActorUserId == userId))
+            .Select(h => new { h.IncidentId, h.Action, h.CreatedAt })
+            .ToListAsync(ct);
+
+        count += ticketEvents
+            .Where(e => e.Action == IncidentHistoryAction.ResponseRequested)
+            .Count(asked => ticketEvents.Any(answer =>
+                answer.Action == IncidentHistoryAction.ResponseAdded &&
+                answer.IncidentId == asked.IncidentId &&
+                answer.CreatedAt > asked.CreatedAt &&
+                answer.CreatedAt - asked.CreatedAt <= window));
+
+        return count;
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

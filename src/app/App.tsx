@@ -29,6 +29,7 @@ import {
 import type { ThemePreference } from '../shared/theme';
 import { Banner, FeedbackOverlayHost } from '../shared/components/overlays';
 import { LoadingAnimation } from '../shared/components/screens';
+import { BadgeCatchUpHost } from '../features/vault/components/BadgeCatchUpHost';
 
 /**
  * StatusBar whose appearance follows the active theme. Rendered inside
@@ -256,6 +257,8 @@ export default function App() {
         </NavigationContainer>
         {/* App-wide feedback banner, overlaying every screen. */}
         <Banner />
+        {/* One-time "you've already earned N badges" catch-up after the update. */}
+        <BadgeCatchUpHost />
         {/* App-wide success/failure celebration, fired from create/save flows. */}
         <FeedbackOverlayHost />
       </ThemeProvider>

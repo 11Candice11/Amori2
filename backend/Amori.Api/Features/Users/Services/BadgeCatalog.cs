@@ -8,14 +8,15 @@ namespace Amori.Api.Features.Users.Services;
 /// app's registry (src/constants/badges.ts), which owns how a badge looks.
 ///
 /// KEEP IN SYNC with ALL_BADGES in src/constants/badges.ts: same slugs, same
-/// categories, same criteria and thresholds. A badge missing here can't be
+/// categories, same criteria, thresholds and pointsReward. A badge missing here can't be
 /// saved to the vault (404); a threshold that differs means the app and server
-/// disagree about whether it's earned (409 on save).
+/// disagree about whether it's earned (409 on save); a different points value
+/// means the app promises one amount and the server pays another.
 /// </summary>
 public static class BadgeCatalog
 {
     /// <summary>One catalogue badge's unlock rule.</summary>
-    public sealed record Entry(string Slug, string Category, string Criteria, int Threshold);
+    public sealed record Entry(string Slug, string Category, string Criteria, int Threshold, int PointsReward);
 
     /// <summary>
     /// The meta criteria "earned a badge in N categories". Not a stats counter:
@@ -37,70 +38,70 @@ public static class BadgeCatalog
     public static readonly IReadOnlyList<Entry> All =
     [
         // Hugs
-        new("first_embrace", "hugs", "hugs_sent", 10),
-        new("first_embrace2", "hugs", "hugs_sent", 50),
-        new("hug_collector", "hugs", "hugs_sent", 100),
-        new("golden_heart", "hugs", "hugs_sent", 250),
-        new("golden_heart2", "hugs", "hugs_sent", 500),
-        new("hug_back", "hugs", "hug_replies_fast", 10),
-        new("hug_marathon", "hugs", "hug_streak_days", 7),
-        new("long_distance_hugger", "hugs", "long_distance_hugs", 1),
-        new("midnight_hug", "hugs", "night_hugs", 1),
-        new("both_ways", "hugs", "mutual_hug_days", 10),
+        new("first_embrace", "hugs", "hugs_sent", 10, 50),
+        new("first_embrace2", "hugs", "hugs_sent", 50, 100),
+        new("hug_collector", "hugs", "hugs_sent", 100, 150),
+        new("golden_heart", "hugs", "hugs_sent", 250, 250),
+        new("golden_heart2", "hugs", "hugs_sent", 500, 400),
+        new("hug_back", "hugs", "hug_replies_fast", 10, 100),
+        new("hug_marathon", "hugs", "hug_streak_days", 7, 150),
+        new("long_distance_hugger", "hugs", "long_distance_hugs", 1, 100),
+        new("midnight_hug", "hugs", "night_hugs", 1, 100),
+        new("both_ways", "hugs", "mutual_hug_days", 10, 150),
 
         // Check-ins
-        new("first_light", "checkins", "morning_checkins", 1),
-        new("morning_ritual", "checkins", "morning_checkins", 10),
-        new("night_whispers", "checkins", "evening_checkins", 10),
-        new("daily_streak", "checkins", "checkin_streak", 7),
-        new("daily_streak2", "checkins", "checkin_streak", 30),
-        new("evergreen", "checkins", "checkin_streak", 100),
-        new("evergreen2", "checkins", "checkin_streak", 250),
-        new("evergreen3", "checkins", "checkin_streak", 365),
+        new("first_light", "checkins", "morning_checkins", 1, 50),
+        new("morning_ritual", "checkins", "morning_checkins", 10, 100),
+        new("night_whispers", "checkins", "evening_checkins", 10, 100),
+        new("daily_streak", "checkins", "checkin_streak", 7, 100),
+        new("daily_streak2", "checkins", "checkin_streak", 30, 200),
+        new("evergreen", "checkins", "checkin_streak", 100, 300),
+        new("evergreen2", "checkins", "checkin_streak", 250, 400),
+        new("evergreen3", "checkins", "checkin_streak", 365, 500),
 
         // Memory vault
-        new("memory_keeper", "memory_vault", "memories_saved_to_vault", 1),
+        new("memory_keeper", "memory_vault", "memories_saved_to_vault", 1, 50),
 
         // Messages
-        new("words_that_matter", "messages", "conversations_completed", 1),
-        new("words_that_matter2", "messages", "conversations_completed", 10),
+        new("words_that_matter", "messages", "conversations_completed", 1, 100),
+        new("words_that_matter2", "messages", "conversations_completed", 10, 250),
 
         // Timeline
-        new("shared_horizons", "timeline", "timeline_events_added", 1),
-        new("shared_horizons2", "timeline", "timeline_events_added", 10),
-        new("together_forever", "timeline", "anniversary_reached", 1),
+        new("shared_horizons", "timeline", "timeline_events_added", 1, 50),
+        new("shared_horizons2", "timeline", "timeline_events_added", 10, 150),
+        new("together_forever", "timeline", "anniversary_reached", 1, 300),
 
         // Vision board
-        new("dream_builders", "vision_board", "vision_board_items_added", 10),
-        new("dream_builders2", "vision_board", "vision_board_items_achieved", 1),
+        new("dream_builders", "vision_board", "vision_board_items_added", 10, 100),
+        new("dream_builders2", "vision_board", "vision_board_items_achieved", 1, 150),
 
         // Bucket list
-        new("bucket_list_buddy", "bucket_list", "bucket_list_items_completed", 1),
-        new("bucket_list_buddy2", "bucket_list", "bucket_list_items_completed", 10),
+        new("bucket_list_buddy", "bucket_list", "bucket_list_items_completed", 1, 50),
+        new("bucket_list_buddy2", "bucket_list", "bucket_list_items_completed", 10, 150),
 
         // Games
-        new("curious_mind", "games", "games_played", 1),
-        new("curious_mind2", "games", "partner_quiz_perfect_scores", 1),
+        new("curious_mind", "games", "games_played", 1, 50),
+        new("curious_mind2", "games", "partner_quiz_perfect_scores", 1, 150),
 
         // Partner sync
-        new("growing_together", "partner_sync", "sync_questions_agreed", 10),
-        new("open_heart", "partner_sync", "partner_request_fast_responses", 10),
-        new("safe_harbor", "partner_sync", "partner_low_mood_support", 1),
+        new("growing_together", "partner_sync", "sync_questions_agreed", 10, 100),
+        new("open_heart", "partner_sync", "partner_request_fast_responses", 10, 150),
+        new("safe_harbor", "partner_sync", "partner_low_mood_support", 1, 150),
 
         // Mood
-        new("finding_calm", "mood", "mood_streak_days", 7),
-        new("finding_calm2", "mood", "distinct_moods_logged", 5),
+        new("finding_calm", "mood", "mood_streak_days", 7, 100),
+        new("finding_calm2", "mood", "distinct_moods_logged", 5, 150),
 
         // Media
-        new("emerald_soul", "media", "media_shared", 10),
-        new("emerald_soul2", "media", "media_shared", 100),
+        new("emerald_soul", "media", "media_shared", 10, 100),
+        new("emerald_soul2", "media", "media_shared", 100, 250),
 
         // Special
-        new("sacred_vow", SpecialCategory, "memory_saved_on_anniversary", 1),
-        new("eternal_bond", SpecialCategory, CategoriesUnlockedCriteria, CountedCategoryTotal),
+        new("sacred_vow", SpecialCategory, "memory_saved_on_anniversary", 1, 300),
+        new("eternal_bond", SpecialCategory, CategoriesUnlockedCriteria, CountedCategoryTotal, 500),
 
         // Progression
-        new("level_up", "progression", "level_reached", 5),
+        new("level_up", "progression", "level_reached", 5, 150),
     ];
 
     private static readonly Dictionary<string, Entry> BySlug =

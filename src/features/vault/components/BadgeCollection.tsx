@@ -16,9 +16,11 @@ import { ALL_BADGES } from '../../../constants/badges';
 import { BadgeGrid } from '../../../shared/components/BadgeGrid';
 import { BadgeDetailsModal } from '../../../shared/components/BadgeDetailsModal';
 import { useBadges } from '../../profile/hooks/useBadges';
+import { useSaveBadge } from '../../profile/hooks/useSaveBadge';
 
 export function BadgeCollection() {
-  const { unlockedBadges, userStats } = useBadges();
+  const { unlockedBadges, savedBadges, userStats } = useBadges();
+  const saveBadge = useSaveBadge();
   const [selectedBadgeId, setSelectedBadgeId] = useState<string | null>(null);
 
   const badgeIds = useMemo(() => ALL_BADGES.map((badge) => badge.id), []);
@@ -50,6 +52,7 @@ export function BadgeCollection() {
         variant="medium"
         showNames
         unlockedBadges={unlockedBadges}
+        savedBadges={savedBadges}
         onBadgePress={handleBadgePress}
         numColumns={3}
       />
@@ -60,6 +63,8 @@ export function BadgeCollection() {
         onDismiss={handleDismiss}
         isUnlocked={selectedBadgeId ? unlockedBadges.has(selectedBadgeId) : false}
         userStats={userStats}
+        isSaved={selectedBadgeId ? savedBadges.has(selectedBadgeId) : false}
+        onSaveToVault={saveBadge}
       />
     </View>
   );

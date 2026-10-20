@@ -24,6 +24,7 @@ import { BadgeDetailsModal } from '../../../shared/components/BadgeDetailsModal'
 import { getSettingsBackground } from '../../../utils/backgroundImages';
 import { ALL_BADGES, getBadgesByCategory, type BadgeCategory } from '../../../constants/badges';
 import { useBadges } from '../hooks/useBadges';
+import { useSaveBadge } from '../hooks/useSaveBadge';
 
 export function AchievementsScreen() {
   const [selectedBadgeId, setSelectedBadgeId] = useState<string | null>(null);
@@ -31,8 +32,10 @@ export function AchievementsScreen() {
   const [backgroundImage] = useState(() => getSettingsBackground());
 
   // Load badge data
+  const saveBadge = useSaveBadge();
   const {
     unlockedBadges,
+    savedBadges,
     userStats,
     totalPoints,
     level,
@@ -199,6 +202,7 @@ export function AchievementsScreen() {
                     variant="medium"
                     showNames={true}
                     unlockedBadges={unlockedBadges}
+                    savedBadges={savedBadges}
                     onBadgePress={handleBadgePress}
                     numColumns={3}
                   />
@@ -228,6 +232,8 @@ export function AchievementsScreen() {
           onDismiss={handleDismissModal}
           isUnlocked={selectedBadgeId ? unlockedBadges.has(selectedBadgeId) : false}
           userStats={userStats}
+          isSaved={selectedBadgeId ? savedBadges.has(selectedBadgeId) : false}
+          onSaveToVault={saveBadge}
         />
       </SafeAreaView>
     </ImageBackground>

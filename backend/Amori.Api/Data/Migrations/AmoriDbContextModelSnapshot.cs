@@ -841,6 +841,10 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_id");
 
+                    b.Property<int?>("RecipientUtcOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("recipient_utc_offset_minutes");
+
                     b.Property<Guid>("RelationshipId")
                         .HasColumnType("uuid")
                         .HasColumnName("relationship_id");
@@ -848,6 +852,10 @@ namespace Amori.Api.Data.Migrations
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uuid")
                         .HasColumnName("sender_id");
+
+                    b.Property<int?>("SenderUtcOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("sender_utc_offset_minutes");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1284,6 +1292,11 @@ namespace Amori.Api.Data.Migrations
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_points_history_user_id");
+
+                    b.HasIndex("UserId", "ActivityType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_points_history_user_history_backfill")
+                        .HasFilter("activity_type = 12");
 
                     b.HasIndex("UserId", "ActivityType", "LocalDate")
                         .HasDatabaseName("IX_points_history_user_activity_local_date");
@@ -2651,6 +2664,10 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_active_at");
 
+                    b.Property<int?>("LastKnownUtcOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_known_utc_offset_minutes");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
@@ -2875,7 +2892,7 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("MemoryId")
+                    b.Property<Guid?>("MemoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("memory_id");
 
@@ -2888,7 +2905,8 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnName("user_id");
 
                     b.Property<Guid?>("VisionBoardItemId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("vision_board_item_id");
 
                     b.HasKey("Id");
 
@@ -2902,6 +2920,10 @@ namespace Amori.Api.Data.Migrations
                     b.HasIndex("UserId", "MemoryId")
                         .IsUnique()
                         .HasDatabaseName("IX_vault_gifts_user_id_memory_id");
+
+                    b.HasIndex("UserId", "VisionBoardItemId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_vault_gifts_user_id_vision_board_item_id");
 
                     b.ToTable("vault_gifts", (string)null);
                 });
@@ -4144,8 +4166,7 @@ namespace Amori.Api.Data.Migrations
                     b.HasOne("Amori.Api.Domain.Entities.Memory", "Memory")
                         .WithMany()
                         .HasForeignKey("MemoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Amori.Api.Domain.Entities.User", "User")
                         .WithMany()
@@ -4155,7 +4176,8 @@ namespace Amori.Api.Data.Migrations
 
                     b.HasOne("Amori.Api.Domain.Entities.VisionBoardItem", "VisionBoardItem")
                         .WithMany()
-                        .HasForeignKey("VisionBoardItemId");
+                        .HasForeignKey("VisionBoardItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Memory");
 

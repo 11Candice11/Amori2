@@ -294,6 +294,8 @@ export const ALL_BADGES: Badge[] = [
     unlockCriteria: {
       type: 'long_distance_hugs',
       threshold: 1,
+      // Server: a hug sent while your device and your partner's report
+      // different UTC offsets. Only counts hugs sent after this was tracked.
       metadata: { condition: 'traveling_or_different_timezone' },
     },
     pointsReward: 100,
@@ -430,10 +432,12 @@ export const ALL_BADGES: Badge[] = [
   {
     id: 'words_that_matter',
     name: 'Words That Matter',
-    description: 'Have a conversation of 20 or more messages. Every word counts when it is heartfelt.',
+    description: 'Share a Let\'s Chat message and hear back within a day. Every word counts when it is heartfelt.',
     category: 'messages',
     tier: 1,
-    unlockCriteria: { type: 'conversations_completed', threshold: 1, metadata: { minMessages: 20 } },
+    // Server counts an exchange: a Let's Chat message answered by the other
+    // partner's own message within 24 hours (BadgeStatsService).
+    unlockCriteria: { type: 'conversations_completed', threshold: 1, metadata: { replyWithinHours: 24 } },
     pointsReward: 100,
     hidden: false,
     displayOrder: 1,
@@ -441,10 +445,10 @@ export const ALL_BADGES: Badge[] = [
   {
     id: 'words_that_matter2',
     name: 'Words That Matter II',
-    description: 'Hold ten conversations of 20 or more messages. You always find the words.',
+    description: 'Ten Let\'s Chat exchanges, each answered within a day. You always find the words.',
     category: 'messages',
     tier: 2,
-    unlockCriteria: { type: 'conversations_completed', threshold: 10, metadata: { minMessages: 20 } },
+    unlockCriteria: { type: 'conversations_completed', threshold: 10, metadata: { replyWithinHours: 24 } },
     pointsReward: 250,
     hidden: false,
     displayOrder: 2,
@@ -580,7 +584,9 @@ export const ALL_BADGES: Badge[] = [
   {
     id: 'open_heart',
     name: 'Open Heart',
-    description: 'Respond to a partner request within 10 minutes, ten times. Showing up when it counts.',
+    // A "request": a Let's Chat "Something I need" (answered by a message or a
+    // hug), or a care ticket set to Awaiting Response (answered by a response).
+    description: 'Answer your partner within 10 minutes when they ask for something, ten times. Showing up when it counts.',
     category: 'partner_sync',
     tier: 1,
     unlockCriteria: {
@@ -846,10 +852,11 @@ export function getUnlockCriteriaText(badge: Badge): string {
     case 'messages_sent':
       return `Send ${n} ${plural(n, 'message')}`;
     case 'conversations_completed': {
-      const min = (metadata?.minMessages as number) ?? 20;
+      const hours = (metadata?.replyWithinHours as number) ?? 24;
+      const window = hours === 24 ? 'a day' : `${hours} ${plural(hours, 'hour')}`;
       return n === 1
-        ? `Have a conversation of ${min} or more messages`
-        : `Have ${n} conversations of ${min} or more messages`;
+        ? `Send a Let's Chat message that your partner answers within ${window} (or answer one of theirs)`
+        : `Have ${n} Let's Chat exchanges, each answered within ${window}`;
     }
 
     // ── Timeline ──
@@ -887,7 +894,10 @@ export function getUnlockCriteriaText(badge: Badge): string {
       return `Give the same answer as your partner on ${n} ${plural(n, 'question')}`;
     case 'partner_request_fast_responses': {
       const minutes = (metadata?.withinMinutes as number) ?? 10;
-      return `Answer ${n} of your partner's ${plural(n, 'request')} within ${minutes} ${plural(minutes, 'minute')}`;
+      return (
+        `Answer ${n} of your partner's ${plural(n, 'request')} within ${minutes} ${plural(minutes, 'minute')} ` +
+        `— a Let's Chat "Something I need" (reply or send a hug), or a care ticket awaiting your response`
+      );
     }
     case 'partner_low_mood_support':
       return n === 1
@@ -951,7 +961,7 @@ export function getCriteriaUnitLabel(type: UnlockCriteriaType): string {
     memories_saved_to_vault: 'memories in the vault',
     memory_saved_on_anniversary: 'anniversary memories',
     messages_sent: 'messages sent',
-    conversations_completed: 'conversations',
+    conversations_completed: 'exchanges',
     timeline_events_added: 'timeline moments',
     anniversary_reached: 'years together',
     vision_board_items_added: 'vision board items',

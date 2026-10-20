@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Amori.Api.Features.Users.DTOs;
 
 /// <summary>
@@ -31,4 +33,12 @@ public sealed class BadgeResponse
 
     /// <summary>When the badge was earned (ISO 8601).</summary>
     public DateTime EarnedAt { get; set; }
+
+    /// <summary>
+    /// What saving this badge earned — present only on the archive response,
+    /// and only for the first save. The app applies it like any other action's
+    /// rewards. Omitted from badge lists.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Common.Responses.RewardsResponse? Rewards { get; set; }
 }
