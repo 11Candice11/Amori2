@@ -4,30 +4,39 @@
  * Backed by the dedicated Date Planner API (/api/dates), which stores a richer
  * DateIdea than the bucket list (category, estimated cost, duration):
  *   GET    /api/dates                → list all ideas
- *   POST   /api/dates                → create (defaults to the Romantic category)
- *   PATCH  /api/dates/{id}           → toggle favorite / completion
+ *   PATCH  /api/dates/{id}           → mark done / reopen, favorite
  *   DELETE /api/dates/{id}           → remove an idea
  *
- * Real, data-backed: pull-to-refresh, loading + empty + error states, inline
- * add, and per-row complete/favorite/delete actions that persist to the
- * backend. Starred ideas float to the top; completed ideas sink to the bottom
- * with a struck-through title and a delete affordance.
+ * Adding or editing an idea opens AddDateIdeaScreen (photo, title, description,
+ * link).
+ *
+ * Real, data-backed: pull-to-refresh, loading + empty + error states, and
+ * per-row done/favorite actions that persist to the backend. Each row shows the
+ * idea's photo, description and a tappable link when it has them.
+ *
+ * Either partner can mark an idea Done (and Reopen it). That keeps the idea: it
+ * gets a "Done" badge with the date, a struck-through title, and sinks to the
+ * bottom. Deleting is separate and permanent. Either partner can Edit an idea;
+ * only the person who added it sees Delete (the backend enforces this, and
+ * delete asks for confirmation). Starred ideas float to the top. The list
+ * reloads whenever the screen regains focus, so an idea added or edited on the
+ * compose screen shows up at once.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
+  Image,
+  Linking,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -36,7 +45,7 @@ import { AppHeader } from '../../../shared/components/header';
 import { SupportPreferencesLink } from '../../supportProfile/components/SupportPreferencesLink';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
-import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
+import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { togetherService } from '../services/togetherService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
@@ -45,8 +54,14 @@ import {
   DATE_CATEGORY_LABELS,
   type DateIdeaResponse,
 } from '../types/together.types';
+import { formatCost } from '../utils/cost';
+import { formatShortDate } from '../utils/formatDate';
+import { linkHost, normalizeLink } from '../utils/links';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'DateIdeas'>;
+
+/** The "done" green, shared by the tick, the Done badge and its button. */
+const DONE_GREEN = '#4CAF7D';
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
@@ -67,8 +82,8 @@ function StarIcon({ filled }: { filled?: boolean }) {
 function CheckCircleIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={9} stroke="#4CAF7D" strokeWidth={1.5} />
-      <Path d="M8 12l3 3 5-6" stroke="#4CAF7D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={12} cy={12} r={9} stroke={DONE_GREEN} strokeWidth={1.5} />
+      <Path d="M8 12l3 3 5-6" stroke={DONE_GREEN} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -81,14 +96,15 @@ function CircleIcon() {
   );
 }
 
-function DeleteIcon() {
+function LinkIcon() {
   return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M6 6l12 12M18 6L6 18"
-        stroke={colors.neutralMuted}
-        strokeWidth={2}
+        d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"
+        stroke={colors.gold}
+        strokeWidth={1.8}
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
@@ -99,16 +115,6 @@ function DeleteIcon() {
 function categoryLabel(category: number): string | null {
   const key = DATE_CATEGORY_LABELS[category];
   return key ? DATE_CATEGORY_DISPLAY[key] : null;
-}
-
-function formatCost(cost: number | null): string | null {
-  if (cost == null) return null;
-  if (cost === 0) return 'Free';
-  return cost.toLocaleString(undefined, {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  });
 }
 
 function formatDuration(minutes: number | null): string | null {
@@ -126,22 +132,39 @@ function Row({
   busy,
   onToggleComplete,
   onToggleFavorite,
+  onEdit,
   onDelete,
+  onOpenLink,
 }: {
   item: DateIdeaResponse;
   busy: boolean;
   onToggleComplete: (item: DateIdeaResponse) => void;
   onToggleFavorite: (item: DateIdeaResponse) => void;
+  onEdit: (item: DateIdeaResponse) => void;
   onDelete: (item: DateIdeaResponse) => void;
+  onOpenLink: (url: string) => void;
 }) {
   const category = categoryLabel(item.category);
   const cost = formatCost(item.estimatedCost);
   const duration = formatDuration(item.durationMinutes);
-  // Only the creator can delete (backend-enforced), so hide the x for the
-  // partner's ideas and keep showing the star instead.
-  const canDelete = item.isCompleted && userSettingsStore.get()?.id === item.createdByUserId;
+  const imageUri = item.imageUrl ? resolveMediaUrl(item.imageUrl) : null;
+  // Only ever offer a link that is a valid http(s) address.
+  const link = normalizeLink(item.url);
+  const host = link ? linkHost(link) : null;
+  // Either partner can edit or mark done, but only the creator can delete
+  // (backend-enforced), so only show Delete on your own ideas.
+  const canDelete = userSettingsStore.get()?.id === item.createdByUserId;
+  const doneOn = item.isCompleted ? formatShortDate(item.completedAt) : null;
   return (
     <View style={[styles.row, item.isCompleted && styles.rowCompleted]}>
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.rowImage}
+          resizeMode="cover"
+          accessibilityLabel={`Photo of ${item.title}`}
+        />
+      ) : null}
       <View style={styles.rowHeader}>
         <Pressable
           onPress={() => onToggleComplete(item)}
@@ -149,7 +172,7 @@ function Row({
           disabled={busy}
           style={styles.rowIcon}
           accessibilityRole="button"
-          accessibilityLabel={item.isCompleted ? 'Mark not done' : 'Mark complete'}
+          accessibilityLabel={item.isCompleted ? 'Reopen date idea' : 'Mark done'}
         >
           {item.isCompleted ? <CheckCircleIcon /> : <CircleIcon />}
         </Pressable>
@@ -181,43 +204,84 @@ function Row({
           </View>
         </View>
 
-        {canDelete ? (
-          <Pressable
-            onPress={() => onDelete(item)}
-            hitSlop={8}
-            disabled={busy}
-            style={styles.rowIcon}
-            accessibilityRole="button"
-            accessibilityLabel="Delete date idea"
-          >
-            <DeleteIcon />
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => onToggleFavorite(item)}
-            hitSlop={8}
-            disabled={busy}
-            style={styles.rowIcon}
-            accessibilityRole="button"
-            accessibilityLabel={item.isFavorite ? 'Remove favorite' : 'Add favorite'}
-          >
-            <StarIcon filled={item.isFavorite} />
-          </Pressable>
-        )}
+        <Pressable
+          onPress={() => onToggleFavorite(item)}
+          hitSlop={8}
+          disabled={busy}
+          style={styles.rowIcon}
+          accessibilityRole="button"
+          accessibilityLabel={item.isFavorite ? 'Remove favorite' : 'Add favorite'}
+        >
+          <StarIcon filled={item.isFavorite} />
+        </Pressable>
       </View>
 
+      {item.isCompleted ? (
+        <View style={styles.doneBadge} accessible accessibilityLabel="Done">
+          <Text style={styles.doneBadgeText}>{doneOn ? `✓ Done · ${doneOn}` : '✓ Done'}</Text>
+        </View>
+      ) : null}
+
       {item.description ? (
-        <Text style={styles.rowDesc} numberOfLines={2}>
+        <Text style={styles.rowDesc} numberOfLines={3}>
           {item.description}
         </Text>
       ) : null}
 
       {item.location ? <Text style={styles.rowSub}>{item.location}</Text> : null}
 
-      <View style={styles.statusRow}>
-        <Text style={[styles.statusText, item.isCompleted && styles.statusDone]}>
-          {item.isCompleted ? 'Completed' : 'In progress'}
-        </Text>
+      {link && host ? (
+        <Pressable
+          onPress={() => onOpenLink(link)}
+          hitSlop={8}
+          style={styles.linkChip}
+          accessibilityRole="link"
+          accessibilityLabel={`Open link to ${host}`}
+        >
+          <LinkIcon />
+          <Text style={styles.linkText} numberOfLines={1}>
+            {host}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      <View style={styles.rowActions}>
+        {/* Tick the date off (kept in the list) or bring it back. Either partner. */}
+        <Pressable
+          onPress={() => onToggleComplete(item)}
+          hitSlop={8}
+          disabled={busy}
+          style={item.isCompleted ? undefined : styles.doneBtn}
+          accessibilityRole="button"
+          accessibilityLabel={item.isCompleted ? `Reopen ${item.title}` : `Mark ${item.title} as done`}
+        >
+          <Text style={item.isCompleted ? styles.reopenText : styles.doneBtnText}>
+            {item.isCompleted ? 'Reopen' : '✓ Mark done'}
+          </Text>
+        </Pressable>
+
+        <View style={styles.ownerActions}>
+          <Pressable
+            onPress={() => onEdit(item)}
+            hitSlop={8}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${item.title}`}
+          >
+            <Text style={styles.editText}>Edit</Text>
+          </Pressable>
+          {canDelete ? (
+            <Pressable
+              onPress={() => onDelete(item)}
+              hitSlop={8}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${item.title}`}
+            >
+              <Text style={styles.deleteText}>Delete</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -231,8 +295,6 @@ export function DateIdeasScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newIdea, setNewIdea] = useState('');
-  const [saving, setSaving] = useState(false);
   /** Id of a row with an action in flight, to disable its buttons. */
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -249,45 +311,52 @@ export function DateIdeasScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Load on first open and again whenever we return (e.g. after adding an idea).
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     load();
   }, [load]);
 
-  const handleSave = useCallback(async () => {
-    const trimmed = newIdea.trim();
-    if (!trimmed || saving) return;
+  const handleAdd = useCallback(() => {
+    navigation.navigate('AddDateIdea');
+  }, [navigation]);
 
-    setSaving(true);
-    setError(null);
-    try {
-      await togetherService.createDateIdea(trimmed);
-      showSuccessOverlay('Date idea added');
-      setNewIdea('');
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add the date idea.');
-      showErrorOverlay("Couldn't add date idea");
-    } finally {
-      setSaving(false);
-    }
-  }, [newIdea, saving, load]);
+  const handleEdit = useCallback(
+    (item: DateIdeaResponse) => {
+      navigation.navigate('AddDateIdea', { idea: item });
+    },
+    [navigation],
+  );
 
+  const handleOpenLink = useCallback((url: string) => {
+    Linking.openURL(url).catch(() => showError("Couldn't open that link"));
+  }, []);
+
+  /** Tick a date idea off as done, or reopen it. The idea is kept either way. */
   const handleToggleComplete = useCallback(
     async (item: DateIdeaResponse) => {
       if (busyId) return;
       setBusyId(item.id);
       setError(null);
+      const completing = !item.isCompleted;
       try {
         // PATCH toggles both ways so an accidental tick can be undone.
-        await togetherService.setDateIdeaCompleted(item.id, !item.isCompleted);
+        await togetherService.setDateIdeaCompleted(item.id, completing);
+        if (completing) {
+          showSuccessOverlay('Date done ❤');
+        } else {
+          showSuccess('Date idea reopened');
+        }
         await load();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not update the idea.');
+        showError('Sorry that failed :(');
       } finally {
         setBusyId(null);
       }
@@ -295,7 +364,7 @@ export function DateIdeasScreen() {
     [busyId, load],
   );
 
-  const handleDelete = useCallback(
+  const deleteItem = useCallback(
     async (item: DateIdeaResponse) => {
       if (busyId) return;
       setBusyId(item.id);
@@ -312,6 +381,17 @@ export function DateIdeasScreen() {
       }
     },
     [busyId, load],
+  );
+
+  /** Deleting can't be undone, so ask first. */
+  const handleDelete = useCallback(
+    (item: DateIdeaResponse) => {
+      Alert.alert('Delete date idea', `Delete "${item.title}" from your date ideas?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteItem(item) },
+      ]);
+    },
+    [deleteItem],
   );
 
   const handleToggleFavorite = useCallback(
@@ -332,8 +412,8 @@ export function DateIdeasScreen() {
   );
 
   /**
-   * Starred (favorite) ideas float to the top; completed ideas sink to the
-   * bottom. Within each group the original server order is preserved.
+   * Starred (favorite) ideas float to the top; done ideas sink to the bottom.
+   * Within each group the original server order is preserved.
    */
   const sortedItems = useMemo(() => {
     const rank = (i: DateIdeaResponse) =>
@@ -360,10 +440,7 @@ export function DateIdeasScreen() {
           </Pressable>
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <View style={styles.flex}>
           <FlatList
             data={sortedItems}
             keyExtractor={(item) => item.id}
@@ -373,12 +450,22 @@ export function DateIdeasScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
             }
             ListHeaderComponent={
-              <View style={{ marginBottom: spacing.md }}>
-                <SupportPreferencesLink
-                  label="Use their preferences"
-                  focusSection="favorites"
-                  hint="Favourite places, food, and date ideas your partner shared."
-                />
+              <View>
+                <Pressable
+                  style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+                  onPress={handleAdd}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a date idea"
+                >
+                  <Text style={styles.addBtnText}>+ Add a Date Idea</Text>
+                </Pressable>
+                <View style={styles.preferencesLink}>
+                  <SupportPreferencesLink
+                    label="Use their preferences"
+                    focusSection="favorites"
+                    hint="Favourite places, food, and date ideas your partner shared."
+                  />
+                </View>
               </View>
             }
             renderItem={({ item }) => (
@@ -387,44 +474,16 @@ export function DateIdeasScreen() {
                 busy={busyId === item.id}
                 onToggleComplete={handleToggleComplete}
                 onToggleFavorite={handleToggleFavorite}
+                onEdit={handleEdit}
                 onDelete={handleDelete}
+                onOpenLink={handleOpenLink}
               />
             )}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  No date ideas yet. Add your first below.
+                  No date ideas yet. Add your first above.
                 </Text>
-              </View>
-            }
-            ListFooterComponent={
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Add a date idea..."
-                  placeholderTextColor={colors.neutralSubtle}
-                  value={newIdea}
-                  onChangeText={setNewIdea}
-                  onSubmitEditing={handleSave}
-                  returnKeyType="done"
-                  editable={!saving}
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.saveBtn,
-                    (!newIdea.trim() || saving || pressed) && styles.saveBtnDisabled,
-                  ]}
-                  onPress={handleSave}
-                  disabled={!newIdea.trim() || saving}
-                  accessibilityRole="button"
-                  accessibilityLabel="Save date idea"
-                >
-                  {saving ? (
-                    <ActivityIndicator color={colors.ctaText} size="small" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Save</Text>
-                  )}
-                </Pressable>
               </View>
             }
           />
@@ -433,7 +492,7 @@ export function DateIdeasScreen() {
               <Text style={styles.errorBannerText}>{error}</Text>
             </View>
           ) : null}
-        </KeyboardAvoidingView>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -453,6 +512,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xl,
   },
+  preferencesLink: {
+    marginBottom: spacing.md,
+  },
   row: {
     backgroundColor: colors.surfaceCard,
     borderRadius: 14,
@@ -467,6 +529,13 @@ const styles = StyleSheet.create({
   rowTitleDone: {
     textDecorationLine: 'line-through',
     color: colors.neutralMuted,
+  },
+  rowImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
   },
   rowHeader: {
     flexDirection: 'row',
@@ -517,17 +586,81 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  statusRow: {
+  doneBadge: {
+    alignSelf: 'flex-start',
     marginTop: spacing.sm,
-    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: DONE_GREEN,
+    backgroundColor: 'rgba(76,175,125,0.12)',
   },
-  statusText: {
+  doneBadgeText: {
     ...typography.bodySm,
-    color: colors.primaryLight,
+    color: DONE_GREEN,
     fontSize: 12,
   },
-  statusDone: {
-    color: '#4CAF7D',
+  linkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(139,111,58,0.12)',
+    maxWidth: '100%',
+  },
+  linkText: {
+    ...typography.bodySm,
+    color: colors.gold,
+    fontSize: 12,
+    flexShrink: 1,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  ownerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  doneBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: DONE_GREEN,
+  },
+  doneBtnText: {
+    ...typography.bodySemiBold,
+    color: DONE_GREEN,
+    fontSize: 13,
+  },
+  reopenText: {
+    ...typography.bodySemiBold,
+    color: colors.neutralMuted,
+    fontSize: 13,
+  },
+  editText: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 13,
+  },
+  deleteText: {
+    ...typography.bodySemiBold,
+    color: colors.emergency,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -553,29 +686,12 @@ const styles = StyleSheet.create({
     ...typography.bodySemiBold,
     color: colors.ctaText,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  input: {
-    ...typography.body,
-    color: colors.neutral,
-    fontSize: 15,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    flex: 1,
-  },
-  saveBtn: {
+  addBtn: {
     backgroundColor: colors.ctaBackground,
     borderRadius: 14,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
-    minWidth: 80,
+    marginBottom: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     // 3D beveled border
@@ -593,10 +709,10 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  saveBtnDisabled: {
-    opacity: 0.5,
+  addBtnPressed: {
+    opacity: 0.7,
   },
-  saveBtnText: {
+  addBtnText: {
     ...typography.bodySemiBold,
     color: colors.ctaText,
     fontSize: 15,

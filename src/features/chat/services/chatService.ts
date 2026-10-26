@@ -8,6 +8,7 @@ import type {
   ChatConversation,
   ChatTemplateDefinition,
   CreateChatPayload,
+  ResolveChatPayload,
   UpdateChatPayload,
 } from '../types/chat.types';
 
@@ -50,6 +51,12 @@ export const chatService = {
 
   markRead(id: string): Promise<ChatConversation> {
     return api.post<ChatConversation>(`${BASE}/${id}/read`);
+  },
+
+  /** Close a sent chat with a written resolution. Either partner may do this. */
+  resolve(id: string, resolution: string): Promise<ChatConversation> {
+    const payload: ResolveChatPayload = { resolution };
+    return api.post<ChatConversation>(`${BASE}/${id}/resolve`, payload);
   },
 
   remove(id: string): Promise<void> {

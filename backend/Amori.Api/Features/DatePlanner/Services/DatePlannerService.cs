@@ -1,8 +1,10 @@
 using Amori.Api.Common.Exceptions;
+using static Amori.Api.Common.Text.UserInput;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Domain.Enums;
 using Amori.Api.Infrastructure.Relationships;
+using Amori.Api.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Amori.Api.Features.DatePlanner.DTOs;
 
@@ -10,13 +12,17 @@ namespace Amori.Api.Features.DatePlanner.Services;
 
 public sealed class DatePlannerService(
     AmoriDbContext db,
-    IRelationshipAccessService relAccess) : IDatePlannerService
+    IRelationshipAccessService relAccess,
+    IFileStorageService storage) : IDatePlannerService
 {
-    private static DateIdeaResponse Map(DateIdea d) => new()
+    private DateIdeaResponse Map(DateIdea d) => new()
     {
         Id = d.Id, RelationshipId = d.RelationshipId,
         CreatedByUserId = d.CreatedByUserId, CreatedByName = d.CreatedBy?.DisplayName ?? string.Empty,
-        Title = d.Title, Description = d.Description, Category = d.Category,
+        Title = d.Title, Description = d.Description,
+        ImageKey = d.ImageKey,
+        ImageUrl = string.IsNullOrWhiteSpace(d.ImageKey) ? null : storage.GetPublicUrl(d.ImageKey),
+        Url = d.Url, Category = d.Category,
         Location = d.Location, EstimatedCost = d.EstimatedCost, DurationMinutes = d.DurationMinutes,
         Notes = d.Notes, IsFavorite = d.IsFavorite, IsCompleted = d.IsCompleted,
         CompletedAt = d.CompletedAt, CreatedAt = d.CreatedAt, UpdatedAt = d.UpdatedAt
@@ -39,7 +45,8 @@ public sealed class DatePlannerService(
             ?? throw new NotFoundException("You are not a member of any relationship.");
         var query = db.DateIdeas.Include(d => d.CreatedBy).Where(d => d.RelationshipId == rel.Id);
         if (category.HasValue) query = query.Where(d => d.Category == category.Value);
-        return await query.OrderByDescending(d => d.CreatedAt).Select(d => Map(d)).ToListAsync(ct);
+        var ideas = await query.OrderByDescending(d => d.CreatedAt).ToListAsync(ct);
+        return ideas.Select(Map).ToList();
     }
 
     public async Task<DateIdeaResponse> GetByIdAsync(Guid userId, Guid dateId, CancellationToken ct = default)
@@ -57,9 +64,10 @@ public sealed class DatePlannerService(
         var idea = new DateIdea
         {
             RelationshipId = rel.Id, CreatedByUserId = userId,
-            Title = request.Title.Trim(), Description = request.Description,
-            Category = request.Category, Location = request.Location,
-            EstimatedCost = request.EstimatedCost, DurationMinutes = request.DurationMinutes,
+            Title = request.Title.Trim(), Description = NullIfBlank(request.Description),
+            ImageKey = NullIfBlank(request.ImageKey), Url = NormalizeLink(request.Url),
+            Category = request.Category, Location = NullIfBlank(request.Location),
+            EstimatedCost = ValidMoney(request.EstimatedCost, "Estimated cost"), DurationMinutes = request.DurationMinutes,
             Notes = request.Notes
         };
         db.DateIdeas.Add(idea);
@@ -71,11 +79,17 @@ public sealed class DatePlannerService(
     public async Task<DateIdeaResponse> UpdateAsync(Guid userId, Guid dateId, UpdateDateIdeaRequest request, CancellationToken ct = default)
     {
         var (_, idea) = await LoadAsync(userId, dateId, ct);
+        if (request.Title != null && string.IsNullOrWhiteSpace(request.Title))
+            throw new ValidationException("Title is required.");
+
         if (request.Title != null) idea.Title = request.Title.Trim();
-        if (request.Description != null) idea.Description = request.Description;
+        if (request.Description != null) idea.Description = NullIfBlank(request.Description);
+        if (request.ImageKey != null) idea.ImageKey = NullIfBlank(request.ImageKey);
+        if (request.Url != null) idea.Url = NormalizeLink(request.Url);
         if (request.Category.HasValue) idea.Category = request.Category.Value;
-        if (request.Location != null) idea.Location = request.Location;
-        if (request.EstimatedCost.HasValue) idea.EstimatedCost = request.EstimatedCost;
+        if (request.Location != null) idea.Location = NullIfBlank(request.Location);
+        if (request.EstimatedCost.HasValue) idea.EstimatedCost = ValidMoney(request.EstimatedCost, "Estimated cost");
+        else if (request.ClearEstimatedCost == true) idea.EstimatedCost = null;
         if (request.DurationMinutes.HasValue) idea.DurationMinutes = request.DurationMinutes;
         if (request.Notes != null) idea.Notes = request.Notes;
         if (request.IsFavorite.HasValue) idea.IsFavorite = request.IsFavorite.Value;

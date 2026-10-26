@@ -46,7 +46,7 @@ import {
   VoiceNoteRecorder,
   type RecordedVoiceNote,
 } from '../../memories/components/VoiceNoteRecorder';
-import { getCardImage } from '../../../utils/cardSelector';
+import { getCardImage, getRandomCardNumber } from '../../../utils/cardSelector';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
 import { mediaService } from '../../../services/media/mediaService';
 import { vaultService } from '../services/vaultService';
@@ -67,17 +67,12 @@ export type SendGiftModalProps = {
   onClose: () => void;
   /** Called after a gift is successfully created + saved, so the vault refreshes. */
   onSent?: () => void;
-  /** The card art (1-10) the gift is wrapped in. Defaults to a random card. */
+  /** The card art the gift is wrapped in. Defaults to a random card from the deck. */
   cardNumber?: number;
 };
 
-/** Pick a stable-ish random card 1-10 for the wrapper. */
-function randomCard(): number {
-  return 1 + Math.floor(Math.random() * 10);
-}
-
 export function SendGiftModal({ visible, onClose, onSent, cardNumber }: SendGiftModalProps) {
-  const [card] = useState(() => cardNumber ?? randomCard());
+  const [card] = useState(() => cardNumber ?? getRandomCardNumber());
   const cardImage = getCardImage(card);
 
   const [title, setTitle] = useState('');

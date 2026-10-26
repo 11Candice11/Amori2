@@ -365,6 +365,19 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("relationship_id");
 
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("resolution");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_id");
+
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uuid")
                         .HasColumnName("sender_id");
@@ -392,6 +405,8 @@ namespace Amori.Api.Data.Migrations
 
                     b.HasIndex("RelationshipId")
                         .HasDatabaseName("IX_chat_conversations_relationship_id");
+
+                    b.HasIndex("ResolvedById");
 
                     b.HasIndex("SenderId")
                         .HasDatabaseName("IX_chat_conversations_sender_id");
@@ -438,6 +453,11 @@ namespace Amori.Api.Data.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("estimated_cost");
 
+                    b.Property<string>("ImageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("image_key");
+
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_completed");
@@ -469,6 +489,11 @@ namespace Amori.Api.Data.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("url");
 
                     b.HasKey("Id");
 
@@ -3468,6 +3493,11 @@ namespace Amori.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Amori.Api.Domain.Entities.User", "ResolvedBy")
+                        .WithMany()
+                        .HasForeignKey("ResolvedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Amori.Api.Domain.Entities.User", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderId")
@@ -3477,6 +3507,8 @@ namespace Amori.Api.Data.Migrations
                     b.Navigation("Recipient");
 
                     b.Navigation("Relationship");
+
+                    b.Navigation("ResolvedBy");
 
                     b.Navigation("Sender");
                 });

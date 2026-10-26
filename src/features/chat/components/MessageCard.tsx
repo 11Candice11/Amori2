@@ -9,7 +9,7 @@ type Props = {
   onPress: () => void;
 };
 
-/** A message row in the drafts / history / thread lists. */
+/** A message row in the drafts / chats / resolved lists. */
 export function MessageCard({ conversation, onPress }: Props) {
   const preview =
     conversation.composedMessage.trim().length > 0
@@ -30,6 +30,11 @@ export function MessageCard({ conversation, onPress }: Props) {
       <Text style={styles.preview} numberOfLines={3}>
         “{preview}”
       </Text>
+      {conversation.isResolved && conversation.resolution ? (
+        <Text style={styles.resolution} numberOfLines={2}>
+          Resolution: {conversation.resolution}
+        </Text>
+      ) : null}
       <Text style={styles.byline}>
         {conversation.isMine ? 'Authored by you' : `From ${conversation.senderName}`}
       </Text>
@@ -55,5 +60,6 @@ const styles = StyleSheet.create({
   template: { ...typography.bodySemiBold, color: colors.gold, fontSize: 13 },
   status: { ...typography.bodySm, color: colors.neutralMuted, fontSize: 11 },
   preview: { ...typography.body, color: colors.neutral, fontStyle: 'italic' },
+  resolution: { ...typography.bodySm, color: colors.neutralMuted, marginTop: spacing.sm },
   byline: { ...typography.bodySm, color: colors.neutralSubtle, fontSize: 11, marginTop: spacing.xs },
 });

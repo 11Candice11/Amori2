@@ -15,6 +15,7 @@ export const TEMPLATE_TITLES: Record<ChatTemplateType, string> = {
 
 /** A short, human status label for a conversation. */
 export function statusLabel(conversation: ChatConversation): string {
+  if (conversation.isResolved) return 'Resolved';
   switch (conversation.status) {
     case 'Draft':
       return 'Draft';
@@ -28,6 +29,17 @@ export function statusLabel(conversation: ChatConversation): string {
     default:
       return conversation.status;
   }
+}
+
+/**
+ * Who resolved a chat, from the caller's point of view: "you" or the partner's
+ * name. The client doesn't hold the caller's user id, so it works it out from
+ * who sent the message (`isMine`) and who resolved it.
+ */
+export function resolvedByLabel(conversation: ChatConversation): string {
+  const resolvedBySender = conversation.resolvedById === conversation.senderId;
+  const resolvedByMe = resolvedBySender ? conversation.isMine : !conversation.isMine;
+  return resolvedByMe ? 'you' : (conversation.resolvedByName ?? 'your partner');
 }
 
 /** Compact relative time, e.g. "24m ago", "3h ago", "2d ago". */

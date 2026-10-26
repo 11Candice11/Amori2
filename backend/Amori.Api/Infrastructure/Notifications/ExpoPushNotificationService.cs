@@ -70,6 +70,10 @@ public sealed class ExpoPushNotificationService(
                 Title = title,
                 Body = body,
                 Sound = "default",
+                // Expo's default is "normal" on Android, which may be delayed or held
+                // back while the phone sleeps. These pushes are someone reaching out
+                // (a chat, a hug), so ask for prompt delivery.
+                Priority = "high",
                 Data = data
             })
             .ToList();
@@ -84,8 +88,50 @@ public sealed class ExpoPushNotificationService(
             var payload = await response.Content.ReadAsStringAsync(ct);
             logger.LogWarning("Expo push request failed ({Status}): {Payload}",
                 (int)response.StatusCode, payload);
+            return;
+        }
+
+        await LogRejectedTicketsAsync(response, messages, ct);
+    }
+
+    /// <summary>
+    /// Expo answers 200 even when it refuses a message, and says so per message in
+    /// the response body (e.g. InvalidCredentials when the FCM key was never
+    /// uploaded, DeviceNotRegistered for a stale token). Without reading it, an
+    /// Android push that never arrives leaves no trace, so surface each rejection.
+    /// Best-effort: an unreadable body must never fail the send.
+    /// </summary>
+    private async Task LogRejectedTicketsAsync(
+        HttpResponseMessage response, IReadOnlyList<ExpoPushMessage> messages, CancellationToken ct)
+    {
+        try
+        {
+            var result = await response.Content.ReadFromJsonAsync<ExpoPushResponse>(cancellationToken: ct);
+            if (result is null) return;
+
+            foreach (var error in result.Errors ?? [])
+                logger.LogWarning("Expo rejected the push request: {Code} {Message}", error.Code, error.Message);
+
+            var tickets = result.Data ?? [];
+            for (var i = 0; i < tickets.Count && i < messages.Count; i++)
+            {
+                var ticket = tickets[i];
+                if (!string.Equals(ticket.Status, "error", StringComparison.OrdinalIgnoreCase)) continue;
+
+                logger.LogWarning(
+                    "Expo rejected a push for device …{TokenTail}: {Error} {Message}",
+                    TokenTail(messages[i].To), ticket.Details?.Error ?? "unknown", ticket.Message);
+            }
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or NotSupportedException)
+        {
+            logger.LogDebug(ex, "Could not read the Expo push response body.");
         }
     }
+
+    /// <summary>Last few characters only, enough to tell devices apart without logging the token.</summary>
+    private static string TokenTail(string token) =>
+        token.Length <= 6 ? token : token[^6..];
 
     private sealed class ExpoPushMessage
     {
@@ -101,7 +147,48 @@ public sealed class ExpoPushNotificationService(
         [JsonPropertyName("sound")]
         public string? Sound { get; init; }
 
+        [JsonPropertyName("priority")]
+        public string? Priority { get; init; }
+
         [JsonPropertyName("data")]
         public IDictionary<string, string>? Data { get; init; }
+    }
+
+    // The slice of the Expo push response we read: per-message tickets, plus
+    // request-level errors that apply to the whole call.
+    private sealed class ExpoPushResponse
+    {
+        [JsonPropertyName("data")]
+        public List<ExpoPushTicket>? Data { get; init; }
+
+        [JsonPropertyName("errors")]
+        public List<ExpoRequestError>? Errors { get; init; }
+    }
+
+    private sealed class ExpoPushTicket
+    {
+        [JsonPropertyName("status")]
+        public string? Status { get; init; }
+
+        [JsonPropertyName("message")]
+        public string? Message { get; init; }
+
+        [JsonPropertyName("details")]
+        public ExpoTicketDetails? Details { get; init; }
+    }
+
+    private sealed class ExpoTicketDetails
+    {
+        [JsonPropertyName("error")]
+        public string? Error { get; init; }
+    }
+
+    private sealed class ExpoRequestError
+    {
+        [JsonPropertyName("code")]
+        public string? Code { get; init; }
+
+        [JsonPropertyName("message")]
+        public string? Message { get; init; }
     }
 }

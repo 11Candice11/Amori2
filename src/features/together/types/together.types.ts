@@ -231,13 +231,20 @@ export interface WishlistItemResponse {
   name: string;
   description: string | null;
   imageKey: string | null;
+  /** Loadable URL resolved from `imageKey`; null when the item has no photo. */
+  imageUrl: string | null;
   price: number | null;
   url: string | null;
   /** Serialized as the integer enum value. */
   priority: number;
   notes: string | null;
+  /**
+   * True once the wish is closed as "fulfilled". Named `isPurchased` for
+   * historical reasons; wishes are not always purchases (a date, a trip).
+   */
   isPurchased: boolean;
   isFavorite: boolean;
+  /** When the wish was marked fulfilled; null while it is open. */
   purchasedAt: string | null;
   createdAt: string;
   updatedAt: string | null;
@@ -257,7 +264,10 @@ export interface UpdateWishlistItemRequest {
   name?: string | null;
   description?: string | null;
   imageKey?: string | null;
+  /** null / omitted leaves the price unchanged (see clearPrice). 0 means free. */
   price?: number | null;
+  /** true removes the price. */
+  clearPrice?: boolean;
   url?: string | null;
   priority?: number;
   notes?: string | null;
@@ -324,6 +334,11 @@ export interface DateIdeaResponse {
   createdByName: string;
   title: string;
   description: string | null;
+  imageKey: string | null;
+  /** Loadable URL resolved from `imageKey`; null when the idea has no photo. */
+  imageUrl: string | null;
+  /** An http(s) web page for the idea; null when none. */
+  url: string | null;
   /** Serialized as the integer enum value. */
   category: number;
   location: string | null;
@@ -340,6 +355,8 @@ export interface DateIdeaResponse {
 export interface CreateDateIdeaRequest {
   title: string;
   description?: string | null;
+  imageKey?: string | null;
+  url?: string | null;
   category: number;
   location?: string | null;
   estimatedCost?: number | null;
@@ -350,9 +367,17 @@ export interface CreateDateIdeaRequest {
 export interface UpdateDateIdeaRequest {
   title?: string | null;
   description?: string | null;
+  /** null leaves the photo unchanged; '' removes it. */
+  imageKey?: string | null;
+  /** null leaves the link unchanged; '' removes it. */
+  url?: string | null;
   category?: number;
+  /** null leaves the location unchanged; '' removes it. */
   location?: string | null;
+  /** null / omitted leaves the cost unchanged (see clearEstimatedCost). 0 means free. */
   estimatedCost?: number | null;
+  /** true removes the estimated cost. */
+  clearEstimatedCost?: boolean;
   durationMinutes?: number | null;
   notes?: string | null;
   isFavorite?: boolean;

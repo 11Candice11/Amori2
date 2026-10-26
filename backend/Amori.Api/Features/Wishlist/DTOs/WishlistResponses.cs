@@ -11,6 +11,10 @@ public sealed class WishlistItemResponse
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string? ImageKey { get; init; }
+
+    /// <summary>A loadable URL resolved from <see cref="ImageKey"/>. Null when no image.</summary>
+    public string? ImageUrl { get; init; }
+
     public decimal? Price { get; init; }
     public string? Url { get; init; }
     public WishlistPriority Priority { get; init; }

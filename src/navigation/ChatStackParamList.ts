@@ -15,10 +15,17 @@ export type ChatStackParamList = {
   ChatPreview: { localDraftId: string };
   /** Post-send confirmation ("Sent with love"). */
   ChatSent: { conversationId: string };
-  /** A message received from the partner. */
-  ChatReceived: { conversationId: string };
+  /**
+   * One chat, whether you sent it or received it (also the push / inbox target).
+   * Open chats offer Resolve; resolved chats show the resolution.
+   */
+  ChatDetail: { conversationId: string };
+  /** Ask for a resolution and close the chat. */
+  ChatResolve: { conversationId: string };
   /** Saved (unsent) drafts. */
   ChatDrafts: undefined;
-  /** The shared archive of exchanged messages. */
-  ChatHistory: undefined;
+  /** Open chats: sent messages that haven't been resolved yet. */
+  ChatList: undefined;
+  /** Chats either partner has resolved. */
+  ChatResolved: undefined;
 };

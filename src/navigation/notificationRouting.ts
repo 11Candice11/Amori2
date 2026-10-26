@@ -58,9 +58,9 @@ export const notificationRoutes: Required<PushHandlerCallbacks> = {
   /** Gift received → the Vault, which auto-opens the gift with this id. */
   onOpenGift: (giftId) => go('Vault', { giftId }),
 
-  /** Let's Chat message → the received message (opening it marks it read). */
+  /** Let's Chat message → the chat (opening it as the recipient marks it read). */
   onOpenChat: (conversationId) =>
-    go('Chat', { screen: 'ChatReceived', params: { conversationId } }),
+    go('Chat', { screen: 'ChatDetail', params: { conversationId } }),
 
   /** Vision Board item added / achieved → that item's detail screen. */
   onOpenVisionBoardItem: (itemId) =>

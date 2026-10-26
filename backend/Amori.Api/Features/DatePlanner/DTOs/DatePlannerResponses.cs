@@ -10,6 +10,11 @@ public sealed class DateIdeaResponse
     public string CreatedByName { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
+    public string? ImageKey { get; init; }
+
+    /// <summary>A loadable URL resolved from <see cref="ImageKey"/>. Null when no photo.</summary>
+    public string? ImageUrl { get; init; }
+    public string? Url { get; init; }
     public DateCategory Category { get; init; }
     public string? Location { get; init; }
     public decimal? EstimatedCost { get; init; }

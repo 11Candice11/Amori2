@@ -22,5 +22,12 @@ public interface IChatService
 
     Task<ChatConversationResponse> MarkReadAsync(Guid userId, Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Close a sent chat as resolved with a written resolution. Either partner may
+    /// do it; 409 if the message is unsent or already resolved, 422 if the
+    /// resolution is blank or too long.
+    /// </summary>
+    Task<ChatConversationResponse> ResolveAsync(Guid userId, Guid id, ResolveChatRequest request, CancellationToken ct = default);
+
     Task DeleteAsync(Guid userId, Guid id, CancellationToken ct = default);
 }

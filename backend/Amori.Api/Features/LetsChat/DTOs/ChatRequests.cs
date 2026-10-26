@@ -25,3 +25,10 @@ public sealed class UpdateChatRequest
     /// <summary>Move a draft to <see cref="ChatMessageStatus.Private"/> ("save privately").</summary>
     public ChatMessageStatus? Status { get; set; }
 }
+
+/// <summary>Close a sent chat as resolved. Either partner may do this.</summary>
+public sealed class ResolveChatRequest
+{
+    /// <summary>What was resolved or agreed. Required; blank is rejected.</summary>
+    public string Resolution { get; set; } = string.Empty;
+}

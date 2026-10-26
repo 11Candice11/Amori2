@@ -14,8 +14,12 @@
  *                        CalendarEventResponse) switches the screen into edit
  *                        mode, pre-filling every field and enabling delete.
  * Wishlist             → the full shared wishlist (GET /api/wishlist).
- * DateIdeas            → the couple's date ideas (bucket-list items filed under
- *                        the DateIdeas category; GET/POST /api/bucket-list).
+ * AddWishlistItem      → compose a new wish (photo, title, description, link),
+ *                        like adding to the Vision Board, or edit one of your
+ *                        own wishes when `item` is passed.
+ * DateIdeas            → the couple's date ideas (Date Planner, GET /api/dates).
+ * AddDateIdea          → compose a new date idea (photo, title, description,
+ *                        link), or edit one when `idea` is passed.
  * Memories             → the shared memories collection (GET /api/memories).
  * AddMemory            → compose form that POSTs a real /api/memories. Requires
  *                        a memory date + time.
@@ -32,7 +36,11 @@
  *                        one when `itemId` is set. `sectionId` optionally
  *                        pre-selects the shelf when opened from a section.
  */
-import type { CalendarEventResponse } from '../features/together/types/together.types';
+import type {
+  CalendarEventResponse,
+  DateIdeaResponse,
+  WishlistItemResponse,
+} from '../features/together/types/together.types';
 
 export type TogetherStackParamList = {
   TogetherHome: undefined;
@@ -41,7 +49,17 @@ export type TogetherStackParamList = {
     | { date?: string; startTime?: string; event?: CalendarEventResponse }
     | undefined;
   Wishlist: undefined;
+  /**
+   * Compose a new wish (photo, title, description, link), or edit an existing
+   * one when `item` is passed (owner only; the form is pre-filled).
+   */
+  AddWishlistItem: { item?: WishlistItemResponse } | undefined;
   DateIdeas: undefined;
+  /**
+   * Compose a new date idea (photo, title, description, link), or edit an
+   * existing one when `idea` is passed (either partner; the form is pre-filled).
+   */
+  AddDateIdea: { idea?: DateIdeaResponse } | undefined;
   /** The full shared calendar (month grid) as its own view. */
   Calendar: undefined;
   /** The couple's shared important dates (anniversaries, birthdays, milestones). */

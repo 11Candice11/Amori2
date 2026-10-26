@@ -285,7 +285,7 @@ export type SanctuaryDashboardProps = {
   onOpenWeeklyReflection?: () => void;
   /** Open the notifications inbox from the bell in the top bar. */
   onOpenNotifications?: () => void;
-  /** The card number (1-10) to display for today's daily gift. null = still loading. */
+  /** The card number to display for today's daily gift. null = still loading. */
   cardNumber?: number | null;
 };
 

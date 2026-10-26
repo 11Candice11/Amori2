@@ -39,11 +39,12 @@ export interface SavedGift {
   savedAt: string;
   /** The person who created the original memory or vision */
   createdByName: string;
-  /** The card number (1-10) associated with this gift */
+  /** The card number associated with this gift (any card in the deck) */
   cardNumber: number;
   /**
    * The memory's media (photos, voice note, links), so the vault reveal can show
-   * the same rich content the memory does. Empty for vision gifts.
+   * the same rich content the memory does. For a vision gift this is its single
+   * image as a photo (empty when it has none).
    */
   media: MemoryMediaResponse[];
 }
@@ -64,7 +65,7 @@ export interface SaveGiftRequest {
   memoryId?: string;
   /** The vision board item ID to save (omit if saving a memory) */
   visionBoardItemId?: string;
-  /** The card number (1-10) the gift was revealed in. */
+  /** The card number the gift was revealed in. */
   cardNumber: number;
 }
 
@@ -88,7 +89,7 @@ export interface CreateGiftRequest {
   latitude?: number | null;
   /** Longitude of location */
   longitude?: number | null;
-  /** The card number (1-10) the gift is wrapped in */
+  /** The card number the gift is wrapped in */
   cardNumber: number;
   /** Media attachments (photos, videos, voice notes, links) */
   media?: CreateGiftMediaRequest[];

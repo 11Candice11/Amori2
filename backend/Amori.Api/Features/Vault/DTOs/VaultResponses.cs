@@ -45,7 +45,7 @@ public sealed class VaultGiftResponse
     /// <summary>
     /// The memory's media (photos, voice note, links), so the vault can show the
     /// same rich content the memory does. Reuses the Memories DTO shape.
-    /// Empty for vision board items without images.
+    /// For a vision board item this is its single image as a photo, or empty when it has none.
     /// </summary>
     public IReadOnlyList<MemoryMediaResponse> Media { get; init; } = [];
 }

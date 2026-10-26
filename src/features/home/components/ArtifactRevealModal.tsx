@@ -39,7 +39,7 @@ export type ArtifactRevealModalProps = {
   title?: string;
   /** The gift body copy shown on the back of the card. */
   body?: string;
-  /** The card number (1-10) for the front face image. Defaults to 1. */
+  /** The card number for the front face image. Defaults to 1. */
   cardNumber?: number;
   /** Whether this gift has already been saved to the vault (disables save button). */
   alreadySaved?: boolean;

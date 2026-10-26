@@ -292,12 +292,15 @@ export const togetherService = {
     return api.patch<WishlistItemResponse>(`/api/wishlist/${itemId}`, payload);
   },
 
-  /** Toggle the purchased/completed state (PATCH supports both directions). */
-  setWishlistItemPurchased(
+  /**
+   * Close a wish as fulfilled, or reopen it (PATCH supports both directions).
+   * The wish is kept either way. The API still calls this flag `isPurchased`.
+   */
+  setWishlistItemFulfilled(
     itemId: string,
-    isPurchased: boolean,
+    fulfilled: boolean,
   ): Promise<WishlistItemResponse> {
-    return api.patch<WishlistItemResponse>(`/api/wishlist/${itemId}`, { isPurchased });
+    return api.patch<WishlistItemResponse>(`/api/wishlist/${itemId}`, { isPurchased: fulfilled });
   },
 
   setWishlistItemFavorite(

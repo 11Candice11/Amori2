@@ -16,6 +16,8 @@ public sealed class DateIdeaConfiguration : IEntityTypeConfiguration<DateIdea>
         builder.Property(d => d.CreatedByUserId).HasColumnName("created_by_user_id").IsRequired();
         builder.Property(d => d.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
         builder.Property(d => d.Description).HasColumnName("description").HasMaxLength(2000);
+        builder.Property(d => d.ImageKey).HasColumnName("image_key").HasMaxLength(500);
+        builder.Property(d => d.Url).HasColumnName("url").HasMaxLength(2048);
         builder.Property(d => d.Category).HasColumnName("category").IsRequired();
         builder.Property(d => d.Location).HasColumnName("location").HasMaxLength(300);
         builder.Property(d => d.EstimatedCost).HasColumnName("estimated_cost").HasColumnType("numeric(10,2)");

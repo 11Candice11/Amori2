@@ -8,6 +8,13 @@ public sealed class DateIdea : BaseEntity
     public Guid CreatedByUserId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+
+    /// <summary>Storage key for the idea's photo (uploaded via /api/media). Null when none.</summary>
+    public string? ImageKey { get; set; }
+
+    /// <summary>An optional web page for the idea (a venue, a recipe, a booking page). http(s) only.</summary>
+    public string? Url { get; set; }
+
     public DateCategory Category { get; set; }
     public string? Location { get; set; }
     public decimal? EstimatedCost { get; set; }

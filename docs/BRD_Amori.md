@@ -181,8 +181,8 @@ The **Together** tab bundles several sub-features that do NOT exist as standalon
 | Shared calendar | List by month (`?year&month`, **month is 1-indexed**), create, edit, delete (**creator only**). | Delete restricted to creator. |
 | Important dates | Read-only list. | |
 | Bucket list | List, create, mark complete. | |
-| Date ideas | List, create, edit, mark complete (one-way), delete, **random pick** (returns null / 204 when none uncompleted). Favorite/completed toggled via PATCH. | Random with no ideas → null. |
-| Wishlist | List, create, edit, delete; purchased/favorite toggled via PATCH. | |
+| Date ideas | List, create (with optional photo and link), edit, mark done / reopen (the idea is kept), delete (creator only), **random pick** (returns null / 204 when none uncompleted). Favorite/completed toggled via PATCH. | Random with no ideas → null. |
+| Wishlist | List, create, edit, delete; fulfilled (`isPurchased`) / favorite toggled via PATCH. Fulfilling keeps the wish. | |
 
 **Endpoints:** `/api/calendar/events`, `/api/important-dates`, `/api/bucket-list`, `/api/dates` (+ `/api/dates/random`), `/api/wishlist`.
 

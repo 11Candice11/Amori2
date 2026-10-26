@@ -13,8 +13,15 @@ public sealed class WishlistItem : BaseEntity
     public string? Url { get; set; }
     public WishlistPriority Priority { get; set; } = WishlistPriority.Medium;
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// True once the wish is closed as "fulfilled" (the wish is kept, not deleted).
+    /// Named IsPurchased for historical reasons; wishes aren't always purchases.
+    /// </summary>
     public bool IsPurchased { get; set; }
     public bool IsFavorite { get; set; }
+
+    /// <summary>When the wish was marked fulfilled. Null while it is open.</summary>
     public DateTime? PurchasedAt { get; set; }
 
     // Navigation
