@@ -5,9 +5,14 @@
  * - Unlocked cards: full brightness, tappable to view details
  * - Locked cards: darkened with lock icon and card number
  * - Counter showing collected vs total cards
+ *
+ * The same card can be drawn on several days, so one card may hold many saved
+ * gifts. A card with one gift opens it straight away. A card with several is
+ * drawn as a pile; tapping it grows the cards out to the centre of the screen
+ * (CardStackViewer) where you swipe between them, so no saved gift is hidden.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -21,6 +26,7 @@ import { Svg, Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { getCardImage, getAllCardNumbers } from '../../../utils/cardSelector';
 import type { SavedGift } from '../types/vault.types';
+import { CardStackViewer, type StackOrigin } from './CardStackViewer';
 
 type CardDeckViewProps = {
   gifts: SavedGift[];
@@ -31,9 +37,15 @@ type CardDeckViewProps = {
 
 type CardGridItem = {
   cardNumber: number;
-  gift: SavedGift | null;
+  /** Every gift saved under this card, in the order the server returned them (newest first). */
+  gifts: SavedGift[];
   isUnlocked: boolean;
 };
+
+/** How far each card behind the top one peeks out, in px. */
+const STACK_STEP = 5;
+/** Cards drawn behind the top one, however many gifts the stack holds. */
+const MAX_BACK_LAYERS = 2;
 
 function LockIcon() {
   return (
@@ -54,42 +66,83 @@ function CardGridCell({
   onPress,
 }: {
   item: CardGridItem;
-  onPress: () => void;
+  /** `origin` is where the card sits on screen, so a stack can grow out of it. */
+  onPress: (origin: StackOrigin | null) => void;
 }) {
   const cardImage = getCardImage(item.cardNumber);
+  const stackRef = useRef<View>(null);
+  const count = item.gifts.length;
+  const hasMany = count > 1;
+  const backLayers = hasMany ? Math.min(count - 1, MAX_BACK_LAYERS) : 0;
+
+  let accessibilityLabel = `Card ${item.cardNumber}: Locked`;
+  if (hasMany) {
+    accessibilityLabel = `Card ${item.cardNumber}: ${count} saved gifts`;
+  } else if (count === 1) {
+    accessibilityLabel = `Card ${item.cardNumber}: ${item.gifts[0].title}`;
+  }
+
+  const handlePress = useCallback(() => {
+    const node = stackRef.current;
+    if (!hasMany || !node) {
+      onPress(null);
+      return;
+    }
+    node.measureInWindow((x, y, width, height) => onPress({ x, y, width, height }));
+  }, [hasMany, onPress]);
 
   return (
     <Pressable
-      onPress={item.isUnlocked ? onPress : undefined}
+      onPress={item.isUnlocked ? handlePress : undefined}
       style={({ pressed }) => [
         styles.cardCell,
         pressed && item.isUnlocked && styles.pressed,
       ]}
       disabled={!item.isUnlocked}
       accessibilityRole="button"
-      accessibilityLabel={
-        item.isUnlocked
-          ? `Card ${item.cardNumber}: ${item.gift?.title}`
-          : `Card ${item.cardNumber}: Locked`
-      }
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={hasMany ? 'Opens the gifts saved with this card. Swipe to browse them' : undefined}
     >
-      <View style={styles.cardImageContainer}>
-        <Image source={cardImage} style={styles.cardImage} resizeMode="cover" />
-        {!item.isUnlocked ? (
-          <View style={styles.lockedOverlay}>
-            <LockIcon />
-            <Text style={styles.cardNumberText}>CARD #{item.cardNumber}</Text>
+      {/* Same footprint as a single card, so a pile lines up with its neighbours. */}
+      <View ref={stackRef} collapsable={false} style={styles.stack}>
+        {/* Cards behind the top one, furthest first, each peeking out up and to the right. */}
+        {Array.from({ length: backLayers }, (_, i) => backLayers - i).map((depth) => (
+          <View
+            key={depth}
+            pointerEvents="none"
+            style={[
+              styles.stackLayer,
+              {
+                transform: [
+                  { translateX: depth * STACK_STEP },
+                  { translateY: -depth * STACK_STEP },
+                ],
+              },
+            ]}
+          >
+            <Image source={cardImage} style={styles.cardImage} resizeMode="cover" />
+            <View style={[styles.stackShade, { opacity: 0.18 + depth * 0.14 }]} />
           </View>
-        ) : null}
+        ))}
+
+        <View style={styles.cardImageContainer}>
+          <Image source={cardImage} style={styles.cardImage} resizeMode="cover" />
+          {!item.isUnlocked ? (
+            <View style={styles.lockedOverlay}>
+              <LockIcon />
+              <Text style={styles.cardNumberText}>CARD #{item.cardNumber}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
-      
-      {item.isUnlocked && item.gift ? (
+
+      {item.isUnlocked ? (
         <View style={styles.cardInfo}>
           <Text style={styles.cardLabel} numberOfLines={1}>
             CARD #{item.cardNumber}
           </Text>
           <Text style={styles.cardTitleText} numberOfLines={2}>
-            {item.gift.title}
+            {hasMany ? `${count} saved gifts` : item.gifts[0].title}
           </Text>
         </View>
       ) : null}
@@ -102,11 +155,14 @@ export function CardDeckView({
   onSelectGift,
   loading,
 }: CardDeckViewProps) {
-  // Map of card numbers to gifts
+  // Card number -> every gift saved under it. A card can be drawn more than
+  // once, so this keeps all of them rather than the last one seen.
   const cardMap = useMemo(() => {
-    const map = new Map<number, SavedGift>();
+    const map = new Map<number, SavedGift[]>();
     gifts.forEach((gift) => {
-      map.set(gift.cardNumber, gift);
+      const existing = map.get(gift.cardNumber);
+      if (existing) existing.push(gift);
+      else map.set(gift.cardNumber, [gift]);
     });
     return map;
   }, [gifts]);
@@ -115,27 +171,42 @@ export function CardDeckView({
   const gridItems = useMemo(() => {
     const allCards = getAllCardNumbers();
     return allCards.map((cardNumber): CardGridItem => {
-      const gift = cardMap.get(cardNumber) || null;
+      const cardGifts = cardMap.get(cardNumber) ?? [];
       return {
         cardNumber,
-        gift,
-        isUnlocked: gift !== null,
+        gifts: cardGifts,
+        isUnlocked: cardGifts.length > 0,
       };
     });
   }, [cardMap]);
 
+  // The stack being viewed. The card and origin are kept while the viewer
+  // shrinks back, so its contents don't vanish mid-animation.
+  const [viewerCard, setViewerCard] = useState<number | null>(null);
+  const [viewerOrigin, setViewerOrigin] = useState<StackOrigin | null>(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
+
   const handleCardPress = useCallback(
-    (item: CardGridItem) => {
-      if (item.gift) {
-        onSelectGift(item.gift.id);
+    (item: CardGridItem, origin: StackOrigin | null) => {
+      if (item.gifts.length === 1) {
+        onSelectGift(item.gifts[0].id);
+      } else if (item.gifts.length > 1) {
+        setViewerCard(item.cardNumber);
+        setViewerOrigin(origin);
+        setViewerVisible(true);
       }
     },
     [onSelectGift]
   );
 
+  // Fired by the viewer once its closing animation has finished.
+  const closeViewer = useCallback(() => setViewerVisible(false), []);
+
+  const viewerGifts = viewerCard !== null ? cardMap.get(viewerCard) ?? [] : [];
+
   const renderCard = useCallback(
     ({ item }: { item: CardGridItem }) => (
-      <CardGridCell item={item} onPress={() => handleCardPress(item)} />
+      <CardGridCell item={item} onPress={(origin) => handleCardPress(item, origin)} />
     ),
     [handleCardPress]
   );
@@ -156,15 +227,23 @@ export function CardDeckView({
   // The vault screen owns the scrolling and the collected counter, so this is
   // a plain two-column grid that grows to fit all cards.
   return (
-    <FlatList
-      data={gridItems}
-      renderItem={renderCard}
-      keyExtractor={keyExtractor}
-      numColumns={2}
-      columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.gridContent}
-      scrollEnabled={false}
-    />
+    <>
+      <FlatList
+        data={gridItems}
+        renderItem={renderCard}
+        keyExtractor={keyExtractor}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.gridContent}
+        scrollEnabled={false}
+      />
+      <CardStackViewer
+        visible={viewerVisible}
+        gifts={viewerGifts}
+        origin={viewerOrigin}
+        onClose={closeViewer}
+      />
+    </>
   );
 }
 
@@ -185,6 +264,26 @@ const styles = StyleSheet.create({
   cardCell: {
     width: '48%',
     marginBottom: spacing.sm,
+  },
+
+  // Sized by the top card; cards behind it are laid over the same footprint.
+  stack: {
+    width: '100%',
+  },
+
+  stackLayer: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1.5,
+    borderColor: colors.gold,
+  },
+
+  // Darkens the cards further back so the pile reads as depth.
+  stackShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
   },
 
   cardImageContainer: {

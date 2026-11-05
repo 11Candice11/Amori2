@@ -30,6 +30,9 @@ public sealed class ChatConversationConfiguration : IEntityTypeConfiguration<Cha
         builder.Property(c => c.IsPrivate).HasColumnName("is_private").IsRequired();
         builder.Property(c => c.SentAt).HasColumnName("sent_at");
         builder.Property(c => c.ReadAt).HasColumnName("read_at");
+        builder.Property(c => c.ResolvedAt).HasColumnName("resolved_at");
+        builder.Property(c => c.ResolvedById).HasColumnName("resolved_by_id");
+        builder.Property(c => c.Resolution).HasColumnName("resolution").HasMaxLength(ChatConversation.ResolutionMaxLength);
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at");
 
@@ -51,6 +54,11 @@ public sealed class ChatConversationConfiguration : IEntityTypeConfiguration<Cha
         builder.HasOne(c => c.Recipient)
             .WithMany()
             .HasForeignKey(c => c.RecipientId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(c => c.ResolvedBy)
+            .WithMany()
+            .HasForeignKey(c => c.ResolvedById)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

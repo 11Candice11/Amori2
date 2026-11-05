@@ -6,9 +6,11 @@ import { ChatHomeScreen } from '../screens/ChatHomeScreen';
 import { ChatComposeScreen } from '../screens/ChatComposeScreen';
 import { ChatPreviewScreen } from '../screens/ChatPreviewScreen';
 import { ChatSentScreen } from '../screens/ChatSentScreen';
-import { ChatReceivedScreen } from '../screens/ChatReceivedScreen';
+import { ChatDetailScreen } from '../screens/ChatDetailScreen';
+import { ChatResolveScreen } from '../screens/ChatResolveScreen';
 import { ChatDraftsScreen } from '../screens/ChatDraftsScreen';
-import { ChatHistoryScreen } from '../screens/ChatHistoryScreen';
+import { ChatListScreen } from '../screens/ChatListScreen';
+import { ChatResolvedScreen } from '../screens/ChatResolvedScreen';
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
 
@@ -19,9 +21,11 @@ export function ChatNavigator() {
       <Stack.Screen name="ChatCompose" component={ChatComposeScreen} />
       <Stack.Screen name="ChatPreview" component={ChatPreviewScreen} />
       <Stack.Screen name="ChatSent" component={ChatSentScreen} />
-      <Stack.Screen name="ChatReceived" component={ChatReceivedScreen} />
+      <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+      <Stack.Screen name="ChatResolve" component={ChatResolveScreen} />
       <Stack.Screen name="ChatDrafts" component={ChatDraftsScreen} />
-      <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} />
+      <Stack.Screen name="ChatList" component={ChatListScreen} />
+      <Stack.Screen name="ChatResolved" component={ChatResolvedScreen} />
     </Stack.Navigator>
   );
 }

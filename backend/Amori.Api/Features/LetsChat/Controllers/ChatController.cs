@@ -62,6 +62,12 @@ public sealed class ChatController(
     public async Task<IActionResult> MarkRead(Guid id, CancellationToken ct) =>
         Ok(await chatService.MarkReadAsync(RequireUserId(), id, ct));
 
+    /// <summary>Resolve (close) a sent chat with a written resolution. Either partner may do this.</summary>
+    [HttpPost("{id:guid}/resolve")]
+    [ProducesResponseType(typeof(ChatConversationResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Resolve(Guid id, [FromBody] ResolveChatRequest req, CancellationToken ct) =>
+        Ok(await chatService.ResolveAsync(RequireUserId(), id, req, ct));
+
     /// <summary>Delete an unsent draft (author only).</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

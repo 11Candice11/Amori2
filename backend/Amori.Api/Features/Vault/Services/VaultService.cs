@@ -20,8 +20,31 @@ public sealed class VaultService(
     INotificationService notifications,
     IRewardService rewards) : IVaultService
 {
-    /// <summary>The number of collectible card designs the client ships.</summary>
-    private const int CardCount = 10;
+    /// <summary>
+    /// The number of collectible card designs the client ships (card1.png … cardN.png in
+    /// the app's images/cards folder; the client's cardImages.generated.ts lists them).
+    /// Raise this whenever a card is added, or saving a gift on the new card is rejected.
+    /// </summary>
+    private const int CardCount = 43;
+
+    /// <summary>
+    /// A vision board item holds at most one image (<see cref="VisionBoardItem.ImageFileKey"/>),
+    /// so it is presented as a single photo in the same shape a memory's media uses.
+    /// </summary>
+    private IReadOnlyList<MemoryMediaResponse> VisionMedia(VisionBoardItem? vision) =>
+        vision is null || string.IsNullOrWhiteSpace(vision.ImageFileKey)
+            ? []
+            :
+            [
+                new MemoryMediaResponse
+                {
+                    Id = vision.Id,
+                    FileKey = vision.ImageFileKey,
+                    Url = storage.GetPublicUrl(vision.ImageFileKey),
+                    MediaType = MemoryMediaType.Photo,
+                    CreatedAt = vision.CreatedAt
+                }
+            ];
 
     private VaultGiftResponse Map(VaultGift g)
     {
@@ -58,7 +81,7 @@ public sealed class VaultService(
                         ThumbnailUrl = mm.ThumbnailUrl,
                         CreatedAt = mm.CreatedAt
                     }).ToList()
-                : []
+                : VisionMedia(g.VisionBoardItem)
         };
     }
 

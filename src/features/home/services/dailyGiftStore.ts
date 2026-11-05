@@ -35,7 +35,7 @@ export type StoredGiftSelection = {
   memoryId?: string;
   /** The chosen vision board item's id (present when type === 'vision'). */
   visionId?: string;
-  /** The chosen card design (1-10). */
+  /** The chosen card design (any card in the deck). */
   cardNumber: number;
 };
 

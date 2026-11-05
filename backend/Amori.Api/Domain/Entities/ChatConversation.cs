@@ -67,8 +67,25 @@ public sealed class ChatConversation : BaseEntity
     /// <summary>When the recipient first opened it, if ever.</summary>
     public DateTime? ReadAt { get; set; }
 
+    /// <summary>
+    /// When either partner closed the chat as resolved; null while it is still open.
+    /// Resolving is kept apart from <see cref="Status"/> on purpose: the delivery
+    /// lifecycle (Sent/Read) and the badge counters built on it stay untouched.
+    /// </summary>
+    public DateTime? ResolvedAt { get; set; }
+
+    /// <summary>Which partner resolved it (the sender or the recipient).</summary>
+    public Guid? ResolvedById { get; set; }
+
+    /// <summary>Longest <see cref="Resolution"/> accepted (column length and service check).</summary>
+    public const int ResolutionMaxLength = 4000;
+
+    /// <summary>What the partners agreed, written by whoever resolved the chat.</summary>
+    public string? Resolution { get; set; }
+
     // Navigation
     public Relationship Relationship { get; set; } = null!;
     public User Sender { get; set; } = null!;
     public User? Recipient { get; set; }
+    public User? ResolvedBy { get; set; }
 }

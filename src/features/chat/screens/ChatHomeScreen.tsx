@@ -26,7 +26,7 @@ type Nav = NativeStackNavigationProp<ChatStackParamList, 'ChatHome'>;
 
 /**
  * The Let's Chat home: a set of guided conversation starters, plus quick access
- * to saved drafts and the shared history.
+ * to saved drafts, the open chats and the resolved chats.
  */
 export function ChatHomeScreen() {
   const navigation = useNavigation<Nav>();
@@ -40,7 +40,7 @@ export function ChatHomeScreen() {
     }, [refresh]),
   );
 
-  const { drafts, thread } = partitionConversations(conversations);
+  const { drafts, open, resolved } = partitionConversations(conversations);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -70,11 +70,21 @@ export function ChatHomeScreen() {
           </Pressable>
           <Pressable
             style={styles.pill}
-            onPress={() => navigation.navigate('ChatHistory')}
+            onPress={() => navigation.navigate('ChatList')}
             accessibilityRole="button"
+            accessibilityLabel="Chats"
           >
-            <Text style={styles.pillText}>History</Text>
-            {thread.length > 0 ? <Text style={styles.pillCount}>{thread.length}</Text> : null}
+            <Text style={styles.pillText}>Chats</Text>
+            {open.length > 0 ? <Text style={styles.pillCount}>{open.length}</Text> : null}
+          </Pressable>
+          <Pressable
+            style={styles.pill}
+            onPress={() => navigation.navigate('ChatResolved')}
+            accessibilityRole="button"
+            accessibilityLabel="Resolved chats"
+          >
+            <Text style={styles.pillText}>Resolved</Text>
+            {resolved.length > 0 ? <Text style={styles.pillCount}>{resolved.length}</Text> : null}
           </Pressable>
         </View>
 
@@ -102,7 +112,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   lede: { ...typography.body, color: colors.neutralMuted, marginBottom: spacing.md },
-  pills: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

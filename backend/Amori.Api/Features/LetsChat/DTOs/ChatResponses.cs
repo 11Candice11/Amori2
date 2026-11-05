@@ -18,6 +18,12 @@ public sealed class ChatConversationResponse
     public bool IsMine { get; init; }
     public DateTime? SentAt { get; init; }
     public DateTime? ReadAt { get; init; }
+    /// <summary>True once either partner has resolved (closed) the chat.</summary>
+    public bool IsResolved { get; init; }
+    public DateTime? ResolvedAt { get; init; }
+    public Guid? ResolvedById { get; init; }
+    public string? ResolvedByName { get; init; }
+    public string? Resolution { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

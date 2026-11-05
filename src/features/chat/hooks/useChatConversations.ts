@@ -32,9 +32,16 @@ export function useChatConversations() {
   return { conversations, loading, error, refresh: load };
 }
 
-/** Partition helper: drafts (mine + private/draft) vs the shared thread. */
+/**
+ * Partition helper: my unsent drafts, the open chats (sent and not yet
+ * resolved), and the resolved chats (most recently resolved first).
+ */
 export function partitionConversations(items: ChatConversation[]) {
   const drafts = items.filter((c) => c.isMine && !isSentChatStatus(c.status));
-  const thread = items.filter((c) => isSentChatStatus(c.status));
-  return { drafts, thread };
+  const sent = items.filter((c) => isSentChatStatus(c.status));
+  const open = sent.filter((c) => !c.isResolved);
+  const resolved = sent
+    .filter((c) => c.isResolved)
+    .sort((a, b) => (b.resolvedAt ?? '').localeCompare(a.resolvedAt ?? ''));
+  return { drafts, open, resolved };
 }

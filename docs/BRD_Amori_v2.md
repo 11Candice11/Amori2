@@ -165,7 +165,7 @@ flowchart TB
 | Hugs | NeedAHug, HugSent, BreatheTogether, HugsHistory |
 | Splitting | SplittingIntro, GroundingCheckpoint, InwardCheck, BreatheWithMe, SafeTransition, DeEscalationPacing, GroundingActivities, CompassionBridge, DistractionCentre, PartnerDispatch, SanctuaryJournal, SplittingHistory |
 | Distraction | DistractionHome, HiddenNumber, Game2048, CoupleQuiz, WouldYouRather, SomaticSuite |
-| Chat | ChatHome, ChatCompose, ChatPreview, ChatSent, ChatReceived, ChatDrafts, ChatHistory |
+| Chat | ChatHome, ChatCompose, ChatPreview, ChatSent, ChatDetail, ChatResolve, ChatDrafts, ChatList, ChatResolved |
 | Timeline | TimelineHome, AddTimelineEvent |
 | Support Profile | SupportProfileHome, SupportSectionEditor, PartnerSupportProfile |
 | Single screens | Vault, Notifications, WeeklyReflection, WeeklyReflectionArchive |
@@ -345,7 +345,7 @@ Tapping an OS push banner and tapping a row in the in-app Notifications inbox bo
 |--------|---------|-----------|---------------|------------------------|
 | `Hug` | Partner sends a hug | Partner | Hug notifications | Hugs → HugSent |
 | `Incident` | Assign/reassign, start investigation, awaiting response, resolved, closed, reopened, SLA breach | Other member (assignee for assign; **both** for SLA breach) | Master only | Desk → IncidentDetail |
-| `LetsChat` | Partner sends a Let's Chat message (body never included) | Partner | Master only | Chat → ChatReceived |
+| `LetsChat` | Partner sends a Let's Chat message (body never included) | Partner | Master only | Chat → ChatDetail |
 | `Gift` | Partner sends a vault gift | Partner | Partner activity | Vault, auto-opens that gift |
 | `VisionBoardItemAdded` / `VisionBoardItemCompleted` | Partner adds / achieves a vision | Partner | Partner activity | Together → VisionBoardItemDetail |
 | `MemoryAdded` | Partner adds a memory | Partner | Partner activity | Together → Memories |
@@ -469,7 +469,7 @@ flowchart TD
   T -- "Both" --> R["50/50 memory or vision"]
   T -- "One kind" --> R2["Use that kind"]
   T -- "None" --> NONE
-  R --> PICK["Random item + random card 1-10<br/>Pin for today"]
+  R --> PICK["Random item + random card from the deck (1-43)<br/>Pin for today"]
   R2 --> PICK
   PICK --> SHOW
   SHOW --> TEAR["User taps Tear open"]
@@ -571,9 +571,9 @@ sequenceDiagram
 
 **Purpose:** Help a partner put a feeling, need or appreciation into words using a template, preview the composed sentence, then send, or keep it private.
 
-**Entry:** Home "Let's Chat"; `LetsChat` push tap (opens ChatReceived). ChatHome shows a Support Preferences link to the partner's handbook.
+**Entry:** Home "Let's Chat"; `LetsChat` push tap (opens ChatDetail). ChatHome shows a Support Preferences link to the partner's handbook.
 
-**Screens:** ChatHome (templates "Conversation starters", Drafts, History) → ChatCompose (one step per prompt) → ChatPreview → ChatSent ("Sent with love.") · ChatReceived · ChatDrafts · ChatHistory.
+**Screens:** ChatHome (templates "Conversation starters", pills **Drafts**, **Chats**, **Resolved**) → ChatCompose (one step per prompt) → ChatPreview → ChatSent ("Sent with love.") · ChatDetail (one chat, yours or your partner's; also the push / inbox target) → ChatResolve · ChatDrafts · ChatList ("Chats": open chats) · ChatResolved.
 
 **Templates** (served by `GET /api/chat/templates`; all steps required):
 
@@ -595,11 +595,17 @@ stateDiagram-v2
   Draft --> Sent: POST /send (all required answers present)
   Private --> Sent: POST /send
   Sent --> Read: Recipient opens, POST /read
+  Sent --> Resolved: Either partner, POST /resolve
+  Read --> Resolved: Either partner, POST /resolve
   Draft --> [*]: DELETE
   Private --> [*]: DELETE
   note right of Sent
     Immutable: cannot edit or delete.
     Partner notified, body not included.
+  end note
+  note right of Resolved
+    Not a Status value: stored as resolvedAt, resolvedById
+    and resolution, so Sent/Read is kept.
   end note
 ```
 
@@ -614,13 +620,18 @@ stateDiagram-v2
 | CHAT-07 | Send validation: missing required answer → 422 `"Please complete every required field before sending."`; nothing composed → `"There's nothing to send yet."`; no partner → 409. | |
 | CHAT-08 | Drafts and private messages are invisible to the partner: excluded from their list; direct GET returns 404. | B calls `GET /api/chat/{A's draft id}` → 404. |
 | CHAT-09 | Only the author can edit/send/delete (401 `"Only the author can …"`). Sent messages: edit → 409 `"A sent message can no longer be edited."`, delete → 409 `"A sent message can no longer be deleted."` | |
-| CHAT-10 | Recipient opening ChatReceived marks it read (status `Read`, `readAt` set once). Only the recipient can mark read; unsent → 409 `"This message hasn't been sent yet."` | |
-| CHAT-11 | ChatReceived offers optional acknowledgement shortcuts: "I hear you", "Thank you for telling me", "I understand", "Tell me more". These show `"“<label>” shared."` **locally only — nothing is sent to the partner.** | Confirm product intent (§9 BUG-10). |
-| CHAT-12 | ChatReceived "Reply with your own words" opens a new `SomethingOnMyMind` compose; "Send a gentle hug" sends a hug with no whisper (`"Hug sent ❤"`). | |
-| CHAT-13 | Push for a sent chat: title `"A gentle thought for you ❤"`, body `"<Name> took a moment to put something into words for you."` (no message content). | Physical device. |
-| CHAT-14 | History lists exchanged messages; own → ChatSent, partner's → ChatReceived. Empty: `"No messages exchanged yet."`; Drafts empty: `"No drafts yet."` | |
+| CHAT-10 | Recipient opening ChatDetail marks it read (status `Read`, `readAt` set once). Only the recipient can mark read; unsent → 409 `"This message hasn't been sent yet."` | |
+| CHAT-11 | ChatDetail offers optional acknowledgement shortcuts on an open partner message: "I hear you", "Thank you for telling me", "I understand", "Tell me more". These show `"“<label>” shared."` **locally only — nothing is sent to the partner.** | Confirm product intent (§9 BUG-10). |
+| CHAT-12 | ChatDetail (partner's message) "Reply with your own words" opens a new `SomethingOnMyMind` compose; "Send a gentle hug" sends a hug with no whisper (`"Hug sent ❤"`). | |
+| CHAT-13 | Push for a sent chat, to the **recipient's** devices (iOS and Android): title `"A gentle thought for you ❤"`, body `"<Name> took a moment to put something into words for you."` (no message content). Every send notifies, whether it starts a new chat or is a follow-up message, because each message is its own chat; a repeat send of the same message does not. Tapping it (app open, backgrounded or killed) opens that chat in ChatDetail. Sent with `priority: "high"` so Android delivers it promptly. | Physical Android device, Android 13+ fresh install: the notification prompt must appear, then send from the partner's phone with the app closed → push arrives → tap → the chat opens. |
+| CHAT-14 | **Chats** (was "History") lists sent messages that are not resolved, from both partners; any row opens ChatDetail. Empty: `"No open chats."`. Drafts empty: `"No drafts yet."` The ChatHome pill counts show open chats and resolved chats. | |
+| CHAT-15 | ChatDetail works for your own and your partner's message. Only a partner's message offers the acknowledgment shortcuts, Reply and Send hug. While open, **both** partners see **Resolve** (a message from your partner: next to Send a gentle hug; your own: the only button). | |
+| CHAT-16 | **Resolve** opens ChatResolve and asks for a resolution (`"How was this resolved?"`, required, max 4000). **Mark resolved** is disabled while blank. Success: overlay `"Chat resolved"`, then the stack is reset to ChatHome → **Chats**, or just ChatHome (Let's Chat) when no open chats remain. | Resolve the last open chat → lands on Let's Chat. |
+| CHAT-17 | Server: either partner may resolve a **sent** chat. Blank / over-long resolution → 422 (`"Please say how this was resolved."`). Unsent → 409 `"This message hasn't been sent yet."` (partner's unsent draft → 404). Already resolved → 409 `"This chat has already been resolved."` (first resolution wins; the app shows that message and returns to the list). Other relationship → 403. | A resolves, B resolves again → 409. |
+| CHAT-18 | **Resolved** lists resolved chats, most recently resolved first, each with its resolution. Empty: `"No resolved chats yet."`. A resolved chat opens read-only in ChatDetail with the resolution, `Resolved by you / <Name>` and when. Delivery status (Sent / Read) and badge counters are unchanged by resolving. | |
+| CHAT-19 | No notification is sent when a chat is resolved. | Product question: should the other partner be told? |
 
-**Endpoints:** `GET /api/chat/templates`, `GET /api/chat`, `GET /api/chat/{id}`, `POST /api/chat {templateType, answers}`, `PATCH /api/chat/{id} {answers?, composedMessage?, status?}`, `POST /api/chat/{id}/send`, `POST /api/chat/{id}/read`, `DELETE /api/chat/{id}`.
+**Endpoints:** `GET /api/chat/templates`, `GET /api/chat`, `GET /api/chat/{id}`, `POST /api/chat {templateType, answers}`, `PATCH /api/chat/{id} {answers?, composedMessage?, status?}`, `POST /api/chat/{id}/send`, `POST /api/chat/{id}/read`, `POST /api/chat/{id}/resolve {resolution}`, `DELETE /api/chat/{id}`. Responses also carry `isResolved`, `resolvedAt`, `resolvedById`, `resolvedByName`, `resolution`.
 
 ### 6.6 Help Desk / Incidents ✅ / ⚠️
 
@@ -770,8 +781,12 @@ Both are bucket-list items; the to-do list uses category `ToDoList (7)`. Categor
 
 | ID | Requirement | Test focus / exact message |
 |----|-------------|---------------------------|
-| DATE-01 | Add idea via "Add a date idea..." input + Save. Title required. | `"Date idea added"` |
-| DATE-02 | Mark complete (one-way), favourite via PATCH, delete (**creator only**: `"Only the creator can delete this."`). | |
+| DATE-01 | Add an idea via **+ Add a Date Idea** → `AddDateIdea` screen (same form as a wish plus two date fields): optional photo (uploaded via `/api/media`, sent as `imageKey`), **title** (required → 422 `"Title is required."`), optional description, optional **location** (place search, only the address text is stored), optional **estimated cost** in € (0 = free, empty = none), optional link. New ideas are filed under Romantic. Rows show the photo, description, location, cost and a tappable link chip. | `"Date idea added"` |
+| DATE-02 | **Done** closes an idea without deleting it; **Reopen** undoes it. Either partner can do both (the tick circle or the **✓ Mark done** / **Reopen** button). A done idea stays in the list with a green "✓ Done · <date>" badge, a struck-through title, and sinks below open ideas. Via `PATCH /api/dates/{id}` with `isCompleted` (both directions) or `POST /{id}/complete` (one-way). `completedAt` is set on first completion, kept if repeated, cleared on reopen. Favourite via PATCH. | `"Date done ❤"` / `"Date idea reopened"` |
+| DATE-05 | **Edit** (either partner) reopens `AddDateIdea` pre-filled and saves with PATCH; an empty string clears the photo / description / link / location; a cost is cleared with `clearEstimatedCost: true` (null leaves it unchanged, `0` is "free"); blank title → 422. Category and duration are not in the form and are left unchanged. | `"Date idea saved"` / `"Couldn't save date idea"` |
+| DATE-08 | Cost is validated: in the app, `25`, `12.50`, `12,50` and `€12.50` are accepted, anything else (`abc`, `-5`, `1.234`, `1,200`) shows `"Enter the cost as a number, like 25 or 12.50 (0 for free)."` and nothing is saved. The API returns 422 `"Estimated cost must be between 0 and 99,999,999.99."` outside that range and rounds to cents. | |
+| DATE-06 | **Delete** is shown only to the person who added the idea (works whether or not it is done), asks "Delete \"…\" from your date ideas?" first, and others get 403 `"Only the creator can delete this."` | `"Deleted!"` |
+| DATE-07 | Link must be an absolute http(s) address (the app prepends `https://` to a bare `example.com/page`); anything else → 422 `"Link must be a valid http or https address."` Blank clears it. The response carries `imageUrl` resolved from `imageKey`. | |
 | DATE-03 | **Random pick** (`POST /api/dates/random`) returns an uncompleted idea, or **204/null** when none exist. | Empty list → graceful "nothing to pick" state. |
 | DATE-04 | "Use their preferences" link opens the partner's How to Know Me handbook. | |
 
@@ -783,9 +798,11 @@ Date categories (API): Romantic 1 · AtHome 2 · GoingOut 3 · Adventure 4 · Fo
 
 | ID | Requirement | Test focus / exact message |
 |----|-------------|---------------------------|
-| WISH-01 | Add item via "Add to Wishlist..." + Save. Name required → 422 `"Name is required."` | `"Added to your wishlist"` |
-| WISH-02 | Purchased / favourite toggled via PATCH or `/complete`, `/favorite`. | |
-| WISH-03 | Update and delete: **owner only** → 401 `"Only the owner can update this item."` / `"…delete this item."` | |
+| WISH-01 | Add a wish via **+ Add to Wishlist** → `AddWishlistItem` screen (same shape as adding a vision): optional photo (uploaded via `/api/media`, sent as `imageKey`), **title** (required), optional description, optional **estimated cost** in € (stored as `price`; 0 = free, empty = none), optional link. Name required → 422 `"Name is required."` Rows show the photo, description, cost and a tappable link chip. | `"Added to your wishlist"` |
+| WISH-06 | Cost follows the same rules as a date idea's (DATE-08): `25`, `12.50`, `12,50`, `€12.50` accepted; `abc`, `-5`, `1.234`, `1,200` show `"Enter the cost as a number, like 25 or 12.50 (0 for free)."` and nothing is saved. The API returns 422 `"Price must be between 0 and 99,999,999.99."` outside that range and rounds to cents. Edits send `clearPrice: true` to remove a price (null leaves it unchanged, `0` is "free"); clearing or changing a price is owner-only like other content edits. | |
+| WISH-05 | Link must be an absolute http(s) address (the app prepends `https://` to a bare `amazon.com/item`); anything else → 422 `"Link must be a valid http or https address."` Blank clears it. The response carries `imageUrl` resolved from `imageKey`. | |
+| WISH-02 | **Fulfilled** closes a wish without deleting it; **Reopen** undoes it. Either partner can do both (the tick circle or the **✓ Mark fulfilled** / **Reopen** button on the row). A fulfilled wish stays in the list with a green "✓ Fulfilled · <date>" badge, a struck-through title, and sinks below open wishes; the owner can still edit or delete it. Favourite works as before. API: `PATCH /api/wishlist/{id}` with `isPurchased` (the field name predates "fulfilled"), or `/complete`, `/favorite`. `purchasedAt` is set on the first fulfil, kept if repeated, cleared on reopen. | `"Wish fulfilled ❤"` / `"Wish reopened"` |
+| WISH-03 | Update and delete: **owner only** → 403 `"Only the owner can update this item."` / `"…delete this item."` In the app, your own wishes show **Edit** (reopens `AddWishlistItem` pre-filled; saves with PATCH, an empty string clears the photo / description / link; blank title → 422 `"Name is required."`) and **Delete** (asks "Delete \"…\" from your wishlist?" first; works whether or not the wish is fulfilled). The partner's wishes show neither. | `"Wish saved"` / `"Couldn't save wish"` / `"Deleted!"` |
 | WISH-04 | Adding notifies partner (`WishlistItemAdded`). | |
 
 Priority enum: Low 1 · Medium 2 · High 3. **Endpoints:** `GET/POST /api/wishlist`, `GET/PATCH/DELETE /api/wishlist/{id}`, `POST /{id}/complete`, `POST /{id}/favorite`.
@@ -969,7 +986,7 @@ sequenceDiagram
 | ID | Requirement | Test focus / exact message |
 |----|-------------|---------------------------|
 | VAULT-01 | Vault is per-user and private. Reading a partner's gift id returns **404** (not 401) so ids can't be probed. | B `GET /api/vault/gifts/{A's gift}` → 404. |
-| VAULT-02 | Save requires exactly one of `memoryId` / `visionBoardItemId`, and `cardNumber` 1–10. | `"Either MemoryId or VisionBoardItemId is required."`, `"Provide either MemoryId or VisionBoardItemId, not both."`, `"CardNumber must be between 1 and 10."` |
+| VAULT-02 | Save requires exactly one of `memoryId` / `visionBoardItemId`, and `cardNumber` 1–43 (the size of the card deck; the server's `VaultService.CardCount` must be raised whenever a card is added). | `"Either MemoryId or VisionBoardItemId is required."`, `"Provide either MemoryId or VisionBoardItemId, not both."`, `"CardNumber must be between 1 and 43."` |
 | VAULT-03 | Saving the same memory/vision twice returns the existing entry (idempotent). | |
 | VAULT-04 | Only items from your own relationship can be saved → else 401. | |
 | VAULT-05 | Send-a-Gift: title required (`"Give your gift a title."`); attachments must finish uploading (`"Give the attachments a moment to finish uploading."`); video ≤ 60 s; valid URL. | |
@@ -978,6 +995,7 @@ sequenceDiagram
 | VAULT-08 | Gift-only memories do not appear in Memories (MEM-07). | |
 | VAULT-09 | Remove a gift from your vault (`DELETE /api/vault/gifts/{id}`). | |
 | VAULT-10 | Vision-based gifts save and are recognised as already-saved. | Retest (§9 BUG-02 fixed). |
+| VAULT-11 | The same card can hold several saved gifts (memories and/or visions). In deck view a card with more than one is drawn as a **pile** (up to two cards peeking out behind it) captioned `"N saved gifts"`. **Opening:** tapping the pile moves the whole deck from the grid to the centre of the screen, growing as it goes (with a slight overshoot); it arrives tight like the pile and fans out, then the top card turns face up. Swiping is locked until it has settled. **Browsing:** the cards sit in a fanned deck; the top card is face up (card surface colour) with a **"Memory"** or **"Vision"** heading, then the title, date, notes, any photos (a vision shows its image), the location map (or the address as text when there is no pin), voice note and links, in a vertically scrolling body. The cards behind show their **card art** peeking out either side. **Shuffle:** swiping tosses the top card out to the side, tilting and turning it over; half way it drops **behind** the deck and tucks in while the next card is lifted to the top and turns face up. Swiping back pulls a card out of the deck over the top. The motion follows the finger and can be let go part way. **Closing** (Done, tapping outside, or Android back): the top card turns back to its art, then the deck shrinks into the pile. Dots and a `"N of M"` counter show the position. A card with a single gift opens its flip reveal directly. | Pile accessibility label `"Card N: M saved gifts"`; viewer list `"Saved gifts, swipe left or right to browse"`, counter `"Gift N of M"` (visible text `"N of M · swipe to shuffle through them"`), button `"Done"`. Swiping on a gift's photo carousel scrolls the photos, not the pages. |
 
 **Endpoints:** `GET /api/vault/gifts`, `GET /api/vault/gifts/{id}`, `POST /api/vault/gifts`, `POST /api/vault/gifts/create`, 🔌 `POST /api/vault/gifts/send {memoryId|visionBoardItemId, cardNumber}` (send an existing item; not used by the app), `DELETE /api/vault/gifts/{id}`.
 
@@ -1168,7 +1186,7 @@ Found by reading code and running `npx tsc --noEmit` at the baseline commit. Row
 | BUG-07 | ✅ Fixed | API contract | Permission denials (e.g. `"Only the creator can delete this memory."`, `"Current password is incorrect."`) return **401**, which the client treats as "token expired": it refreshes tokens and retries before showing the error. Suggest 403. | Proxy log shows `/api/auth/refresh` right after a forbidden action. |
 | BUG-08 | Low | Register | Multi-error validation responses show only the generic `"One or more validation errors occurred."`; the `errors[]` detail (e.g. `"Password must be at least 8 characters."`) isn't displayed. The client doesn't pre-check password length on register. | Register with a 5-char password. |
 | BUG-09 | Low | Calendar / notifications | Calendar `reminderEnabled` / `reminderMinutesBefore` are stored, but nothing delivers them. `CheckInReminder` and `DailyDigest` types are never sent by the server. | Create event with "Remind us" → no reminder. |
-| BUG-10 | Product question | Let's Chat | Acknowledgement shortcuts on ChatReceived ("I hear you" etc.) only show a local banner; nothing reaches the sender. | Confirm intended behaviour. |
+| BUG-10 | Product question | Let's Chat | Acknowledgement shortcuts on ChatDetail ("I hear you" etc.) only show a local banner; nothing reaches the sender. | Confirm intended behaviour. |
 | BUG-11 | Low | Push routing | `BucketListItemAdded` push tap opens **Date Ideas**, but the bucket list lives inline on Together home. | Tap that push. |
 | BUG-12 | ✅ Fixed | Inbox routing | Inbox handler checks `VisionBoardItem` and `CalendarEvent`, but the server sends `VisionBoardItemAdded/Completed` and `CalendarEventAdded`. `MemoryAdded`, `BucketListItemAdded`, `WishlistItemAdded` aren't handled. Tapping these rows does nothing. Gift rows open the Vault without the specific gift. | Tap each row type in the inbox. |
 | BUG-13 | Low | Navigation | Orphan screens: MonthlySnapshot, IncidentSla, IncidentHistory, IncidentConversation are registered but unreachable. | — |

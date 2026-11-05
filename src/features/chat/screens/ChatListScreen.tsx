@@ -18,12 +18,14 @@ import {
   useChatConversations,
 } from '../hooks/useChatConversations';
 import { MessageCard } from '../components/MessageCard';
-import type { ChatConversation } from '../types/chat.types';
 
-type Nav = NativeStackNavigationProp<ChatStackParamList, 'ChatHistory'>;
+type Nav = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
 
-/** The shared archive of messages exchanged between the two partners. */
-export function ChatHistoryScreen() {
+/**
+ * Your open chats: every message exchanged between the two partners that
+ * hasn't been resolved yet. Resolved chats move to the Resolved list.
+ */
+export function ChatListScreen() {
   const navigation = useNavigation<Nav>();
   const { conversations, loading, refresh } = useChatConversations();
 
@@ -33,38 +35,30 @@ export function ChatHistoryScreen() {
     }, [refresh]),
   );
 
-  const { thread } = partitionConversations(conversations);
-
-  const open = useCallback(
-    (c: ChatConversation) => {
-      // A message I authored opens as "sent"; one from my partner opens as
-      // "received" (which also marks it read).
-      if (c.isMine) {
-        navigation.navigate('ChatSent', { conversationId: c.id });
-      } else {
-        navigation.navigate('ChatReceived', { conversationId: c.id });
-      }
-    },
-    [navigation],
-  );
+  const { open } = partitionConversations(conversations);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <AppHeader title="Conversation history" onBack={() => navigation.goBack()} />
+      <AppHeader title="Chats" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          A shared archive of tender moments, understanding, and heartfelt words.
+          Words you've shared, held gently until you've worked through them
+          together. Open one to reply, or resolve it when you're done.
         </Text>
 
         {loading ? (
           <ActivityIndicator color={colors.gold} style={styles.loader} />
-        ) : thread.length === 0 ? (
+        ) : open.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No messages exchanged yet.</Text>
+            <Text style={styles.emptyText}>No open chats.</Text>
           </View>
         ) : (
-          thread.map((c) => (
-            <MessageCard key={c.id} conversation={c} onPress={() => open(c)} />
+          open.map((c) => (
+            <MessageCard
+              key={c.id}
+              conversation={c}
+              onPress={() => navigation.navigate('ChatDetail', { conversationId: c.id })}
+            />
           ))
         )}
       </ScrollView>

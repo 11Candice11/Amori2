@@ -134,7 +134,7 @@ public sealed class VaultControllerTests(AmoriWebApplicationFactory factory)
 
     [Theory]
     [InlineData(0)]
-    [InlineData(11)]
+    [InlineData(44)]
     [InlineData(-1)]
     public async Task SaveGift_WithACardNumberOutsideTheDeck_Returns422(int cardNumber)
     {

@@ -2,54 +2,60 @@
  * WishlistScreen — the full shared wishlist.
  *
  *   GET    /api/wishlist        → list all items
- *   POST   /api/wishlist        → create
- *   PATCH  /api/wishlist/{id}   → toggle purchased / favorite
+ *   PATCH  /api/wishlist/{id}   → mark fulfilled / reopen, favorite
  *   DELETE /api/wishlist/{id}   → remove an item
  *
+ * Adding or editing a wish opens AddWishlistItemScreen (photo, title,
+ * description, link).
+ *
  * A real, data-backed list: pull-to-refresh, loading + empty + error states,
- * inline add, and per-row purchased/favorite/delete actions that persist to
- * the backend. Starred items float to the top; purchased items sink to the
- * bottom with a struck-through name and a delete affordance.
+ * and per-row fulfilled/favorite actions that persist to the backend. Each row
+ * shows the wish's photo, description and a tappable link when it has them.
+ *
+ * Either partner can close a wish as Fulfilled (and Reopen it). That keeps the
+ * wish: it gets a "Fulfilled" badge with the date, a struck-through title, and
+ * sinks to the bottom. Deleting is separate and permanent. Your own wishes also
+ * get Edit and Delete (delete asks for confirmation); the backend only lets the
+ * owner change or remove a wish. Starred items float to the top. The list
+ * reloads whenever the screen regains focus, so a wish added or edited on the
+ * compose screen shows up at once.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
+  Image,
+  Linking,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { showSuccess, showError } from '../../../shared/state/bannerStore';
 import { showSuccessOverlay } from '../../../shared/state/successOverlayStore';
-import { showErrorOverlay } from '../../../shared/state/errorOverlayStore';
+import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
 import { togetherService } from '../services/togetherService';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import type { WishlistItemResponse } from '../types/together.types';
+import { formatCost } from '../utils/cost';
+import { formatShortDate } from '../utils/formatDate';
+import { linkHost, normalizeLink } from '../utils/links';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'Wishlist'>;
 
 const PRIORITY_LABELS: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
-function formatPrice(price: number | null): string | null {
-  if (price == null) return null;
-  return price.toLocaleString(undefined, {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  });
-}
+/** The "done" green, shared by the tick, the Fulfilled badge and its button. */
+const FULFILLED_GREEN = '#4CAF7D';
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
@@ -70,8 +76,8 @@ function StarIcon({ filled }: { filled?: boolean }) {
 function CheckCircleIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={9} stroke="#4CAF7D" strokeWidth={1.5} />
-      <Path d="M8 12l3 3 5-6" stroke="#4CAF7D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={12} cy={12} r={9} stroke={FULFILLED_GREEN} strokeWidth={1.5} />
+      <Path d="M8 12l3 3 5-6" stroke={FULFILLED_GREEN} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -84,14 +90,15 @@ function CircleIcon() {
   );
 }
 
-function DeleteIcon() {
+function LinkIcon() {
   return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M6 6l12 12M18 6L6 18"
-        stroke={colors.neutralMuted}
-        strokeWidth={2}
+        d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"
+        stroke={colors.gold}
+        strokeWidth={1.8}
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
@@ -100,31 +107,48 @@ function DeleteIcon() {
 function Row({
   item,
   busy,
-  onTogglePurchased,
+  onToggleFulfilled,
   onToggleFavorite,
+  onEdit,
   onDelete,
+  onOpenLink,
 }: {
   item: WishlistItemResponse;
   busy: boolean;
-  onTogglePurchased: (item: WishlistItemResponse) => void;
+  onToggleFulfilled: (item: WishlistItemResponse) => void;
   onToggleFavorite: (item: WishlistItemResponse) => void;
+  onEdit: (item: WishlistItemResponse) => void;
   onDelete: (item: WishlistItemResponse) => void;
+  onOpenLink: (url: string) => void;
 }) {
   const priority = PRIORITY_LABELS[item.priority];
-  const price = formatPrice(item.price);
-  // Only the owner can delete (backend-enforced), so hide the x for the
-  // partner's items and keep showing the star instead.
-  const canDelete = item.isPurchased && userSettingsStore.get()?.id === item.addedByUserId;
+  const price = formatCost(item.price);
+  const imageUri = item.imageUrl ? resolveMediaUrl(item.imageUrl) : null;
+  // Only ever offer a link that is a valid http(s) address.
+  const link = normalizeLink(item.url);
+  const host = link ? linkHost(link) : null;
+  // Only the owner can edit or delete a wish (backend-enforced), so only offer
+  // those actions on your own items. Either partner can still star / tick off.
+  const isOwner = userSettingsStore.get()?.id === item.addedByUserId;
+  const fulfilledOn = item.isPurchased ? formatShortDate(item.purchasedAt) : null;
   return (
     <View style={[styles.row, item.isPurchased && styles.rowCompleted]}>
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.rowImage}
+          resizeMode="cover"
+          accessibilityLabel={`Photo of ${item.name}`}
+        />
+      ) : null}
       <View style={styles.rowHeader}>
         <Pressable
-          onPress={() => onTogglePurchased(item)}
+          onPress={() => onToggleFulfilled(item)}
           hitSlop={8}
           disabled={busy}
           style={styles.rowIcon}
           accessibilityRole="button"
-          accessibilityLabel={item.isPurchased ? 'Mark not purchased' : 'Mark purchased'}
+          accessibilityLabel={item.isPurchased ? 'Reopen wish' : 'Mark fulfilled'}
         >
           {item.isPurchased ? <CheckCircleIcon /> : <CircleIcon />}
         </Pressable>
@@ -133,34 +157,42 @@ function Row({
           {item.name}
         </Text>
 
-        {canDelete ? (
-          <Pressable
-            onPress={() => onDelete(item)}
-            hitSlop={8}
-            disabled={busy}
-            style={styles.rowIcon}
-            accessibilityRole="button"
-            accessibilityLabel="Delete wishlist item"
-          >
-            <DeleteIcon />
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => onToggleFavorite(item)}
-            hitSlop={8}
-            disabled={busy}
-            style={styles.rowIcon}
-            accessibilityRole="button"
-            accessibilityLabel={item.isFavorite ? 'Remove favorite' : 'Add favorite'}
-          >
-            <StarIcon filled={item.isFavorite} />
-          </Pressable>
-        )}
+        <Pressable
+          onPress={() => onToggleFavorite(item)}
+          hitSlop={8}
+          disabled={busy}
+          style={styles.rowIcon}
+          accessibilityRole="button"
+          accessibilityLabel={item.isFavorite ? 'Remove favorite' : 'Add favorite'}
+        >
+          <StarIcon filled={item.isFavorite} />
+        </Pressable>
       </View>
+      {item.isPurchased ? (
+        <View style={styles.fulfilledBadge} accessible accessibilityLabel="Fulfilled">
+          <Text style={styles.fulfilledBadgeText}>
+            {fulfilledOn ? `✓ Fulfilled · ${fulfilledOn}` : '✓ Fulfilled'}
+          </Text>
+        </View>
+      ) : null}
       {item.description ? (
-        <Text style={styles.rowDesc} numberOfLines={2}>
+        <Text style={styles.rowDesc} numberOfLines={3}>
           {item.description}
         </Text>
+      ) : null}
+      {link && host ? (
+        <Pressable
+          onPress={() => onOpenLink(link)}
+          hitSlop={8}
+          style={styles.linkChip}
+          accessibilityRole="link"
+          accessibilityLabel={`Open link to ${host}`}
+        >
+          <LinkIcon />
+          <Text style={styles.linkText} numberOfLines={1}>
+            {host}
+          </Text>
+        </Pressable>
       ) : null}
       <View style={styles.rowMeta}>
         <Text style={styles.rowMetaText}>Added by {item.addedByName}</Text>
@@ -177,6 +209,44 @@ function Row({
           </>
         ) : null}
       </View>
+      <View style={styles.rowActions}>
+        {/* Close the wish (kept in the list) or bring it back. Either partner. */}
+        <Pressable
+          onPress={() => onToggleFulfilled(item)}
+          hitSlop={8}
+          disabled={busy}
+          style={item.isPurchased ? undefined : styles.fulfilBtn}
+          accessibilityRole="button"
+          accessibilityLabel={item.isPurchased ? `Reopen ${item.name}` : `Mark ${item.name} as fulfilled`}
+        >
+          <Text style={item.isPurchased ? styles.reopenText : styles.fulfilBtnText}>
+            {item.isPurchased ? 'Reopen' : '✓ Mark fulfilled'}
+          </Text>
+        </Pressable>
+
+        {isOwner ? (
+          <View style={styles.ownerActions}>
+            <Pressable
+              onPress={() => onEdit(item)}
+              hitSlop={8}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${item.name}`}
+            >
+              <Text style={styles.editText}>Edit</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onDelete(item)}
+              hitSlop={8}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${item.name}`}
+            >
+              <Text style={styles.deleteText}>Delete</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -187,8 +257,6 @@ export function WishlistScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newItemName, setNewItemName] = useState('');
-  const [saving, setSaving] = useState(false);
   /** Id of a row with an action in flight, to disable its buttons. */
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -205,44 +273,44 @@ export function WishlistScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Load on first open and again whenever we return (e.g. after adding a wish).
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     load();
   }, [load]);
 
-  const handleSave = useCallback(async () => {
-    const trimmed = newItemName.trim();
-    if (!trimmed || saving) return;
+  const handleAdd = useCallback(() => {
+    navigation.navigate('AddWishlistItem');
+  }, [navigation]);
 
-    setSaving(true);
-    setError(null);
-    try {
-      await togetherService.createWishlistItem({ name: trimmed });
-      showSuccessOverlay('Added to your wishlist');
-      setNewItemName('');
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add the item.');
-      showErrorOverlay("Couldn't add to wishlist");
-    } finally {
-      setSaving(false);
-    }
-  }, [newItemName, saving, load]);
+  const handleOpenLink = useCallback((url: string) => {
+    Linking.openURL(url).catch(() => showError("Couldn't open that link"));
+  }, []);
 
-  const handleTogglePurchased = useCallback(
+  /** Close a wish as fulfilled, or reopen it. The wish is kept either way. */
+  const handleToggleFulfilled = useCallback(
     async (item: WishlistItemResponse) => {
       if (busyId) return;
       setBusyId(item.id);
       setError(null);
+      const fulfilling = !item.isPurchased;
       try {
-        await togetherService.setWishlistItemPurchased(item.id, !item.isPurchased);
+        await togetherService.setWishlistItemFulfilled(item.id, fulfilling);
+        if (fulfilling) {
+          showSuccessOverlay('Wish fulfilled ❤');
+        } else {
+          showSuccess('Wish reopened');
+        }
         await load();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not update the item.');
+        showError('Sorry that failed :(');
       } finally {
         setBusyId(null);
       }
@@ -267,7 +335,14 @@ export function WishlistScreen() {
     [busyId, load],
   );
 
-  const handleDelete = useCallback(
+  const handleEdit = useCallback(
+    (item: WishlistItemResponse) => {
+      navigation.navigate('AddWishlistItem', { item });
+    },
+    [navigation],
+  );
+
+  const deleteItem = useCallback(
     async (item: WishlistItemResponse) => {
       if (busyId) return;
       setBusyId(item.id);
@@ -286,8 +361,19 @@ export function WishlistScreen() {
     [busyId, load],
   );
 
+  /** Deleting can't be undone, so ask first. */
+  const handleDelete = useCallback(
+    (item: WishlistItemResponse) => {
+      Alert.alert('Delete wish', `Delete "${item.name}" from your wishlist?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteItem(item) },
+      ]);
+    },
+    [deleteItem],
+  );
+
   /**
-   * Starred (favorite) items float to the top; purchased items sink to the
+   * Starred (favorite) items float to the top; fulfilled items sink to the
    * bottom. Within each group the original server order is preserved.
    */
   const sortedItems = useMemo(() => {
@@ -315,10 +401,7 @@ export function WishlistScreen() {
           </Pressable>
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <View style={styles.flex}>
           <FlatList
             data={sortedItems}
             keyExtractor={(item) => item.id}
@@ -331,44 +414,26 @@ export function WishlistScreen() {
               <Row
                 item={item}
                 busy={busyId === item.id}
-                onTogglePurchased={handleTogglePurchased}
+                onToggleFulfilled={handleToggleFulfilled}
                 onToggleFavorite={handleToggleFavorite}
+                onEdit={handleEdit}
                 onDelete={handleDelete}
+                onOpenLink={handleOpenLink}
               />
             )}
+            ListHeaderComponent={
+              <Pressable
+                style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+                onPress={handleAdd}
+                accessibilityRole="button"
+                accessibilityLabel="Add to wishlist"
+              >
+                <Text style={styles.addBtnText}>+ Add to Wishlist</Text>
+              </Pressable>
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No wishes shared yet. Add your first below.</Text>
-              </View>
-            }
-            ListFooterComponent={
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Add to Wishlist..."
-                  placeholderTextColor={colors.neutralSubtle}
-                  value={newItemName}
-                  onChangeText={setNewItemName}
-                  onSubmitEditing={handleSave}
-                  returnKeyType="done"
-                  editable={!saving}
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.saveBtn,
-                    (!newItemName.trim() || saving || pressed) && styles.saveBtnDisabled,
-                  ]}
-                  onPress={handleSave}
-                  disabled={!newItemName.trim() || saving}
-                  accessibilityRole="button"
-                  accessibilityLabel="Save wishlist item"
-                >
-                  {saving ? (
-                    <ActivityIndicator color={colors.ctaText} size="small" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Save</Text>
-                  )}
-                </Pressable>
+                <Text style={styles.emptyText}>No wishes shared yet. Add your first above.</Text>
               </View>
             }
           />
@@ -377,7 +442,7 @@ export function WishlistScreen() {
               <Text style={styles.errorBannerText}>{error}</Text>
             </View>
           ) : null}
-        </KeyboardAvoidingView>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -446,11 +511,38 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: colors.neutralMuted,
   },
+  rowImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
+  },
   rowDesc: {
     ...typography.bodySm,
     color: colors.neutralMuted,
     fontSize: 13,
     marginTop: 4,
+  },
+  linkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(139,111,58,0.12)',
+    maxWidth: '100%',
+  },
+  linkText: {
+    ...typography.bodySm,
+    color: colors.gold,
+    fontSize: 12,
+    flexShrink: 1,
   },
   rowMeta: {
     flexDirection: 'row',
@@ -472,6 +564,62 @@ const styles = StyleSheet.create({
   metaDot: {
     color: colors.neutralSubtle,
     fontSize: 10,
+  },
+  fulfilledBadge: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: FULFILLED_GREEN,
+    backgroundColor: 'rgba(76,175,125,0.12)',
+  },
+  fulfilledBadgeText: {
+    ...typography.bodySm,
+    color: FULFILLED_GREEN,
+    fontSize: 12,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  ownerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  fulfilBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: FULFILLED_GREEN,
+  },
+  fulfilBtnText: {
+    ...typography.bodySemiBold,
+    color: FULFILLED_GREEN,
+    fontSize: 13,
+  },
+  reopenText: {
+    ...typography.bodySemiBold,
+    color: colors.neutralMuted,
+    fontSize: 13,
+  },
+  editText: {
+    ...typography.bodySemiBold,
+    color: colors.gold,
+    fontSize: 13,
+  },
+  deleteText: {
+    ...typography.bodySemiBold,
+    color: colors.emergency,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -497,29 +645,12 @@ const styles = StyleSheet.create({
     ...typography.bodySemiBold,
     color: colors.ctaText,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  input: {
-    ...typography.body,
-    color: colors.neutral,
-    fontSize: 15,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    flex: 1,
-  },
-  saveBtn: {
+  addBtn: {
     backgroundColor: colors.ctaBackground,
     borderRadius: 14,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
-    minWidth: 80,
+    marginBottom: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     // 3D beveled border
@@ -537,10 +668,10 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  saveBtnDisabled: {
-    opacity: 0.5,
+  addBtnPressed: {
+    opacity: 0.7,
   },
-  saveBtnText: {
+  addBtnText: {
     ...typography.bodySemiBold,
     color: colors.ctaText,
     fontSize: 15,

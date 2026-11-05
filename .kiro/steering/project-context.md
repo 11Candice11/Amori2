@@ -87,7 +87,12 @@ silently ignored. Type payload literals with their request interface (e.g.
 **Notifications**: types in `Features/Notifications/NotificationTypes.cs`; push
 gating per type in `NotificationService.IsPushAllowed`. Tap routing for **both**
 OS push and the in-app inbox goes through `src/navigation/notificationRouting.ts` —
-add new types there only.
+add new types there only. **Android push**: `pushToken.ts` must create the notification
+channel *before* asking for permission (Android 13+ shows no prompt until a channel exists);
+`ExpoPushNotificationService` sends `priority: "high"` (Expo's Android default is "normal",
+which can be delayed) and logs any ticket Expo rejects (`InvalidCredentials` = FCM key not
+uploaded to Expo, `DeviceNotRegistered` = stale token) — check the API logs when an Android
+push doesn't arrive.
 
 **Sign-out** clears every per-user cache via `src/services/auth/clearLocalUserData.ts`.
 Any new per-user store (memory or AsyncStorage) must be added there.
@@ -95,6 +100,15 @@ Any new per-user store (memory or AsyncStorage) must be added there.
 **UI feedback**: `showSuccessOverlay` / `showErrorOverlay` (shared/state) for action
 results; `showSuccess` / `showError` (bannerStore) for light banners. No `testID`s
 exist; accessibility labels are the automation hooks — add them to new controls.
+
+**Card deck** (vault / daily gift): the card art is `images/cards/cardN.png`, listed in
+`src/utils/cardImages.generated.ts` (`npm run cards`). Roll cards with
+`getRandomCardNumber()` (`utils/cardSelector`), never a hard-coded range. The server
+rejects card numbers above `VaultService.CardCount` (currently 43) with a 422, so
+**raise that constant whenever a card is added**. A card can hold several saved gifts:
+the vault deck draws those as a pile, and `CardStackViewer` opens it as a deck you shuffle
+through (all motion is derived from the list's scroll offset; only the stacking order is
+switched in JS, via `CellRendererComponent`, when a card passes half way).
 
 ## Gamification (points, levels, badges)
 
@@ -142,9 +156,9 @@ exist; accessibility labels are the automation hooks — add them to new control
 | Home dashboard + daily gift | `features/home` | aggregates; vault save `/api/vault/gifts` |
 | Mood check-in | `features/mood` | `/api/moods` |
 | Hugs | `features/hugs` | `/api/hugs` |
-| Let's Chat | `features/chat` (local drafts `chatDraftStore`) | `/api/chat` |
+| Let's Chat | `features/chat` (local drafts `chatDraftStore`). Home pills: Drafts, **Chats** (`ChatList`: sent, unresolved) and **Resolved** (`ChatResolved`). `ChatDetail` shows one chat, yours or your partner's, and is the push / inbox target. Either partner can **Resolve** an open chat: `ChatResolve` asks for a resolution → `POST /api/chat/{id}/resolve`, then resets the stack to ChatHome → ChatList (or just ChatHome if none are open). Resolved is **not** a `Status` value: it is `resolved_at` / `resolved_by_id` / `resolution` on the row, so Sent/Read and the badge counters are untouched. The first resolution wins (409 after that) | `/api/chat` |
 | Help desk / incidents | `features/incidents` | `/api/incidents` (state machine in `IncidentStatusService`) |
-| Together: calendar, important dates, bucket list/to-do, date ideas, wishlist | `features/together` | `/api/calendar/events`, `/api/important-dates`, `/api/bucket-list`, `/api/dates`, `/api/wishlist` |
+| Together: calendar, important dates, bucket list/to-do, date ideas, wishlist | `features/together` (wishlist add **and edit** both go through `AddWishlistItemScreen`, which edits when given a route `item`: photo via `useImageAttachment` → `/api/media`, title, description, link; on PATCH `''` clears a field. Edit/Delete show only on your own wishes (owner-only on the backend). "Fulfilled" closes a wish without deleting it (either partner; Reopen undoes it) and is stored in the legacy `isPurchased` / `purchasedAt` fields, so don't add a second flag. **Date ideas work the same way** (`AddDateIdeaScreen`, `DateIdeasScreen`; Done = `isCompleted`/`completedAt`; either partner can Edit, only the creator can Delete). Both add/edit screens are thin wrappers over `components/ItemComposeForm` (photo, title, description, link); link/blank rules live in `Common/Text/UserInput.cs`. Links are http(s) only, checked by `utils/links.ts` and `WishlistService.NormalizeLink`) | `/api/calendar/events`, `/api/important-dates`, `/api/bucket-list`, `/api/dates`, `/api/wishlist` |
 | Vision Board | `features/together` (VisionBoard*) | `/api/vision-board` |
 | Memories / Timeline | `features/memories`, `features/timeline` | `/api/memories`, `/api/timeline`, media `/api/media` |
 | Splitting (SOS) | `features/splitting` | `/api/splitting/sessions` |

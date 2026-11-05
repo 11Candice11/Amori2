@@ -26,7 +26,7 @@ public sealed class VaultGift : BaseEntity
     /// <summary>The vision board item that was given as the daily gift (null if this is a memory gift).</summary>
     public Guid? VisionBoardItemId { get; set; }
 
-    /// <summary>The collectible card art (1-10) this gift arrived in.</summary>
+    /// <summary>The collectible card art (1-43) this gift arrived in.</summary>
     public int CardNumber { get; set; }
 
     // Navigation

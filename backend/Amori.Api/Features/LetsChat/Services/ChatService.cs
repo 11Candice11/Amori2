@@ -1,4 +1,5 @@
 using Amori.Api.Common.Exceptions;
+using Amori.Api.Common.Text;
 using Amori.Api.Data.Context;
 using Amori.Api.Domain.Entities;
 using Amori.Api.Domain.Enums;
@@ -38,6 +39,11 @@ public sealed class ChatService(
         IsMine = c.SenderId == callerId,
         SentAt = c.SentAt,
         ReadAt = c.ReadAt,
+        IsResolved = c.ResolvedAt != null,
+        ResolvedAt = c.ResolvedAt,
+        ResolvedById = c.ResolvedById,
+        ResolvedByName = c.ResolvedBy?.DisplayName,
+        Resolution = c.Resolution,
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt,
     };
@@ -58,6 +64,7 @@ public sealed class ChatService(
         // because they are neither mine nor sent.
         return await db.ChatConversations
             .Include(c => c.Sender)
+            .Include(c => c.ResolvedBy)
             .Where(c => c.RelationshipId == rel.Id &&
                         (c.SenderId == userId || !c.IsPrivate))
             .OrderByDescending(c => c.CreatedAt)
@@ -70,7 +77,7 @@ public sealed class ChatService(
         var rel = await relAccess.GetUserRelationshipAsync(userId)
             ?? throw new NotFoundException("You are not a member of any relationship.");
 
-        var c = await db.ChatConversations.Include(x => x.Sender)
+        var c = await db.ChatConversations.Include(x => x.Sender).Include(x => x.ResolvedBy)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException("Conversation", id);
 
@@ -114,7 +121,7 @@ public sealed class ChatService(
 
     public async Task<ChatConversationResponse> UpdateAsync(Guid userId, Guid id, UpdateChatRequest request, CancellationToken ct = default)
     {
-        var c = await db.ChatConversations.Include(x => x.Sender)
+        var c = await db.ChatConversations.Include(x => x.Sender).Include(x => x.ResolvedBy)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException("Conversation", id);
 
@@ -156,7 +163,7 @@ public sealed class ChatService(
         var partner = await relAccess.GetPartnerAsync(userId)
             ?? throw new ConflictException("Your relationship does not have a second partner yet.");
 
-        var c = await db.ChatConversations.Include(x => x.Sender)
+        var c = await db.ChatConversations.Include(x => x.Sender).Include(x => x.ResolvedBy)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException("Conversation", id);
 
@@ -206,7 +213,7 @@ public sealed class ChatService(
         var rel = await relAccess.GetUserRelationshipAsync(userId)
             ?? throw new NotFoundException("You are not a member of any relationship.");
 
-        var c = await db.ChatConversations.Include(x => x.Sender)
+        var c = await db.ChatConversations.Include(x => x.Sender).Include(x => x.ResolvedBy)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException("Conversation", id);
 
@@ -220,6 +227,47 @@ public sealed class ChatService(
         c.ReadAt ??= DateTime.UtcNow;
         c.Status = ChatMessageStatus.Read;
         await db.SaveChangesAsync(ct);
+        return Map(c, userId);
+    }
+
+    public async Task<ChatConversationResponse> ResolveAsync(Guid userId, Guid id, ResolveChatRequest request, CancellationToken ct = default)
+    {
+        var rel = await relAccess.GetUserRelationshipAsync(userId)
+            ?? throw new NotFoundException("You are not a member of any relationship.");
+
+        var c = await db.ChatConversations.Include(x => x.Sender).Include(x => x.ResolvedBy)
+            .FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException("Conversation", id);
+
+        if (c.RelationshipId != rel.Id) throw new ForbiddenException();
+
+        // Both partners may resolve, but only a message that has actually been
+        // sent is a chat. A partner's unsent draft stays invisible to the caller.
+        if (IsPrivateState(c.Status))
+        {
+            if (c.SenderId != userId) throw new NotFoundException("Conversation", id);
+            throw new ConflictException("This message hasn't been sent yet.");
+        }
+
+        // First resolution wins; a second one must not silently overwrite what
+        // the other partner wrote.
+        if (c.ResolvedAt is not null)
+            throw new ConflictException("This chat has already been resolved.");
+
+        var resolution = UserInput.NullIfBlank(request.Resolution)
+            ?? throw new ValidationException("Please say how this was resolved.");
+        if (resolution.Length > ChatConversation.ResolutionMaxLength)
+            throw new ValidationException(
+                $"A resolution can be at most {ChatConversation.ResolutionMaxLength} characters.");
+
+        c.Resolution = resolution;
+        c.ResolvedAt = DateTime.UtcNow;
+        c.ResolvedById = userId;
+        await db.SaveChangesAsync(ct);
+
+        // The chat was unresolved when loaded, so ResolvedBy is empty; the caller
+        // is the resolver, so load them for the response's ResolvedByName.
+        c.ResolvedBy = await db.Users.FindAsync([userId], ct);
         return Map(c, userId);
     }
 

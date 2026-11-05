@@ -92,16 +92,10 @@ async function getTokenFromModules(
   // Push tokens are only issued on physical devices.
   if (Device.isDevice === false) return null;
 
-  // Ask for (or confirm) notification permission.
-  const existing = await Notifications.getPermissionsAsync();
-  let granted = existing.granted;
-  if (!granted && existing.canAskAgain) {
-    const requested = await Notifications.requestPermissionsAsync();
-    granted = requested.granted;
-  }
-  if (!granted) return null;
-
-  // Android requires a notification channel for delivery to be shown.
+  // Android requires a notification channel for delivery to be shown. It must
+  // exist BEFORE the permission request: on Android 13+ the system prompt does
+  // not appear until the app has created at least one channel, so asking first
+  // leaves a fresh install denied, with no token and no push for chat messages.
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Amori',
@@ -110,6 +104,15 @@ async function getTokenFromModules(
       vibrationPattern: [0, 40, 60, 40],
     });
   }
+
+  // Ask for (or confirm) notification permission.
+  const existing = await Notifications.getPermissionsAsync();
+  let granted = existing.granted;
+  if (!granted && existing.canAskAgain) {
+    const requested = await Notifications.requestPermissionsAsync();
+    granted = requested.granted;
+  }
+  if (!granted) return null;
 
   if (!EXPO_PROJECT_ID) {
     console.warn('[Push] EXPO_PROJECT_ID is not set — cannot obtain Expo push token.');

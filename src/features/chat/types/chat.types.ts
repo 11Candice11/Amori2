@@ -79,6 +79,13 @@ export interface ChatConversation {
   isMine: boolean;
   sentAt: string | null;
   readAt: string | null;
+  /** True once either partner has resolved (closed) the chat. */
+  isResolved: boolean;
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  resolvedByName: string | null;
+  /** What the resolver wrote when closing the chat. */
+  resolution: string | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -96,6 +103,14 @@ export interface UpdateChatPayload {
   composedMessage?: string;
   status?: ChatMessageStatus;
 }
+
+/** Matches ResolveChatRequest on the server. */
+export interface ResolveChatPayload {
+  resolution: string;
+}
+
+/** Longest resolution the server accepts (ChatConversation.ResolutionMaxLength). */
+export const CHAT_RESOLUTION_MAX_LENGTH = 4000;
 
 // ─── Partner response shortcuts (convenience actions, not required) ──────────
 

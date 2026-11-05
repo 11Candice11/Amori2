@@ -7,7 +7,9 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { CalendarDayScreen } from '../screens/CalendarDayScreen';
 import { AddCalendarEventScreen } from '../screens/AddCalendarEventScreen';
 import { WishlistScreen } from '../screens/WishlistScreen';
+import { AddWishlistItemScreen } from '../screens/AddWishlistItemScreen';
 import { DateIdeasScreen } from '../screens/DateIdeasScreen';
+import { AddDateIdeaScreen } from '../screens/AddDateIdeaScreen';
 import { ImportantDatesScreen } from '../screens/ImportantDatesScreen';
 import { MemoriesScreen } from '../../memories/screens/MemoriesScreen';
 import { MonthlyMemoriesScreen } from '../../memories/screens/MonthlyMemoriesScreen';
@@ -29,7 +31,9 @@ export function TogetherNavigator() {
       <Stack.Screen name="CalendarDay" component={CalendarDayScreen} />
       <Stack.Screen name="AddCalendarEvent" component={AddCalendarEventScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
+      <Stack.Screen name="AddWishlistItem" component={AddWishlistItemScreen} />
       <Stack.Screen name="DateIdeas" component={DateIdeasScreen} />
+      <Stack.Screen name="AddDateIdea" component={AddDateIdeaScreen} />
       <Stack.Screen name="ImportantDates" component={ImportantDatesScreen} />
       <Stack.Screen name="Memories" component={MemoriesScreen} />
       <Stack.Screen name="MonthlyMemories" component={MonthlyMemoriesScreen} />

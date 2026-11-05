@@ -17,7 +17,7 @@ public sealed class SaveVaultGiftRequest
     /// <summary>The vision board item ID to save (null if saving a memory).</summary>
     public Guid? VisionBoardItemId { get; set; }
 
-    /// <summary>The collectible card art the gift arrived in (1-10).</summary>
+    /// <summary>The collectible card art the gift arrived in (1-43).</summary>
     public int CardNumber { get; set; }
 }
 
@@ -48,7 +48,7 @@ public sealed class CreateGiftRequest
     /// <summary>Longitude of location.</summary>
     public decimal? Longitude { get; set; }
 
-    /// <summary>The card number (1-10) the gift is wrapped in.</summary>
+    /// <summary>The card number (1-43) the gift is wrapped in.</summary>
     public int CardNumber { get; set; }
 
     /// <summary>Media attachments (photos, videos, voice notes, links).</summary>

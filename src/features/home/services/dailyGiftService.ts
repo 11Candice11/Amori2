@@ -2,7 +2,7 @@
  * dailyGiftService — picks a random memory for the daily artifact.
  *
  * The daily gift/surprise is a randomly selected memory from the couple's
- * shared memories collection, paired with a random card (1-10).
+ * shared memories collection, paired with a random card from the deck.
  *
  * Two rules shape the pick:
  *   1. It changes every morning — the same memory shouldn't show up on
@@ -15,10 +15,8 @@ import type { MemoryResponse } from '../../memories/types/memory.types';
 import { visionBoardService } from '../../together/services/visionBoardService';
 import type { VisionBoardItemResponse } from '../../together/types/visionBoard.types';
 import { vaultService } from '../../vault/services/vaultService';
+import { getRandomCardNumber } from '../../../utils/cardSelector';
 import { dailyGiftStore } from './dailyGiftStore';
-
-/** The number of collectible card designs (card1.png … card10.png). */
-const CARD_COUNT = 10;
 
 /**
  * Represents a daily gift with memory or vision board content formatted for display.
@@ -34,7 +32,7 @@ export interface DailyGift {
   title: string;
   /** Formatted body text for display */
   body: string;
-  /** The card number (1-10) for this gift */
+  /** The card number for this gift (any card in the deck) */
   cardNumber: number;
 }
 
@@ -252,7 +250,9 @@ export const dailyGiftService = {
         return null; // Nothing eligible to gift
       }
 
-      const cardNumber = Math.floor(Math.random() * CARD_COUNT) + 1;
+      // Any card in the deck. The server accepts 1..its CardCount, which has to
+      // stay in step with the deck (see VaultService.CardCount).
+      const cardNumber = getRandomCardNumber();
 
       if (giftType === 'memory') {
         const selectedMemory = pickRandom(eligibleMemories);

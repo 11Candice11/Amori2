@@ -187,8 +187,21 @@ Legend: 🔺 P0 · 🔸 P1 · ▪️ P2
 | TC-TOG-05 | Bucket list | Linked pair | Create item then mark complete | Item created and completes | ▪️ | |
 | TC-TOG-06 | Date ideas | Some uncompleted ideas | Tap random pick | Returns a random idea | ▪️ | |
 | TC-TOG-07 | Date ideas | No uncompleted ideas | Tap random pick | Returns null / empty state (no crash) | ▪️ | |
-| TC-TOG-08 | Date ideas | Idea exists | Toggle favorite / mark complete | Favorite via PATCH; complete is one-way | ▪️ | |
-| TC-TOG-09 | Wishlist | Linked pair | Create, edit, toggle purchased, delete | Each action persists | ▪️ | |
+| TC-TOG-08 | Date ideas | Idea exists | Toggle favorite / mark done | Favorite via PATCH; done and reopen both persist (the `/complete` endpoint alone is one-way) | ▪️ | |
+| TC-TOG-09 | Wishlist | Linked pair | Create, edit, mark fulfilled, delete | Each action persists | ▪️ | |
+| TC-TOG-10 | Wishlist | Linked pair | Tap **+ Add to Wishlist**; add a photo, title, description and link; Save | Returns to the list; the row shows the photo, description and a link chip that opens the page; partner sees the same | ▪️ | |
+| TC-TOG-11 | Wishlist | On the add screen | Enter a link that is not a web address (e.g. `hello`) and Save | Inline error, nothing created; a bare `amazon.com/item` is accepted and opens as https | ▪️ | |
+| TC-TOG-12 | Wishlist | Own wish with photo, description and link | Tap **Edit**; change the title, remove the photo, clear the link; Save | Returns to the list showing the new title, no photo, no link chip; partner sees the same | ▪️ | |
+| TC-TOG-13 | Wishlist | Own wish (open) | Tap **Delete**, then Cancel; tap **Delete** again and confirm | Cancel keeps it; confirm removes it with `"Deleted!"`; partner no longer sees it | ▪️ | |
+| TC-TOG-14 | Wishlist | Partner's wish | Look at the row | No Edit or Delete shown (star, tick and Mark fulfilled still work); direct content PATCH / DELETE by non-owner → 403 | ▪️ | |
+| TC-TOG-15 | Wishlist | An open wish (yours or your partner's) | Tap **✓ Mark fulfilled** | `"Wish fulfilled ❤"`; wish stays, shows a green "✓ Fulfilled · date" badge, struck-through title, moves below open wishes; partner sees the same | ▪️ | |
+| TC-TOG-16 | Wishlist | A fulfilled wish | Tap **Reopen** | `"Wish reopened"`; badge gone, wish back among open wishes; reopening then fulfilling again records a fresh date | ▪️ | |
+| TC-TOG-17 | Date ideas | Linked pair | Tap **+ Add a Date Idea**; add a photo, title, description, location, cost (`12.50`) and link; Save | `"Date idea added"`; row shows the photo, description, location, `€12.50` and a link chip that opens the page; partner sees the same | ▪️ | |
+| TC-TOG-18 | Date ideas | An open idea (yours or your partner's) | Tap **✓ Mark done**, then **Reopen** | `"Date done ❤"`, green "✓ Done · date" badge, struck-through, moves below open ideas; **Reopen** restores it with `"Date idea reopened"` | ▪️ | |
+| TC-TOG-19 | Date ideas | Your partner's idea | Tap **Edit**, change the title, remove the photo, clear the link; Save | Saved for both of you (either partner may edit); no **Delete** is shown on this row | ▪️ | |
+| TC-TOG-20 | Date ideas | An idea you added (open or done) | Tap **Delete**, Cancel; **Delete** again, confirm | Cancel keeps it; confirm removes it with `"Deleted!"`; partner no longer sees it | ▪️ | |
+| TC-TOG-21 | Date ideas | On the add screen | Enter cost `abc` (or `-5`, `1.234`) and Save | Inline error `"Enter the cost as a number…"`, nothing saved; `0` saves and shows "Free"; clearing the cost on an existing idea removes it | ▪️ | |
+| TC-TOG-22 | Wishlist | On the add screen | Add a wish with cost `39,99`; later edit it to `0`, then empty the field | Row shows `€39.99`, then `Free`, then no cost; entering `abc` shows the cost error and saves nothing; the partner never sees Edit on this wish | ▪️ | |
 
 ---
 
