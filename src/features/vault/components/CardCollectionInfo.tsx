@@ -6,7 +6,7 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Rect, Path } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { getTotalCardCount } from '../../../utils/cardSelector';

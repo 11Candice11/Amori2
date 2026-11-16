@@ -7,7 +7,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Svg, { Circle, Polygon } from 'react-native-svg';
+import Svg, { Polygon } from 'react-native-svg';
 
 import { colors, typography } from '../../theme';
 import { useUserLevel } from '../../state/userPointsStore';

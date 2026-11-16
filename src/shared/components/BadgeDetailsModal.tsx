@@ -31,7 +31,6 @@ import {
   getUnlockCriteriaText,
   isBadgeUnlocked,
 } from '../../constants/badges';
-import type { Badge } from '../../constants/badges';
 
 type BadgeDetailsModalProps = {
   visible: boolean;

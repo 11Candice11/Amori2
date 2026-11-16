@@ -11,7 +11,6 @@ import {
   Text,
   View,
   Animated,
-  Image,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';

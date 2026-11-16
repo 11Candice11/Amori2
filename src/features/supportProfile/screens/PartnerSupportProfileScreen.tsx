@@ -10,7 +10,7 @@
  * `focusSection` (from a contextual entry point) scrolls straight to a section
  * but the whole shared profile is still available.
  */
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,

@@ -17,7 +17,7 @@ export interface SuccessOverlayState {
   id: number;
   /** Optional confirmation line, e.g. "Memory saved". */
   message?: string;
-  /** Fallback auto-dismiss (ms) if the animation-finished event never fires. */
+  /** Auto-dismiss delay (ms). */
   durationMs: number;
 }
 
@@ -36,9 +36,8 @@ export interface ShowSuccessOverlayOptions {
   durationMs?: number;
 }
 
-// Matches the actual length of the sparkles animation (~5 s). The overlay auto-dismisses
-// via onAnimationFinish; this is only the fallback if that callback never fires.
-const DEFAULT_DURATION_MS = 5000;
+// Matches the glow animation (~2.65 s).
+const DEFAULT_DURATION_MS = 2700;
 
 /**
  * Show the success overlay. Safe to call from anywhere (screens, services,

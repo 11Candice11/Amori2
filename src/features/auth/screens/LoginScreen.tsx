@@ -4,7 +4,6 @@
  */
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,

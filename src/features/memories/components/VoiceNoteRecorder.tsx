@@ -14,7 +14,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Audio } from 'expo-av';
-import Svg, { Circle, Rect } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { configureRecordingAudioMode } from '../../../services/media/audioMode';

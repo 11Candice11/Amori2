@@ -8,7 +8,7 @@
  * - Consistent styling across the app
  */
 import React, { useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View, ActivityIndicator, Image, ImageBackground } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { colors, spacing, typography } from '../../theme';
 
 export type GoldButtonProps = {

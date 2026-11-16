@@ -6,8 +6,7 @@
 import React, { useMemo } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
-import { getBadgesByCategory, ALL_BADGES } from '../../constants/badges';
-import { BadgeDisplay, type BadgeDisplayProps } from './BadgeDisplay';
+import { BadgeDisplay } from './BadgeDisplay';
 import type { BadgeCategory } from '../../constants/badges';
 
 export type BadgeGridProps = {

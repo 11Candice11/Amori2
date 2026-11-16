@@ -5,7 +5,7 @@
  * dark-green sanctuary + gold design tokens.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle, Animated, Image } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ViewStyle, Animated } from 'react-native';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { usePressAnimation } from '../../../shared/hooks';
 import { ArrowRightIcon, CheckIcon } from './SplittingIcons';

@@ -22,4 +22,4 @@ A private couples application for iOS and Android.
 
 ## Getting Started
 
-See `docs/architecture/README.md` for a full breakdown of the project structure.
+See `docs/architecture/README.md` for the project structure and `DEVELOPER_GUIDE.md` for deploying (`./deploy.sh api|ios|android|all`), push notification setup, widgets, backgrounds and badge UI.

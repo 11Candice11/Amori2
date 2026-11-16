@@ -16,7 +16,6 @@ import {
   SectionLabel,
   PrimaryButton,
   SecondaryButton,
-  NoteCallout,
   LeafIcon,
   DropIcon,
   MoonIcon,

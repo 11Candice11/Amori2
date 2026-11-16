@@ -32,25 +32,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { colors, spacing, typography } from '../../../shared/theme';
 import { AppHeader } from '../../../shared/components/header';
 import { ApiError } from '../../../services/api/client';
-import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import { partnerLinkService } from '../../profile/services/partnerLinkService';
 import type { TogetherStackParamList } from '../../../navigation/TogetherStackParamList';
-import type { MainTabParamList } from '../../../navigation/types';
 import { visionBoardService } from '../services/visionBoardService';
 import {
   VISION_BOARD_ITEM_TYPE_LABELS,
   decodeVisionBoardItemType,
   type VisionBoardItemResponse,
   type VisionBoardResponse,
-  type VisionBoardSectionResponse,
 } from '../types/visionBoard.types';
 import type { BucketListItemResponse } from '../types/together.types';
-import { ScrapbookCard, CornerFlower } from '../components';
+import { ScrapbookCard } from '../components';
 
 type Nav = NativeStackNavigationProp<TogetherStackParamList, 'VisionBoard'>;
 

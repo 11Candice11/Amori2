@@ -1,9 +1,9 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { Route } from '@react-navigation/native';
 
 import { TabImageIcon, type TabIconName } from '../icons/AppIcons';
-import { colors, layout, typography } from '../../theme';
+import { layout, typography } from '../../theme';
 import type { TabRouteName } from './BottomNavBar.types';
 
 /** Route names that have illustrated PNG art. */
