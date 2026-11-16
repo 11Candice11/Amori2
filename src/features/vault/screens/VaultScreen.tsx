@@ -13,7 +13,7 @@
  * - Send gift option
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';

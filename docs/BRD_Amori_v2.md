@@ -4,7 +4,7 @@
 |---|---|
 | **Product** | Amori — a private, two-person couples app (iOS + Android) |
 | **Audience** | QA / Automation Tester |
-| **Version** | 2.0 · 2026-10-10 (supersedes `BRD_Amori.md` v1.0, 2026-09-23) |
+| **Version** | 2.0 · 2026-10-10 |
 | **Code baseline** | branch `feature/new_features`, commit `e3ba528` |
 | **Diagrams** | Mermaid (renders on GitHub, VS Code/Kiro markdown preview, GitLab, Confluence Mermaid macro) |
 
@@ -100,7 +100,7 @@ flowchart LR
 | Auth | JWT access token (**60 min**) + refresh token (**7 days**), from `appsettings.json` `Jwt` section. |
 | Real-time | **None.** There is no WebSocket/SignalR in the app. "Live" behaviour = push + polling (§5.4). |
 | Background jobs | Only `IncidentSlaMonitor` (first scan 30 s after start, then every 5 min). Nothing delivers calendar reminders, daily digests or server-side check-in reminders (§9). |
-| Widgets | Partner-mood home-screen widget / Live Activity via native `AmoriWidgetBridge`; failures are swallowed and never block a flow. See `docs/WIDGETS_AND_LIVE_ACTIVITIES.md`. |
+| Widgets | Partner-mood home-screen widget / Live Activity via native `AmoriWidgetBridge`; failures are swallowed and never block a flow. See `DEVELOPER_GUIDE.md` section 3. |
 
 ---
 

@@ -8,7 +8,7 @@
  * - Save to vault button to archive the badge
  * - Appears immediately in full-screen modal
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Animated,
   Modal,
@@ -24,7 +24,6 @@ import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, typography } from '../../../shared/theme';
 import { getBadgeById, getBadgeImage } from '../../../constants/badges';
 import { SparklesAnimation } from '../../../shared/components/screens/SparklesAnimation';
-import { badgeService } from '../../../features/profile/services/badgeService';
 
 type BadgeRewardModalProps = {
   visible: boolean;

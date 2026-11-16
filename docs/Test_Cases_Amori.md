@@ -1,6 +1,6 @@
 # Amori — Test Case Checklist
 
-**Companion to:** `BRD_Amori.md`
+**Companion to:** `BRD_Amori_v2.md`
 **Audience:** QA / Automation Tester
 **Last updated:** 2026-09-23
 

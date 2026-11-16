@@ -9,7 +9,7 @@ rather than re-scanning the whole tree. **Keep it current**: when a change makes
 something here wrong (new feature, moved file, changed rule), update this file in
 the same change.
 
-Deeper references: `docs/BRD_Amori_v2.md` (every feature, flow, rule, exact UI
+Deeper references: `DEVELOPER_GUIDE.md` (deploy, push setup, widgets, backgrounds, badge UI), `docs/BRD_Amori_v2.md` (every feature, flow, rule, exact UI
 message, endpoint, known bugs), `docs/Test_Cases_Amori.md`, and
 `.kiro/specs/achievements-badges/` (the planned server-owned badge redesign).
 
@@ -26,7 +26,7 @@ per user: Vault, chat drafts, private support-profile fields, points/badges.
 | Mobile | React Native 0.74 + Expo 51 + TypeScript, React Navigation 6, zod. Node 20 (`.nvmrc`) | `src/` |
 | Backend | ASP.NET Core (.NET 9), EF Core 9 + Npgsql (PostgreSQL), JWT, AWS S3, Expo push | `backend/Amori.Api/` |
 | Backend tests | xUnit + Testcontainers (needs Docker running) | `backend/Amori.Api.Tests/` |
-| Hosting | `https://amori.ycare.org` — EC2 behind nginx/TLS; `backend/deploy.sh` | |
+| Hosting | `https://amori.ycare.org` — EC2 behind nginx/TLS; `./deploy.sh api` | |
 
 **Mobile** — feature folders: `src/features/<feature>/{screens,components,hooks,services,types,utils,navigation}`.
 Shared UI/state: `src/shared/` (components, `state/*Store.ts`, theme). App entry and
@@ -156,7 +156,7 @@ switched in JS, via `CellRendererComponent`, when a card passes half way).
 | Home dashboard + daily gift | `features/home` | aggregates; vault save `/api/vault/gifts` |
 | Mood check-in | `features/mood` | `/api/moods` |
 | Hugs | `features/hugs` | `/api/hugs` |
-| Let's Chat | `features/chat` (local drafts `chatDraftStore`). Home pills: Drafts, **Chats** (`ChatList`: sent, unresolved) and **Resolved** (`ChatResolved`). `ChatDetail` shows one chat, yours or your partner's, and is the push / inbox target. Either partner can **Resolve** an open chat: `ChatResolve` asks for a resolution → `POST /api/chat/{id}/resolve`, then resets the stack to ChatHome → ChatList (or just ChatHome if none are open). Resolved is **not** a `Status` value: it is `resolved_at` / `resolved_by_id` / `resolution` on the row, so Sent/Read and the badge counters are untouched. The first resolution wins (409 after that) | `/api/chat` |
+| Let's Chat | `features/chat` (local drafts `chatDraftStore`). Home (`ChatHomeScreen`): a **Let's Chat** button opening `TemplatePickerModal`, a swipeable `StarterCard` carousel of templates, then **Active conversations** (`ThreadCard`: your drafts + open chats) with Drafts / Resolved pills. `ChatList` is no longer linked from home. `ChatDetail` shows one chat, yours or your partner's, and is the push / inbox target. Either partner can **Resolve** an open chat: `ChatResolve` asks for a resolution → `POST /api/chat/{id}/resolve`, then resets the stack to ChatHome → ChatList (or just ChatHome if none are open). Resolved is **not** a `Status` value: it is `resolved_at` / `resolved_by_id` / `resolution` on the row, so Sent/Read and the badge counters are untouched. The first resolution wins (409 after that) | `/api/chat` |
 | Help desk / incidents | `features/incidents` | `/api/incidents` (state machine in `IncidentStatusService`) |
 | Together: calendar, important dates, bucket list/to-do, date ideas, wishlist | `features/together` (wishlist add **and edit** both go through `AddWishlistItemScreen`, which edits when given a route `item`: photo via `useImageAttachment` → `/api/media`, title, description, link; on PATCH `''` clears a field. Edit/Delete show only on your own wishes (owner-only on the backend). "Fulfilled" closes a wish without deleting it (either partner; Reopen undoes it) and is stored in the legacy `isPurchased` / `purchasedAt` fields, so don't add a second flag. **Date ideas work the same way** (`AddDateIdeaScreen`, `DateIdeasScreen`; Done = `isCompleted`/`completedAt`; either partner can Edit, only the creator can Delete). Both add/edit screens are thin wrappers over `components/ItemComposeForm` (photo, title, description, link); link/blank rules live in `Common/Text/UserInput.cs`. Links are http(s) only, checked by `utils/links.ts` and `WishlistService.NormalizeLink`) | `/api/calendar/events`, `/api/important-dates`, `/api/bucket-list`, `/api/dates`, `/api/wishlist` |
 | Vision Board | `features/together` (VisionBoard*) | `/api/vision-board` |
@@ -180,7 +180,7 @@ else is a hidden tab in `src/navigation/MainTabNavigator.tsx`.
   edits and don't overwrite files you haven't re-read.
 - Don't add permanent tests unless asked; temporary verification tests are fine if
   deleted afterwards.
-- **Deploy**: `cd backend && ./deploy.sh` (~6–8 min; amd64 image built locally, shipped over
+- **Deploy**: `./deploy.sh api` (repo root; `./deploy.sh all` also installs the iOS app) (~6–8 min; amd64 image built locally, shipped over
   SSH with `~/.ssh/AmoriKey.pem` to `ubuntu@51.20.141.199`, Postgres runs in Docker on the same
   box). Run it as a background process. **Back up first** — dumps go to `~/amori/backups/` on the
   server: `sudo docker exec amori-postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' | gzip > ~/amori/backups/pre-deploy-<UTC>.sql.gz`.

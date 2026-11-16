@@ -19,7 +19,7 @@ import {
   SparkleIcon,
   PlayIcon,
 } from '../components';
-import { DISTRACTION_ESCAPES, PARTNER_NAME } from '../utils/splittingData';
+import { DISTRACTION_ESCAPES } from '../utils/splittingData';
 import { EMPTY_FLOW_STATE } from '../types/splitting.types';
 import { useSaveGroundingOnLeave } from '../hooks/useLeaveSplittingFlow';
 

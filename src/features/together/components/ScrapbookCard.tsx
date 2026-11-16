@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, spacing, typography } from '../../../shared/theme';
+import { spacing } from '../../../shared/theme';
 import { resolveMediaUrl } from '../../../services/media/mediaUrl';
 import { userSettingsStore } from '../../../shared/state/userSettingsStore';
 import {

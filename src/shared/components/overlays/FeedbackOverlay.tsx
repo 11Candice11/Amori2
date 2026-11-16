@@ -3,7 +3,7 @@
  *
  * Mounted once near the app root (see App.tsx, beside <Banner />). Renders two
  * store-driven animations that create/save flows fire imperatively:
- *  - success (gold sparkles floating up)  via `showSuccessOverlay(...)`
+ *  - success (text banner + golden edge glow) via `showSuccessOverlay(...)`
  *  - failure (`unsuccess.json` Lottie)   via `showErrorOverlay(...)`
  *
  * Both drop over the current screen with a dimmed backdrop, play their animation
@@ -14,10 +14,12 @@
  * Success and failure are mutually exclusive per flow, but if both were ever
  * active the failure overlay wins (an error is the more important thing to see).
  *
- * Success overlays also show a warm bright-golden edge glow that spans the
- * screen border for ~2.5 s: quick fade-in (200 ms), hold, then fade-out.
+ * Success is just a small text banner over a golden edge glow that fades toward
+ * the middle (no image or animation file, no dimmed backdrop). It dismisses after
+ * `durationMs`.
  */
 import React, { useEffect, useRef } from 'react';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../theme';
@@ -30,98 +32,77 @@ import {
   hideErrorOverlay,
   useErrorOverlay,
 } from '../../state/errorOverlayStore';
-import { SuccessAnimation, ErrorAnimation } from '../screens';
+import { ErrorAnimation } from '../screens';
 
 type OverlayState = { id: number; message?: string; durationMs: number };
 
 /**
- * Warm golden screen-edge glow shown during the success overlay.
- *
- * Renders an absolutely-positioned View that covers the entire Modal
- * surface with a thick golden border, a matching outer shadow, and an
- * inner soft-glow layer. The glow sequence:
- *   0 ms  →  200 ms : fade in  (ease-out)
- *   200 ms → 2500 ms: hold at full opacity
- *   2500 ms → 2900 ms: fade out (the Lottie continues playing for the
- *                      remaining ~3 s before the overlay dismisses)
+ * Warm golden glow around the screen edge that fades gently toward the middle,
+ * like dust drifting away. A radial gradient (clear centre, gold rim) fades in,
+ * drifts outward very slightly while it fades back out.
  */
 function SuccessGlowEdge({ trigger }: { trigger: number | null }) {
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
+  const anim = useRef(new Animated.Value(0)).current;
+  const drift = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (trigger === null) {
-      glowAnim.setValue(0);
+      anim.setValue(0);
+      drift.setValue(0);
       return;
     }
-    // Fade in → hold → fade out, all while the Lottie keeps playing.
-    const seq = Animated.sequence([
-      // Fade in: 200 ms
-      Animated.timing(glowAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      // Hold: 2300 ms  (200 + 2300 = 2500 ms total visible)
-      Animated.delay(2300),
-      // Fade out: 400 ms
-      Animated.timing(glowAnim, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }),
+    anim.setValue(0);
+    drift.setValue(0);
+    const opacitySeq = Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 450, useNativeDriver: true }),
+      Animated.delay(900),
+      Animated.timing(anim, { toValue: 0, duration: 1300, useNativeDriver: true }),
     ]);
-    seq.start();
-    return () => {
-      seq.stop();
-    };
-  }, [trigger, glowAnim]);
-
+    const driftAnim = Animated.timing(drift, {
+      toValue: 1,
+      duration: 2650,
+      useNativeDriver: true,
+    });
+    const both = Animated.parallel([opacitySeq, driftAnim]);
+    both.start();
+    return () => both.stop();
+  }, [trigger, anim, drift]);
+  const scale = drift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
   return (
     <Animated.View
       pointerEvents="none"
-      style={[glowStyles.edge, { opacity: glowAnim }]}
+      style={[
+        StyleSheet.absoluteFill,
+        { opacity: anim, transform: [{ scale }] },
+      ]}
     >
-
-      {/* Inner soft-glow ring — slightly inset, lighter opacity */}
-      <View style={glowStyles.innerRing} />
+      <Svg width="100%" height="100%">
+        <Defs>
+          <RadialGradient id="amoriGlow" cx="50%" cy="50%" rx="80%" ry="80%" fx="50%" fy="50%">
+            <Stop offset="0" stopColor={GLOW_GOLD} stopOpacity="0" />
+            <Stop offset="0.35" stopColor={GLOW_GOLD} stopOpacity="0" />
+            <Stop offset="0.55" stopColor={GLOW_GOLD} stopOpacity="0.06" />
+            <Stop offset="0.75" stopColor={GLOW_GOLD} stopOpacity="0.18" />
+            <Stop offset="0.9" stopColor={GLOW_AMBER} stopOpacity="0.32" />
+            <Stop offset="1" stopColor={GLOW_AMBER} stopOpacity="0.45" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#amoriGlow)" />
+      </Svg>
     </Animated.View>
   );
 }
-
-const GOLD_BRIGHT = '#8B6F3A';   // deep dark brown gold
-const GOLD_SOFT   = '#6B562C';   // darker brown gold for inner ring
-
-const glowStyles = StyleSheet.create({
-  edge: {
-    ...StyleSheet.absoluteFillObject,
-    // Outer border glow
-    borderWidth: 6,
-    borderColor: GOLD_BRIGHT,
-    borderRadius: 0,
-    // Shadow gives the bloom effect on both iOS and Android
-    shadowColor: GOLD_BRIGHT,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.95,
-    shadowRadius: 28,
-    elevation: 32,
-    // Pointer events disabled — taps fall through to the backdrop Pressable
-  },
-  innerRing: {
-    ...StyleSheet.absoluteFillObject,
-    margin: 6,
-    borderWidth: 3,
-    borderColor: `${GOLD_SOFT}99`, // ~60% opacity
-    borderRadius: 0,
-  },
-});
-
+const GLOW_GOLD = '#FFC56B'; // soft honey gold
+const GLOW_AMBER = '#FF9A3C'; // warm amber at the rim
 type FeedbackModalProps = {
   overlay: OverlayState | null;
   hide: () => void;
   /** Haptic pattern to buzz when the overlay appears. */
   haptic: number | number[];
-  render: (size: number, onFinish: () => void) => React.ReactNode;
-  /** When true the golden screen-edge glow plays alongside the overlay. */
+  render?: (size: number, onFinish: () => void) => React.ReactNode;
+  /**
+   * Success style: text-only banner over a golden edge glow, no animation
+   * and no dimmed backdrop.
+   */
   showGlow?: boolean;
 };
 
@@ -162,20 +143,27 @@ function FeedbackModal({ overlay, hide, haptic, render, showGlow = false }: Feed
       animationType="fade"
       onRequestClose={dismiss}
     >
-      {/* Golden screen-edge glow — only rendered for success, keyed by id
-          so it restarts whenever a new overlay fires. */}
       {showGlow ? (
-        <SuccessGlowEdge key={overlay?.id ?? 0} trigger={overlay ? overlay.id : null} />
-      ) : null}
-      <Pressable style={styles.backdrop} onPress={dismiss}>
-        <View style={styles.card}>
-          {/* Keyed by id so re-firing restarts the animation from frame 0. */}
-          {overlay ? render(160, dismiss) : null}
-          {overlay?.message ? (
-            <Text style={styles.message}>{overlay.message}</Text>
-          ) : null}
-        </View>
-      </Pressable>
+        <>
+          <SuccessGlowEdge key={overlay?.id ?? 0} trigger={overlay ? overlay.id : null} />
+          <Pressable style={styles.glowBackdrop} onPress={dismiss}>
+            {overlay?.message ? (
+              <View style={styles.banner}>
+                <Text style={styles.bannerText}>{overlay.message}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </>
+      ) : (
+        <Pressable style={styles.backdrop} onPress={dismiss}>
+          <View style={styles.card}>
+            {overlay && render ? render(160, dismiss) : null}
+            {overlay?.message ? (
+              <Text style={styles.message}>{overlay.message}</Text>
+            ) : null}
+          </View>
+        </Pressable>
+      )}
     </Modal>
   );
 }
@@ -192,9 +180,6 @@ export function FeedbackOverlayHost() {
         hide={hideSuccessOverlay}
         haptic={20}
         showGlow
-        render={(size, onFinish) => (
-          <SuccessAnimation key={success?.id} size={size} onFinish={onFinish} />
-        )}
       />
       <FeedbackModal
         overlay={error}
@@ -215,6 +200,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
     padding: spacing.lg,
+  },
+  glowBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  banner: {
+    maxWidth: '90%',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceCard,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  bannerText: {
+    ...typography.headlineSm,
+    color: colors.neutral,
+    textAlign: 'center',
   },
   card: {
     alignItems: 'center',

@@ -13,6 +13,16 @@ export const TEMPLATE_TITLES: Record<ChatTemplateType, string> = {
   Future: 'Something about our future',
 };
 
+/** One-word tags for template pills and starter cards. */
+export const TEMPLATE_TAGS: Record<ChatTemplateType, string> = {
+  Feeling: 'Feeling',
+  Appreciation: 'Grateful',
+  Need: 'Need',
+  SomethingBotheredMe: 'Bothered',
+  SomethingOnMyMind: 'On my mind',
+  Future: 'Future',
+};
+
 /** A short, human status label for a conversation. */
 export function statusLabel(conversation: ChatConversation): string {
   if (conversation.isResolved) return 'Resolved';
