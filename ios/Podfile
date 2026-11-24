@@ -57,23 +57,6 @@ target 'Amori' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Fix EXConstants script phase: correct the path and quote variables for paths with spaces
-    installer.pods_project.targets.each do |target|
-      if target.name == 'EXConstants'
-        target.build_phases.each do |phase|
-          if phase.kind_of?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
-            if phase.shell_script && phase.shell_script.include?('get-app-config-ios.sh')
-              # Replace the incorrect PODS_TARGET_SRCROOT path with the correct one
-              phase.shell_script = phase.shell_script.gsub(
-                'bash -l -c "$PODS_TARGET_SRCROOT/../scripts/get-app-config-ios.sh"',
-                'bash -l -c "\"$PODS_ROOT\"/../../node_modules/expo-constants/scripts/get-app-config-ios.sh"'
-              )
-            end
-          end
-        end
-      end
-    end
-
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
@@ -92,6 +75,34 @@ target 'Amori' do
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
         end
       end
+    end
+
+    # Workaround: Disable EXConstants script phase since it fails on paths with spaces
+    # This phase is optional - the prebuilt manifest works fine without it
+    begin
+      pbxproj_path = "#{installer.pods_project.path}/project.pbxproj"
+      content = File.read(pbxproj_path)
+      
+      # Simply replace the runOnlyForDeploymentPostprocessing value
+      # This disables the script phase since deployment postprocessing never runs in normal builds
+      lines = content.split("\n")
+      in_exconstants = false
+      lines.map! do |line|
+        if line.include?('Generate app.config for prebuilt Constants.manifest')
+          in_exconstants = true
+        end
+        if in_exconstants && line.include?('runOnlyForDeploymentPostprocessing = 0')
+          in_exconstants = false
+          line.gsub('= 0', '= 1')
+        else
+          line
+        end
+      end
+      
+      File.write(pbxproj_path, lines.join("\n"))
+      Pod::UI.puts "✓ Disabled EXConstants script phase".yellow
+    rescue => e
+      Pod::UI.warn "Warning: #{e.message}"
     end
   end
 
