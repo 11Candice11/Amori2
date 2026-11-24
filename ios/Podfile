@@ -57,15 +57,16 @@ target 'Amori' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Fix EXConstants script phase to quote $PODS_TARGET_SRCROOT for paths with spaces
+    # Fix EXConstants script phase: correct the path and quote variables for paths with spaces
     installer.pods_project.targets.each do |target|
       if target.name == 'EXConstants'
         target.build_phases.each do |phase|
           if phase.kind_of?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
             if phase.shell_script && phase.shell_script.include?('get-app-config-ios.sh')
+              # Replace the incorrect PODS_TARGET_SRCROOT path with the correct one
               phase.shell_script = phase.shell_script.gsub(
                 'bash -l -c "$PODS_TARGET_SRCROOT/../scripts/get-app-config-ios.sh"',
-                'bash -l -c "\"$PODS_TARGET_SRCROOT\"/../scripts/get-app-config-ios.sh"'
+                'bash -l -c "\"$PODS_ROOT\"/../../node_modules/expo-constants/scripts/get-app-config-ios.sh"'
               )
             end
           end
