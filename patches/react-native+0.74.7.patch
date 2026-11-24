@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native/scripts/react_native_pods_utils/script_phases.rb b/node_modules/react-native/scripts/react_native_pods_utils/script_phases.rb
+index f5dd2ed..98c86db 100644
+--- a/node_modules/react-native/scripts/react_native_pods_utils/script_phases.rb
++++ b/node_modules/react-native/scripts/react_native_pods_utils/script_phases.rb
+@@ -44,7 +44,8 @@ def get_script_template(react_native_path, export_vars={})
+         SCRIPT_PHASES_SCRIPT="$RCT_SCRIPT_RN_DIR/scripts/react_native_pods_utils/script_phases.sh"
+         WITH_ENVIRONMENT="$RCT_SCRIPT_RN_DIR/scripts/xcode/with-environment.sh"
+-        /bin/sh -c "$WITH_ENVIRONMENT $SCRIPT_PHASES_SCRIPT"
++        . "$WITH_ENVIRONMENT"
++        "$SCRIPT_PHASES_SCRIPT"
+         EOS
+     result = ERB.new(template, trim_mode: '->').result(binding)
+     return result
