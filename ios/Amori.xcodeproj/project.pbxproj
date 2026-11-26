@@ -73,14 +73,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A6049CA8306ACD9000F1DAD2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		A6049CA8306ACD9000F1DAD2 /* Exceptions for "AmoriWidgets" folder in "AmoriWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = A6049C90306ACD8E00F1DAD2 /* AmoriWidgetsExtension */;
 		};
-		A6049CB9306ACE3900F1DAD2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		A6049CB9306ACE3900F1DAD2 /* Exceptions for "AmoriWidgets" folder in "Amori" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Shared/AmoriSharedStore.swift,
@@ -92,7 +92,19 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A6049C96306ACD8F00F1DAD2 /* AmoriWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A6049CB9306ACE3900F1DAD2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, A6049CA8306ACD9000F1DAD2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = AmoriWidgets; sourceTree = "<group>"; };
+		A6049C96306ACD8F00F1DAD2 /* AmoriWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A6049CB9306ACE3900F1DAD2 /* Exceptions for "AmoriWidgets" folder in "Amori" target */,
+				A6049CA8306ACD9000F1DAD2 /* Exceptions for "AmoriWidgets" folder in "AmoriWidgetsExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = AmoriWidgets;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -591,7 +603,10 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
@@ -649,7 +664,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
