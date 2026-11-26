@@ -30,6 +30,10 @@ import type { ThemePreference } from '../shared/theme';
 import { Banner, FeedbackOverlayHost } from '../shared/components/overlays';
 import { LoadingAnimation } from '../shared/components/screens';
 import { BadgeCatchUpHost } from '../features/vault/components/BadgeCatchUpHost';
+import { NightModeBanner } from '../shared/components/NightModeBanner';
+import { nightModeStore, useNightMode } from '../shared/state/nightModeStore';
+import { offlineQueue } from '../services/offline/offlineQueue';
+import { showSuccess, showError } from '../shared/state/bannerStore';
 
 /**
  * StatusBar whose appearance follows the active theme. Rendered inside
@@ -60,6 +64,8 @@ export default function App() {
   // The persisted theme, loaded during bootstrap. `null` until resolved so the
   // first paint of the app uses the saved palette (avoids a theme flash).
   const [initialTheme, setInitialTheme] = useState<ThemePreference | null>(null);
+  const [pendingOfflineCount, setPendingOfflineCount] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleLogout = useCallback(() => {
     // Drop every cache and on-device store tied to this user (settings,
@@ -201,6 +207,52 @@ export default function App() {
     });
   }, [authState]);
 
+  // Morning offline sync — flush any writes queued during night mode.
+  // Runs once when the app becomes authenticated AND night mode is not active
+  // (i.e. the server should be up). Re-runs if authState changes (e.g. after a
+  // sign-in that happens to be in the morning window).
+  useEffect(() => {
+    if (authState !== 'authenticated' || nightModeStore.isNight()) return;
+
+    let cancelled = false;
+
+    async function flushOfflineQueue() {
+      const count = await offlineQueue.count();
+      if (count === 0) return;
+
+      // Update the banner pending count so the user sees it
+      setPendingOfflineCount(count);
+      setIsSyncing(true);
+
+      try {
+        const { succeeded, failed } = await offlineQueue.flush();
+        if (!cancelled) {
+          setIsSyncing(false);
+          setPendingOfflineCount(0);
+          if (succeeded > 0 && failed === 0) {
+            showSuccess(`${succeeded} offline save${succeeded === 1 ? '' : 's'} synced ✓`);
+          } else if (failed > 0) {
+            showError(`${failed} item${failed === 1 ? '' : 's'} couldn't sync. Will retry later.`);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setIsSyncing(false);
+        }
+      }
+    }
+
+    void flushOfflineQueue();
+    return () => { cancelled = true; };
+  }, [authState]);
+
+  // Keep the pending count in sync with the queue while in night mode
+  useEffect(() => {
+    if (authState !== 'authenticated') return;
+
+    offlineQueue.count().then(setPendingOfflineCount).catch(() => {});
+  }, [authState]);
+
   // Wait until both the auth check and the persisted theme have resolved so we
   // never paint with the wrong palette.
   if (authState === 'checking' || initialTheme === null) {
@@ -252,6 +304,11 @@ export default function App() {
         initialVariant={initialTheme.variant}
       >
         <ThemedStatusBar />
+        {/* Night mode banner — sits above the nav so it's always visible */}
+        <NightModeBanner
+          pendingCount={pendingOfflineCount}
+          isSyncing={isSyncing}
+        />
         <NavigationContainer ref={navigationRef}>
           <MainTabNavigator onLogout={handleLogout} />
         </NavigationContainer>

@@ -67,7 +67,18 @@ target 'Amori' do
         end
       end
     end
-    # Xcode 26 only supports iOS 14.0+; raise any pod still on an older target.
+  end
+
+  post_integrate do |installer|
+    begin
+      expo_patch_react_imports!(installer)
+    rescue => e
+      Pod::UI.warn e
+    end
+
+    # ── Xcode 26 compatibility patches (withXcode26Fixes plugin) ──────────────
+
+    # 1. Raise any pod still below iOS 15.1 — Xcode 26 requires 14.0+.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
@@ -76,15 +87,12 @@ target 'Amori' do
         end
       end
     end
+    installer.pods_project.save
 
-    # Workaround: Disable EXConstants script phase since it fails on paths with spaces
-    # This phase is optional - the prebuilt manifest works fine without it
+    # 2. Disable EXConstants script phase — fails when the path contains spaces.
     begin
       pbxproj_path = "#{installer.pods_project.path}/project.pbxproj"
       content = File.read(pbxproj_path)
-      
-      # Simply replace the runOnlyForDeploymentPostprocessing value
-      # This disables the script phase since deployment postprocessing never runs in normal builds
       lines = content.split("\n")
       in_exconstants = false
       lines.map! do |line|
@@ -98,19 +106,12 @@ target 'Amori' do
           line
         end
       end
-      
       File.write(pbxproj_path, lines.join("\n"))
       Pod::UI.puts "✓ Disabled EXConstants script phase".yellow
     rescue => e
       Pod::UI.warn "Warning: #{e.message}"
     end
-  end
 
-  post_integrate do |installer|
-    begin
-      expo_patch_react_imports!(installer)
-    rescue => e
-      Pod::UI.warn e
-    end
+    # ── end Xcode 26 compatibility patches ────────────────────────────────────
   end
 end

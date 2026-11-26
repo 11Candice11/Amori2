@@ -12,7 +12,16 @@
       "backgroundColor": "#ffffff"
     },
     "plugins": [
-      "expo-notifications"
+      "expo-notifications",
+      "./plugins/withXcode26Fixes",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
     ],
     "assetBundlePatterns": [
       "assets/**",
