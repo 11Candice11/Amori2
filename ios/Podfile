@@ -2,7 +2,6 @@ require File.join(File.dirname(`node --print "require.resolve('expo/package.json
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
 
 require 'json'
-require 'fileutils'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
@@ -68,120 +67,28 @@ target 'Amori' do
         end
       end
     end
+  end
 
-    # Xcode 26 only supports iOS 14.0+; raise any pod still on an older target.
+  post_integrate do |installer|
+    begin
+      expo_patch_react_imports!(installer)
+    rescue => e
+      Pod::UI.warn e
+    end
+  
     # ── Xcode 26 compatibility patches (withXcode26Fixes plugin) ──────────────
 
+    # 1. Raise any pod still below iOS 15.1 — Xcode 26 requires 14.0+.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        # Raise deployment target
         current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
         if current.nil? || Gem::Version.new(current) < Gem::Version.new('15.1')
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
         end
-        # Disable explicit modules on pod targets (belt-and-suspenders)
-        config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
-        config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
-        # Expo 51 + Xcode 26: ObjC headers in some Expo pods include ExpoModulesCore
-        # headers without going through the module, triggering strict-module errors.
-        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
       end
     end
 
-    # Xcode 26 explicit modules: the dependency scanner runs before any pod target
-    # builds, so -fmodule-map-file flags in OTHER_CFLAGS that point at
-    # ${PODS_CONFIGURATION_BUILD_DIR}/PodName/PodName.modulemap fail because those
-    # files don't exist yet. The flags come from the xcconfig files (not pbxproj
-    # build settings), so we rewrite them directly in every xcconfig to point at
-    # Pods/Target Support Files/<PodName>/<PodName>.modulemap which exists
-    # statically after pod install.
-    pods_root = installer.sandbox.root.to_s
-    support_files_base = File.join(pods_root, 'Target Support Files')
-
-    Dir.glob(File.join(support_files_base, '**', '*.xcconfig')).each do |xcconfig_path|
-      content = File.read(xcconfig_path)
-      next unless content.include?('PODS_CONFIGURATION_BUILD_DIR') && content.include?('modulemap')
-
-      new_content = content.gsub(
-        /\$\{PODS_CONFIGURATION_BUILD_DIR\}\/([^\s\/]+)\/([^\s"']+\.modulemap)/
-      ) do
-        pod_name  = $1
-        map_file  = File.basename($2)   # e.g. "Lottie.modulemap" or "EXAV.modulemap"
-        module_name = File.basename(map_file, '.modulemap')
-
-        # 1. Direct match in Headers/Public/<pod_name>/<map_file>
-        static = File.join(pods_root, 'Headers', 'Public', pod_name, map_file)
-        next static if File.exist?(static)
-
-        # 2. Glob search by filename across all Headers/Public subdirs
-        candidate = Dir.glob(File.join(pods_root, 'Headers', 'Public', '*', map_file)).first
-        next candidate if candidate && File.exist?(candidate)
-
-        # 3. The module name may differ from the filename on disk (e.g. lottie-ios
-        #    ships lottie-ios.modulemap but DerivedData names it Lottie.modulemap).
-        #    Find the source .modulemap file for this pod in Target Support Files,
-        #    then place a renamed copy next to its umbrella header so relative
-        #    includes inside the modulemap resolve correctly.
-        src_map = Dir.glob(File.join(support_files_base, pod_name, '*.modulemap')).first
-        if src_map && File.exist?(src_map)
-          # Find the directory that contains the umbrella header referenced in the
-          # modulemap (first `umbrella header "..."` line), because the copy must
-          # live in the same directory for relative paths to resolve.
-          umbrella = File.read(src_map)[/umbrella header "([^"]+)"/, 1]
-          umbrella_dir = nil
-          if umbrella
-            umbrella_dir = Dir.glob(
-              File.join(pods_root, 'Headers', 'Public', '*', umbrella)
-            ).map { |f| File.dirname(f) }.first
-          end
-          dest_dir = umbrella_dir || File.join(pods_root, 'Headers', 'Public', pod_name)
-          FileUtils.mkdir_p(dest_dir)
-          dest = File.join(dest_dir, map_file)
-          FileUtils.cp(src_map, dest)
-          Pod::UI.puts "  ✓ Copied #{File.basename(src_map)} -> #{dest.sub(pods_root + '/', '')}".yellow
-          next dest
-        end
-
-        $&   # give up and keep the original if nothing found
-      end
-
-      File.write(xcconfig_path, new_content) if new_content != content
-    end
-    Pod::UI.puts "✓ Rewrote modulemap paths in xcconfigs for Xcode 26".yellow
-
-    # ExpoModulesCore: Xcode 26 strict modules put each header in its own submodule
-    # (via `module * { export * }`), which causes "must be imported from submodule"
-    # errors when ObjC headers in dependent pods use types like EXPromiseResolveBlock
-    # without explicitly naming the submodule. Flatten the module so all types are
-    # visible at the ExpoModulesCore top level.
-    ['Headers/Public/ExpoModulesCore/ExpoModulesCore.modulemap',
-     'Target Support Files/ExpoModulesCore/ExpoModulesCore.modulemap'].each do |rel|
-      path = File.join(pods_root, rel)
-      next unless File.exist?(path)
-      content = File.read(path)
-      flat = content.gsub(/\s*module \* \{ export \* \}/, '')
-      if flat != content
-        File.write(path, flat)
-        Pod::UI.puts "  ✓ Flattened ExpoModulesCore.modulemap (#{File.basename(File.dirname(path))})".yellow
-      end
-    end
-
-    # EXAV: ExpoVideoView (Swift) inherits ExpoClassicView (defined in
-    # ExpoModulesCore Swift). The generated EXAV-Swift.h doesn't auto-include
-    # ExpoModulesCore-Swift.h, so the ObjC compiler can't find ExpoClassicView.
-    # Fix: add the missing import to EXAV's prefix header.
-    exav_prefix = File.join(pods_root, 'Target Support Files', 'EXAV', 'EXAV-prefix.pch')
-    if File.exist?(exav_prefix)
-      pch = File.read(exav_prefix)
-      import_line = '#import <ExpoModulesCore/ExpoModulesCore-Swift.h>'
-      unless pch.include?(import_line)
-        File.write(exav_prefix, pch + "\n#{import_line}\n")
-        Pod::UI.puts "  ✓ Added ExpoModulesCore-Swift.h import to EXAV prefix header".yellow
-      end
-    end
-
-    # Workaround: Disable EXConstants script phase since it fails on paths with spaces
-    # This phase is optional - the prebuilt manifest works fine without it
+    # 2. Disable EXConstants script phase — fails when the path contains spaces.
     begin
       pbxproj_path = "#{installer.pods_project.path}/project.pbxproj"
       content = File.read(pbxproj_path)
@@ -203,13 +110,7 @@ target 'Amori' do
     rescue => e
       Pod::UI.warn "Warning: #{e.message}"
     end
-  end
 
-  post_integrate do |installer|
-    begin
-      expo_patch_react_imports!(installer)
-    rescue => e
-      Pod::UI.warn e
-    end
-  end
+    # ── end Xcode 26 compatibility patches ────────────────────────────────────
+end
 end

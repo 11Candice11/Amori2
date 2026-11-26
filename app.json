@@ -13,7 +13,8 @@
     },
     "plugins": [
       "expo-notifications",
-      "./plugins/withXcode26Fixes"
+      "./plugins/withXcode26Fixes",
+      "expo-build-properties"
     ],
     "assetBundlePatterns": [
       "assets/**",
