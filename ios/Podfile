@@ -75,7 +75,7 @@ target 'Amori' do
     rescue => e
       Pod::UI.warn e
     end
-  
+
     # ── Xcode 26 compatibility patches (withXcode26Fixes plugin) ──────────────
 
     # 1. Raise any pod still below iOS 15.1 — Xcode 26 requires 14.0+.
@@ -87,6 +87,7 @@ target 'Amori' do
         end
       end
     end
+    installer.pods_project.save
 
     # 2. Disable EXConstants script phase — fails when the path contains spaces.
     begin
@@ -112,5 +113,5 @@ target 'Amori' do
     end
 
     # ── end Xcode 26 compatibility patches ────────────────────────────────────
-end
+  end
 end
