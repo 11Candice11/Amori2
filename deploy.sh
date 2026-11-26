@@ -35,13 +35,13 @@ deploy_api() {
   local skip_build=false
   [[ "${1:-}" == "--skip-build" ]] && skip_build=true
 
-  local SSH_HOST="${SSH_HOST:-51.20.141.199}"
+  local SSH_HOST="${SSH_HOST:-13.51.251.5}"
   local SSH_USER="${SSH_USER:-ubuntu}"
   local SSH_KEY="${SSH_KEY:-$HOME/.ssh/AmoriKey.pem}"
   local IMAGE_NAME="${IMAGE_NAME:-amori-api:latest}"
   local REMOTE_DIR="${REMOTE_DIR:-/home/ubuntu/amori}"           # where .env + backend/ live
   local COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"   # relative to REMOTE_DIR/backend
-  local HEALTH_URL="${HEALTH_URL:-http://${SSH_HOST}:5001/api/health}"
+  local HEALTH_URL="${HEALTH_URL:-https://amori.ycare.org/api/health}"
   local PLATFORM="${PLATFORM:-linux/amd64}"
   local BACKEND_DIR="$ROOT/backend"
   local API_DIR="$BACKEND_DIR/Amori.Api"

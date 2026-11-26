@@ -23,6 +23,7 @@ import { chatDraftStore } from '../../features/chat/services/chatDraftStore';
 import { customTriggerStore } from '../../features/splitting/services/customTriggerStore';
 import { dailyGiftStore } from '../../features/home/services/dailyGiftStore';
 import { artifactStore } from '../../features/home/services/artifactStore';
+import { offlineQueue } from '../offline/offlineQueue';
 
 export async function clearLocalUserData(): Promise<void> {
   // In-memory caches: synchronous, cleared first so no screen can render the
@@ -52,5 +53,8 @@ export async function clearLocalUserData(): Promise<void> {
     customTriggerStore.reset(),
     dailyGiftStore.reset(),
     artifactStore.reset(),
+    // Clear any pending offline writes queued during night mode — they belong
+    // to the signing-out user and must not be flushed for the next user.
+    offlineQueue.clear(),
   ]);
 }

@@ -67,24 +67,46 @@ target 'Amori' do
         end
       end
     end
+
     # Xcode 26 only supports iOS 14.0+; raise any pod still on an older target.
+    # ── Xcode 26 compatibility patches (withXcode26Fixes plugin) ──────────────
+
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
+        # 1. Raise deployment target
         current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
         if current.nil? || Gem::Version.new(current) < Gem::Version.new('15.1')
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
         end
+
+        # 2. Xcode 26 enabled explicit modules by default. CocoaPods pods that use
+        #    DEFINES_MODULE=YES generate modulemaps into PODS_CONFIGURATION_BUILD_DIR,
+        #    but Clang's dependency scanner (which runs before any target builds) looks
+        #    for those files before they exist, causing the cascade of "module map file
+        #    not found" errors. Disabling explicit modules on all pod targets restores
+        #    the pre-Xcode-26 behaviour where modulemaps are resolved lazily.
+        config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
       end
     end
+
+    # Also disable on the main app target's pods-generated xcconfig targets
+    installer.aggregate_targets.each do |agg_target|
+      agg_target.xcconfigs.each_key do |config_name|
+        xcconfig = agg_target.xcconfigs[config_name]
+        xcconfig.attributes['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        xcconfig.attributes['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        xcconfig_path = agg_target.xcconfig_path(config_name)
+        xcconfig.save_as(Pathname.new(xcconfig_path))
+      end
+    end
+    Pod::UI.puts "✓ Disabled explicit modules on all pod targets".yellow
 
     # Workaround: Disable EXConstants script phase since it fails on paths with spaces
     # This phase is optional - the prebuilt manifest works fine without it
     begin
       pbxproj_path = "#{installer.pods_project.path}/project.pbxproj"
       content = File.read(pbxproj_path)
-      
-      # Simply replace the runOnlyForDeploymentPostprocessing value
-      # This disables the script phase since deployment postprocessing never runs in normal builds
       lines = content.split("\n")
       in_exconstants = false
       lines.map! do |line|
@@ -98,7 +120,6 @@ target 'Amori' do
           line
         end
       end
-      
       File.write(pbxproj_path, lines.join("\n"))
       Pod::UI.puts "✓ Disabled EXConstants script phase".yellow
     rescue => e
