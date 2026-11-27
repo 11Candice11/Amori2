@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 
 /** Night window in UTC hours (inclusive start, exclusive end, wraps midnight). */
 const NIGHT_START_UTC = 20; // 10pm SAST
-const NIGHT_END_UTC   = 5;  // 7am SAST
+const NIGHT_END_UTC   = 4;  // 6am SAST
 
 /**
  * Returns true if the given UTC Date falls within the night window.

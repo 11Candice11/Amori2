@@ -34,6 +34,7 @@ import { NightModeBanner } from '../shared/components/NightModeBanner';
 import { nightModeStore, useNightMode } from '../shared/state/nightModeStore';
 import { offlineQueue } from '../services/offline/offlineQueue';
 import { showSuccess, showError } from '../shared/state/bannerStore';
+import { logger } from '../utils/logger';
 
 /**
  * StatusBar whose appearance follows the active theme. Rendered inside
@@ -96,13 +97,18 @@ export default function App() {
   useEffect(() => {
     async function bootstrap() {
       try {
+        logger.log('Bootstrap', 'Starting bootstrap');
+
         // Load theme first so the app's first paint uses the saved palette.
         const savedTheme = await themeStore.load();
+        logger.log('Bootstrap', 'Theme loaded', savedTheme);
         setInitialTheme(savedTheme);
 
         // Restore any persisted session so the user stays signed in across app
         // restarts (until they explicitly sign out).
+        logger.log('Bootstrap', 'Hydrating token store');
         const existing = await tokenStore.hydrate();
+        logger.log('Bootstrap', existing ? 'Found persisted token' : 'No persisted token');
         if (!existing) {
           setAuthState('unauthenticated');
           return;
@@ -110,7 +116,9 @@ export default function App() {
         try {
           // This doubles as the token check and the initial settings load, so
           // preferences like vibration are honoured from the first screen on.
+          logger.log('Bootstrap', 'Calling getMe to validate token');
           userSettingsStore.set(await authService.getMe());
+          logger.log('Bootstrap', 'getMe succeeded — user is authenticated');
           // Restore the persisted Support Profile so it's ready after a restart,
           // then refresh it (and the partner view) from the network in the
           // background — failures keep the cached copy.
@@ -126,17 +134,20 @@ export default function App() {
           // any later request will re-validate and, if truly expired, prompt
           // a fresh login then.
           if (authErr instanceof ApiError && authErr.isAuthError) {
+            logger.warn('Bootstrap', `Auth token rejected (${authErr.status}) — signing out`);
             console.warn('Auth token rejected, signing out:', authErr);
             tokenStore.clear();
             // Same as an explicit sign-out: whoever signs in next starts clean.
             void clearLocalUserData();
             setAuthState('unauthenticated');
           } else {
+            logger.warn('Bootstrap', 'Session validation failed (keeping session)', authErr);
             console.warn('Session validation failed (keeping session):', authErr);
             setAuthState('authenticated');
           }
         }
       } catch (err) {
+        logger.error('Bootstrap', 'Fatal bootstrap error', err);
         console.error('Bootstrap error:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize app');
         setAuthState('error');
@@ -151,6 +162,7 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = useCallback(() => {
+    logger.log('App', 'handleLoginSuccess called — transitioning to authenticated');
     // Pull the new user's settings in before any screen needs to honour them.
     userSettingsStore.load(true);
     // A fresh sign-in is a new session on this device: clear any residual

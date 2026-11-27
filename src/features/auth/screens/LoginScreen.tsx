@@ -22,6 +22,7 @@ import { authService } from '../../../services/auth/authService';
 import { getSignInBackground } from '../../../utils/backgroundImages';
 import { validateLogin } from '../utils/authSchema';
 import { GoldButton } from '../../../shared/components/buttons';
+import { logger } from '../../../utils/logger';
 
 type Props = {
   onLoginSuccess: () => void;
@@ -43,9 +44,11 @@ export function LoginScreen({ onLoginSuccess }: Props) {
   const isLogin = mode === 'login';
 
   const handleSubmit = useCallback(async () => {
+    logger.log('LoginScreen', `Submit pressed (mode: ${mode})`);
     // Validate the email field and sanitize both email and password.
     const validation = validateLogin({ email, password });
     if (!validation.success) {
+      logger.warn('LoginScreen', 'Validation failed', validation.error);
       setError(validation.error);
       return;
     }
@@ -59,17 +62,21 @@ export function LoginScreen({ onLoginSuccess }: Props) {
       setLoading(true);
       setError(null);
       if (isLogin) {
+        logger.log('LoginScreen', 'Calling authService.login');
         await authService.login({ email: cleanEmail, password: cleanPassword });
       } else {
+        logger.log('LoginScreen', 'Calling authService.register');
         await authService.register({ name: name.trim(), email: cleanEmail, password: cleanPassword });
       }
+      logger.log('LoginScreen', 'Auth succeeded — calling onLoginSuccess');
       onLoginSuccess();
     } catch (err) {
+      logger.error('LoginScreen', 'Auth error', err);
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
-  }, [isLogin, name, email, password, onLoginSuccess]);
+  }, [isLogin, name, email, password, onLoginSuccess, mode]);
 
   return (
     <ImageBackground

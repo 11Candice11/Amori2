@@ -88,6 +88,7 @@ var app = builder.Build();
 // upload URLs built by LocalFileStorageService.
 app.UseForwardedHeaders();
 
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())

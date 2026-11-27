@@ -11,6 +11,7 @@
  *   GET  /api/users/me       -> UserResponse { id, name, email }   (requires Bearer token)
  */
 import { api, tokenStore } from '../api/client';
+import { logger } from '../../utils/logger';
 import type {
   AuthResponse,
   ChangePasswordRequest,
@@ -25,9 +26,16 @@ export const authService = {
    * so subsequent requests are authenticated and the session can be renewed.
    */
   async login(request: LoginRequest): Promise<AuthResponse> {
-    const result = await api.post<AuthResponse>('/api/auth/login', request);
-    tokenStore.setTokens(result.accessToken, result.refreshToken);
-    return result;
+    logger.log('Auth', `Login attempt for ${request.email}`);
+    try {
+      const result = await api.post<AuthResponse>('/api/auth/login', request);
+      tokenStore.setTokens(result.accessToken, result.refreshToken);
+      logger.log('Auth', 'Login succeeded — tokens stored');
+      return result;
+    } catch (err) {
+      logger.error('Auth', 'Login failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -35,15 +43,23 @@ export const authService = {
    * so subsequent requests are authenticated and the session can be renewed.
    */
   async register(request: RegisterRequest): Promise<AuthResponse> {
-    const result = await api.post<AuthResponse>('/api/auth/register', request);
-    tokenStore.setTokens(result.accessToken, result.refreshToken);
-    return result;
+    logger.log('Auth', `Register attempt for ${request.email}`);
+    try {
+      const result = await api.post<AuthResponse>('/api/auth/register', request);
+      tokenStore.setTokens(result.accessToken, result.refreshToken);
+      logger.log('Auth', 'Register succeeded — tokens stored');
+      return result;
+    } catch (err) {
+      logger.error('Auth', 'Register failed', err);
+      throw err;
+    }
   },
 
   /**
    * Fetch the currently authenticated user. Requires a valid token.
    */
   getMe(): Promise<UserResponse> {
+    logger.log('Auth', 'Fetching /api/users/me');
     return api.get<UserResponse>('/api/users/me');
   },
 

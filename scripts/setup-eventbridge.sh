@@ -142,12 +142,12 @@ upsert_schedule \
   "StopInstances" \
   "Stop Amori EC2 at 10pm SAST (8pm UTC)"
 
-# ── Start at 5am UTC (7am SAST) ───────────────────────────────────────────────
+# ── Start at 4am UTC (6am SAST) ───────────────────────────────────────────────
 upsert_schedule \
   "amori-start-ec2" \
-  "cron(0 5 * * ? *)" \
+  "cron(0 4 * * ? *)" \
   "StartInstances" \
-  "Start Amori EC2 at 7am SAST (5am UTC)"
+  "Start Amori EC2 at 6am SAST (4am UTC)"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 cat <<SUMMARY
@@ -156,7 +156,7 @@ cat <<SUMMARY
 ║  EventBridge schedules active                                                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  Stop : 8:00pm UTC = 10:00pm SAST every day                                 ║
-║  Start: 5:00am UTC =  7:00am SAST every day                                 ║
+║  Start: 4:00am UTC =  6:00am SAST every day                                 ║
 ║  Instance: ${INSTANCE_ID}                                                    ║
 ║                                                                              ║
 ║  The app will show a night mode banner in-app from 10pm-7am SAST.           ║

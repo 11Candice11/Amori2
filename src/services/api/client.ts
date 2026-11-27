@@ -11,6 +11,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { rewardsEvents } from './rewards';
+import { logger } from '../../utils/logger';
 
 // ── API origin selection ──────────────────────────────────────────────────────
 // The hosted backend is reachable over HTTPS on a real domain (nginx terminates
@@ -216,6 +217,7 @@ function refreshAccessToken(): Promise<boolean> {
     if (!refreshToken) return false;
 
     try {
+      logger.log('API', 'Token refresh attempt started');
       const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -225,9 +227,12 @@ function refreshAccessToken(): Promise<boolean> {
         body: JSON.stringify({ refreshToken }),
       });
 
+      logger.log('API', `Token refresh response: HTTP ${response.status}`);
+
       if (!response.ok) {
         // The refresh token is invalid/expired/revoked — the session is over.
         if (response.status === 401 || response.status === 403) {
+          logger.warn('API', 'Refresh token rejected — clearing session');
           tokenStore.clear();
         }
         return false;
@@ -235,13 +240,18 @@ function refreshAccessToken(): Promise<boolean> {
 
       const text = await response.text();
       const data = text ? JSON.parse(text) : null;
-      if (!data?.accessToken || !data?.refreshToken) return false;
+      if (!data?.accessToken || !data?.refreshToken) {
+        logger.warn('API', 'Token refresh response missing token fields');
+        return false;
+      }
 
       tokenStore.setTokens(data.accessToken, data.refreshToken);
+      logger.log('API', 'Token refresh succeeded');
       return true;
     } catch (err) {
       // Network error — keep the tokens; the caller surfaces the original error.
       console.warn('Token refresh failed:', err);
+      logger.error('API', 'Token refresh network error', err);
       return false;
     }
   })();
@@ -327,13 +337,20 @@ export async function apiRequest<T>(
   method: HttpMethod = 'GET',
   body?: unknown,
 ): Promise<T> {
+  logger.log('API', `→ ${method} ${path}`);
   let response = await performRequest(path, method, body);
+  logger.log('API', `← ${method} ${path} HTTP ${response.status}`);
 
   // On a 401 for a normal request, try one silent refresh + retry before failing.
   if (response.status === 401 && !AUTH_PATHS.includes(path) && tokenStore.getRefresh()) {
+    logger.log('API', `401 on ${path} — attempting silent token refresh`);
     const refreshed = await refreshAccessToken();
     if (refreshed) {
+      logger.log('API', `Retrying ${method} ${path} after refresh`);
       response = await performRequest(path, method, body);
+      logger.log('API', `← ${method} ${path} retry HTTP ${response.status}`);
+    } else {
+      logger.warn('API', `Silent refresh failed for ${path}`);
     }
   }
 
@@ -352,6 +369,7 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const message = data?.message ?? data?.title ?? `HTTP ${response.status}`;
+    logger.error('API', `Request failed: ${method} ${path} HTTP ${response.status} — ${message}`);
     throw new ApiError(response.status, message);
   }
 
